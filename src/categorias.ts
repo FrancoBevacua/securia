@@ -1,0 +1,1 @@
+export const colorCategoria=(categoria:string)=>({NOVEDAD:'#F43C58',INGRESO:'#2EC693',EGRESO:'#9DAED9',EXTERNO:'#E9B535',ADICIONAL:'#4A8FE9',RECORRIDO:'#80A3F8',DESCANSO:'#BD96F7',APERTURA:'#48C9D3',CIERRE:'#93A6CA'}[categoria.toUpperCase()]||'#80A3F8');

@@ -1,0 +1,7 @@
+const normal=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+export function esConsultaAccesos(s:string){return /acces|porton|precinto|apertur|cierr|puerta|emergenc|pecera|ventanal|reja/.test(normal(s));}
+export function esInformeAccesos(s:string){
+ const q=normal(s);
+ return /informe|reporte|parte|resumen/.test(q)&&esConsultaAccesos(q)&&!/informe\s+(?:de\s+)?seguridad|16\s*puntos/.test(q);
+}
+export const INSTRUCCION_INFORME_ACCESOS='Prepará un informe de accesos para CCTV. Usá los registros de aperturas y cierres adjuntos y los hechos aportados por el guardia. Ordená por fecha y por operación (APERTURAS / CIERRES), y después por hora. Para cada registro incluí hora, acceso o lista de accesos del grupo, guardia firmante, precintos exactos (con sus ceros iniciales) y observaciones o motivo si están registrados. Distinguí Portones de playa, Puertas de emergencias y Otros accesos. No deduzcas aperturas ni cierres del catálogo, las directivas o la existencia de un precinto. No afirmes que se retiró o colocó un precinto si el registro no lo dice. Si falta fecha, horario, firma o número, pedí el dato o marcá [completar: dato]. Si falta detalle por la selección de contexto, aclaralo y ofrecé acotar la consulta o revisar Accesos. No agregues identificadores ni citas de fuentes en el informe. Usá este formato de accesos, sin la plantilla de 16 puntos del informe de seguridad.';

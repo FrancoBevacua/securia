@@ -2,45 +2,54 @@
    Se arma solo con lo que ya está cargado en el turno; el vigilador elige la
    ventana horaria, agrega lo que falte, adjunta evidencia y lo exporta. */
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, AppState } from 'react-native';
+import {Image} from '../Imagen';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
 import {
   InformeDia, Novedad, addDays, dmy, hhmm, isoDate, uid, pad2, toMin,
 } from '../model';
 import {
   EntradaDia, entradasDeVentana, textoInformeDia, cierrePorDefecto, ventanaHoy, horaCorte, hayTrascendentes, resumenCorto, validarRedaccionDia,
-  limites, horaFin, ventanaParaEntrega, ventanaReciente,
+  limites, horaFin, ventanaParaEntrega, ventanaReciente, ventanaDelHecho,
 } from '../informedia';
 import { CATEGORIAS } from '../seed';
 import { asistir } from '../assistant';
 import { leerConfigIA, pedirIA, promptInformeDia, ErrorIA } from '../ai';
 import { pdfInformeDia } from '../pdf';
-import { gsName } from '../text';
+import { gsName, textoMovimientoBreve } from '../text';
 import { FONT } from '../theme';
 import {
-  useTheme, Pantalla, SubCabecera, Card, Btn, Item, Empty, Stack, Row, Chip, Chipbar,
-  Input, Field, Sheet, Eyebrow, Hint, Banner, Tag, Toggle, useToast,
+  useTheme, Pantalla, SubCabecera, Cabecera, Card, Btn, Item, Empty, Stack, Row, Chip, Chipbar,
+  Input, Field, Sheet, Selector, Eyebrow, Hint, Banner, Tag, Toggle, useToast,
 } from '../ui';
 import { EditorNovedad } from './Novedades';
 import ImportarLibro from './ImportarLibro';
 import ServicioActual from './ServicioActual';
 import RedaccionIA from './RedaccionIA';
 import { turnoAbierto, fechaValida } from '../servicio';
+import {FILTROS_LIBRO,filtrarLibro} from '../filtrosLibro';
 
-export default function InformeDiaPantalla() {
+export default function InformeDiaPantalla({integrado=false}:{integrado?:boolean}={}) {
   const st = useStore();
   const t = useTheme();
   const toast = useToast();
 
-  const [fechaEntrega, setFechaEntrega] = useState(() => isoDate());
+  const [fechaManual, setFechaManual] = useState(() => isoDate());
+  const [automatico, setAutomatico] = useState(true);
+  const [ajustarPeriodo,setAjustarPeriodo]=useState(false);
+  const [ahora,setAhora] = useState(() => new Date());
   const [corte, setCorte] = useState(() => horaCorte(st.S));
   const [duracion,setDuracion]=useState<12|24>(24);
+  const fechaEntrega=automatico?limites(ventanaReciente(corte,duracion,false,ahora)).hasta.fecha:fechaManual;
+  const setFechaEntrega=(v:string|((f:string)=>string))=>{setAutomatico(false);setFechaManual(typeof v==='function'?v(fechaEntrega):v);};
+  useEffect(()=>{
+    const tick=()=>setAhora(new Date()), timer=setInterval(tick,15000);
+    const sub=AppState.addEventListener('change',s=>{if(s==='active')tick();});
+    return()=>{clearInterval(timer);sub.remove();};
+  },[]);
   const [guardando,setGuardando]=useState(false);
-  const [cierrePersonal, setCierrePersonal] = useState<string | null>(null);
-  const [marcadoTrascendente, setMarcadoTrascendente] = useState(false);
   const [fotos, setFotos] = useState<string[]>([]);
   const [editar, setEditar] = useState<Novedad | null | undefined>(undefined);
   const [vista, setVista] = useState(false);
@@ -49,24 +58,21 @@ export default function InformeDiaPantalla() {
   const [texto, setTexto] = useState('');
   const [fuente, setFuente] = useState('');
   const [detalle, setDetalle] = useState<EntradaDia | null>(null);
+  const [filtros,setFiltros]=useState<string[]>([]),[busqueda,setBusqueda]=useState('');
 
   const fechaCorrecta=fechaValida(fechaEntrega);
   const ventana = ventanaParaEntrega(fechaCorrecta?fechaEntrega:isoDate(),corte,duracion);
   const {fecha}=ventana,fin=horaFin(ventana),hasta=limites(ventana).hasta.fecha;
   const entradas = useMemo(() => fechaCorrecta?entradasDeVentana(st.S, ventana):[], [st.S, fecha, corte,duracion,fechaCorrecta]);
+  const visibles=useMemo(()=>filtrarLibro(entradas,filtros,busqueda),[entradas,filtros,busqueda]);
 
   /* El informe guardado de esta ventana, si ya se hizo uno. */
   const guardado = st.list<InformeDia>('infdias').find(x => x.fecha === fecha && x.desde === corte && (x.duracion??24)===duracion);
-  const detectadas = hayTrascendentes(st.S, ventana);
-  const trascendentes = detectadas || marcadoTrascendente;
-  const cierreDefault = cierrePorDefecto(st.S, ventana);
-  const cierre = cierrePersonal ?? (trascendentes ? '' : cierreDefault);
+  const cierre = '';
 
   useEffect(() => {
-    setCierrePersonal(guardado && guardado.cierre !== cierrePorDefecto(st.S, ventana) ? guardado.cierre : null);
-    setMarcadoTrascendente(guardado?.trascendentes || false);
     setFotos(guardado?.fotos || []);
-    setTexto(guardado?.texto || '');
+    setTexto(textoMovimientoBreve(guardado?.texto || ''));
     setFuente(guardado?.fuente || '');
   }, [fecha, corte, duracion, guardado?.id]);
 
@@ -84,29 +90,11 @@ export default function InformeDiaPantalla() {
     st.put('infdias', {
       id: guardado?.id || uid(), fecha, desde: corte, hasta: fin, duracion, fechaHasta:hasta,
       cierre, texto: definitivo, fotos,
-      fuente: borrador, trascendentes: marcadoTrascendente,
+      fuente: borrador,
       createdBy: st.me!.id, createdAt: guardado?.createdAt || Date.now(),
     });
     await st.confirmarGuardado();
     toast('Informe guardado en el teléfono');
-  };
-
-  const agregarFoto = async (camara: boolean) => {
-    try {
-      const perm = camara
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { toast('Hace falta el permiso para la ' + (camara ? 'cámara' : 'galería')); return; }
-      const res = camara
-        ? await ImagePicker.launchCameraAsync({ quality: 0.7 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.7, allowsMultipleSelection: true });
-      if (res.canceled || !res.assets?.length) return;
-      const nuevas: string[] = [];
-      for (const a of res.assets) nuevas.push(await st.guardarFoto(a.uri));
-      setFotos(f => [...f, ...nuevas]);
-    } catch {
-      toast('No se pudo agregar la imagen');
-    }
   };
 
   const exportar = async (supervisor=false) => {
@@ -117,7 +105,8 @@ export default function InformeDiaPantalla() {
       const r = await pdfInformeDia(
         { fecha, corte, cierre, fotos: fotosParaPDF, texto: definitivo },
         st.S, gsName(st.me, st.S.site),supervisor?(st.S.site.supervisorTel||''):undefined);
-      toast(r === 'compartido' ? 'PDF listo para compartir' : 'PDF generado');
+      if(r==='no')throw Error('No se pudo descargar el PDF. Vuelva a intentarlo.');
+      toast(r === 'compartido' ? 'PDF adjunto al selector. Elija el supervisor y confirme el envío.' : 'PDF generado');
     } catch (e:any) {
       console.warn(e);
       toast(e.message||'No se pudo generar el PDF');
@@ -125,19 +114,25 @@ export default function InformeDiaPantalla() {
   };
 
   return (
-    <Pantalla top>
-      <SubCabecera titulo="Informe general"
+    <Pantalla top={!integrado}>
+      {integrado?<Cabecera titulo="Libro de novedades" sub="Registro cronológico del servicio."/>:<SubCabecera titulo="Libro de novedades"
         sub="Registro cronológico del servicio para supervisión."
-        onBack={() => router.back()} />
+        onBack={() => router.back()} />}
 
       <ServicioActual />
       {/* ---------- ventana horaria ---------- */}
       <Card pad>
         <Stack gap={12}>
           <Eyebrow>Período</Eyebrow>
+          <Text style={{fontFamily:FONT.bodySemi,fontSize:16,lineHeight:24,color:t.text}}>{dmy(fecha)+' · '+corte+'\n'+dmy(hasta)+' · '+fin}</Text>
+          <Hint>{automatico?'El libro avanza automáticamente al siguiente período.':'Consultando un período seleccionado.'}</Hint>
+          <Btn label={ajustarPeriodo?'Cerrar opciones':'Cambiar período'} variant="ghost" onPress={()=>setAjustarPeriodo(v=>!v)}/>
+          {ajustarPeriodo?<>
+          <Toggle label="Informe actual automático" sub="Al llegar al corte se muestra el informe siguiente. Cada novedad conserva su fecha real."
+            value={automatico} onChange={v=>{setFechaManual(fechaEntrega);setAhora(new Date());setAutomatico(v);if(v){setCorte(horaCorte(st.S));setDuracion(24);}}}/>
           <Chipbar>{[{desde:'07:00',horas:12,etiqueta:'07 → 19 · 12 h'},{desde:'19:00',horas:12,etiqueta:'19 → 07 · 12 h'},{desde:'19:00',horas:24,etiqueta:'19 → 19 · 24 h'}].map(p=><Chip key={p.etiqueta} label={p.etiqueta} on={corte===p.desde&&duracion===p.horas} onPress={()=>{setCorte(p.desde);setDuracion(p.horas as 12|24);}}/>)}</Chipbar>
           <Chipbar>{([12,24] as const).map(h=><Chip key={h} label={h+' horas'} on={duracion===h} onPress={()=>setDuracion(h)}/>)}</Chipbar>
-          <Input label="Fecha de entrega / fin" value={fechaEntrega} onChangeText={setFechaEntrega} placeholder="AAAA-MM-DD" mono hint="La app calcula el día de inicio automáticamente."/>
+          <Input tipo="fecha" label="Fecha de entrega / fin" value={fechaEntrega} onChangeText={setFechaEntrega} placeholder="AAAA-MM-DD" mono hint="La app calcula el día de inicio automáticamente."/>
           <Row>
             <Btn icon="back" variant="ghost" size="sm" disabled={!fechaCorrecta} onPress={() => setFechaEntrega(f => addDays(f, -1))} />
             <View style={{ flex: 1, alignItems: 'center' }}>
@@ -151,6 +146,7 @@ export default function InformeDiaPantalla() {
           </Row>
           <Row><Btn label="Termina hoy" size="sm" variant="ghost" onPress={()=>setFechaEntrega(isoDate())}/><Btn label="Último finalizado" size="sm" variant="ghost" onPress={()=>setFechaEntrega(limites(ventanaReciente(corte,duracion,true)).hasta.fecha)}/></Row>
           <Field label="Hora de inicio" hint="El fin se calcula según la duración elegida. A igual horario, son 24 horas.">
+            <Input tipo="hora" label="Elegir hora de corte" value={corte} onChangeText={setCorte}/>
             <Chipbar>
               {['06:00', '07:00', '14:00', '19:00', '22:00', '23:00', '00:00'].map(h => (
                 <Chip key={h} label={h} on={corte === h} onPress={() => {
@@ -159,15 +155,23 @@ export default function InformeDiaPantalla() {
               ))}
             </Chipbar>
           </Field>
+          </>:null}
           {!fechaCorrecta?<Banner kind="warn">Revise la fecha de entrega (AAAA-MM-DD).</Banner>:<Hint>{entradas.length+' registros incluidos. Desde el inicio indicado hasta antes del horario de fin.'}</Hint>}
         </Stack>
       </Card>
 
       {/* ---------- entradas ---------- */}
-      {entradas.length ? [...new Set(entradas.map(e => e.fecha))].map(dia => (
+      <Card pad><Stack gap={10}>
+        <Eyebrow>Buscar en el libro</Eyebrow>
+        <Input label="Texto, persona, empresa o sector" value={busqueda} onChangeText={setBusqueda} placeholder="Ej.: limpieza, Oroño, apellido…"/>
+        <Chipbar><Chip label="Todos" on={!filtros.length} onPress={()=>setFiltros([])}/>{FILTROS_LIBRO.map(f=><Chip key={f.v} label={f.t} on={filtros.includes(f.v)} onPress={()=>setFiltros(actual=>actual.includes(f.v)?actual.filter(v=>v!==f.v):[...actual,f.v])}/>)}</Chipbar>
+        <Hint>{visibles.length+' de '+entradas.length+' registros del período. Puede combinar categorías. El informe para compartir incluye el período completo.'}</Hint>
+        {filtros.length||busqueda?<Btn label="Limpiar filtros" size="sm" onPress={()=>{setFiltros([]);setBusqueda('');}}/>:null}
+      </Stack></Card>
+      {visibles.length ? [...new Set(visibles.map(e => e.fecha))].map(dia => (
         <Stack key={dia} gap={8}>
           <Eyebrow>{'Día ' + dmy(dia)}</Eyebrow>
-          <Card>{entradas.filter(e => e.fecha === dia).map((e, i, lista) => (
+          <Card>{visibles.filter(e => e.fecha === dia).map((e, i, lista) => (
             <FilaEntrada key={e.clave} e={e} last={i === lista.length - 1} onPress={() => {
               if (e.origen === 'novedad') { setEditar(st.byId<Novedad>('novedades', e.ids[0]) || null); return; }
               if (e.origen === 'acceso') {
@@ -179,7 +183,7 @@ export default function InformeDiaPantalla() {
             }} />
           ))}</Card>
         </Stack>
-      )) : <Card><Empty>No hay novedades en este período. Revise las fechas y el horario antes de generar el informe.</Empty></Card>}
+      )) : <Card><Empty>{entradas.length?'No hay coincidencias. Pruebe otro texto o quite los filtros.':'No hay novedades en este período. Revise las fechas y el horario antes de generar el informe.'}</Empty></Card>}
       <Row gap={9}>
         <Btn label="Agregar novedad" icon="plus" variant="primary" style={{ flex: 1 }}
           disabled={!fechaCorrecta} onPress={() => setEditar(null)} />
@@ -188,41 +192,6 @@ export default function InformeDiaPantalla() {
       </Row>
 
       <Btn label="Leer foto del libro físico" icon="informes" variant="ghost" onPress={() => setLeerLibro(true)} />
-      {/* ---------- cierre y evidencia ---------- */}
-      <Card pad>
-        <Stack gap={12}>
-          <Eyebrow>Párrafo de cierre</Eyebrow>
-          {detectadas ? <Banner kind="warn">Hay incidencias o informes de seguridad en este período. El cierre sin novedades queda desactivado.</Banner> :
-            <Toggle label="Hubo novedades de trascendencia" value={marcadoTrascendente} onChange={v => {
-              setMarcadoTrascendente(v); setCierrePersonal(null);
-            }} />}
-          <Input label="Cierre del servicio" value={cierre} onChangeText={setCierrePersonal} multiline rows={4}
-            placeholder={trascendentes ? 'Detalle el estado final y el seguimiento de las novedades.' : ''} />
-          {cierrePersonal !== null ? <Btn label="Restablecer cierre" variant="ghost" size="sm" onPress={() => setCierrePersonal(null)} /> : null}
-          <Eyebrow>Evidencia</Eyebrow>
-          {fotosDelLibro.length ? <Hint>{new Set(fotosDelLibro).size + ' fotos del libro físico incluidas desde sus novedades.'}</Hint> : null}
-          {fotos.length ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {fotos.map((f, i) => (
-                <View key={f + i}>
-                  <Image source={{ uri: f }} style={{
-                    width: 92, height: 92, borderRadius: 8, borderWidth: 1, borderColor: t.line,
-                  }} />
-                  <View style={{ position: 'absolute', top: 4, right: 4 }}>
-                    <Btn icon="x" variant="danger" size="xs"
-                      onPress={() => setFotos(x => x.filter((_, k) => k !== i))} />
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          ) : <Hint>Sin imágenes. Se adjuntan al final del PDF.</Hint>}
-          <Row gap={9}>
-            <Btn label="Sacar foto" variant="ghost" size="sm" style={{ flex: 1 }} onPress={() => agregarFoto(true)} />
-            <Btn label="De la galería" variant="ghost" size="sm" style={{ flex: 1 }} onPress={() => agregarFoto(false)} />
-          </Row>
-        </Stack>
-      </Card>
-
       {/* ---------- salida ---------- */}
       <Card pad>
         <Stack gap={11}>
@@ -242,12 +211,14 @@ export default function InformeDiaPantalla() {
               disabled={guardando||!fechaCorrecta} onPress={async () => {setGuardando(true);try{await guardar(); await Clipboard.setStringAsync(definitivo); toast('Informe copiado. Péguelo en el chat del supervisor.');}catch(e:any){toast(e.message);}finally{setGuardando(false);} }} />
             <Btn label={guardando?'Guardando…':'Exportar PDF'} disabled={guardando||!fechaCorrecta} icon="share" variant="ghost" style={{ flex: 1 }} onPress={()=>exportar()} />
           </Row>
-          <Btn label="Compartir con supervisor" disabled={guardando||!fechaCorrecta} icon="share" variant="primary" onPress={()=>{if(!st.S.site.supervisorTel){toast('Configure el número del supervisor en Configuración.');router.push('/ajustes');return;}void exportar(true);}}/>
+          <Hint>Puede copiar el informe o exportarlo como PDF.</Hint>
         </Stack>
       </Card>
 
       <ImportarLibro abierto={leerLibro} fecha={fecha} onClose={() => setLeerLibro(false)} />
-      <EditorNovedad abierto={editar !== undefined} novedad={editar || null} fecha={fecha} corte={corte} duracion={duracion} onClose={() => setEditar(undefined)} />
+      <EditorNovedad abierto={editar !== undefined} novedad={editar || null} fecha={fecha} corte={corte} duracion={duracion}
+        onGuardado={(dia,hora)=>{const v=ventanaDelHecho(dia,hora,horaCorte(st.S));setCorte(v.corte);setDuracion(24);setFechaEntrega(limites(v).hasta.fecha);setAhora(new Date());setAutomatico(v.fecha===ventanaReciente(v.corte,24,false).fecha);}}
+        onClose={() => setEditar(undefined)} />
       <Sheet visible={!!detalle} title={detalle ? detalle.hora + ' · Detalle' : 'Detalle'} onClose={() => setDetalle(null)}>
         <Text selectable style={{ fontFamily: FONT.body, fontSize: 15, lineHeight: 23, color: t.text }}>
           {detalle?.texto}{detalle?.items?.map(i => '\n• ' + i).join('')}

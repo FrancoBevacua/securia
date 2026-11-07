@@ -283,8 +283,10 @@ const PDFR = (() => {
       fontCache.set(num, f); return f;
     }
     const pages = [];
+    let paginasDetectadas = 0, paginasConTexto = 0;
     for (const [num, o] of objs) {
       if (!/\/Type\s*\/Page[^s]/.test(o.dict + ' ')) continue;
+      paginasDetectadas++;
       const fonts = {};
       let res = dictValue(o.dict, '/Resources');
       const rr = refOf(res);
@@ -298,15 +300,18 @@ const PDFR = (() => {
       const nums = (cts.match(/(\d+)\s+\d+\s+R/g) || []).map(s => +s.split(/\s+/)[0]);
       let txt = '';
       nums.forEach(n => { if (streamText.has(n)) txt += streamText.get(n) + '\n'; });
-      if (txt) pages.push(extractFromContent(txt, fonts));
+      const lineas = txt ? extractFromContent(txt, fonts) : [];
+      if (lineas.join('').trim()) paginasConTexto++;
+      pages.push(lineas);
     }
-    if (!pages.length) {
+    if (!paginasConTexto) {
       for (const [num, t] of streamText) if (/BT[\s\S]*?(Tj|TJ)/.test(t)) pages.push(extractFromContent(t, {}));
     }
-    return pages.map(p => p.join('\n')).join('\n');
+    return {texto:pages.map(p => p.join('\n')).join('\n'),paginasDetectadas,paginasConTexto,lecturaCompleta:paginasDetectadas>0&&paginasConTexto===paginasDetectadas};
   }
-  return { extract };
+  return { extract: async arrayBuffer => (await extract(arrayBuffer)).texto, extractDetailed: extract };
 })();
 
 export default PDFR;
 export const extraerTextoPDF: (buf: ArrayBuffer) => Promise<string> = PDFR.extract;
+export const extraerTextoPDFConCobertura: (buf:ArrayBuffer)=>Promise<{texto:string;paginasDetectadas:number;paginasConTexto:number;lecturaCompleta:boolean}> = PDFR.extractDetailed;

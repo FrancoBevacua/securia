@@ -27,7 +27,7 @@ export default function RegistroDirectiva({ directiva, onClose }: { directiva: D
     setHora(previo?.horaReal || hhmm());
     setNov(previo?.novedades || '');
     setAlLibro(false);
-    setFirma('');
+    setFirma(st.responsable?.id||'');
   }, [directiva?.id]);
 
   if (!directiva) return null;
@@ -69,7 +69,7 @@ export default function RegistroDirectiva({ directiva, onClose }: { directiva: D
       </Banner>
       <Seg valor={estado} onChange={setEstado}
         opciones={[{ v: 'ok', t: 'Cumplida' }, { v: 'na', t: 'No aplica' }]} />
-      <Input label="Hora real" value={hora} onChangeText={setHora} mono placeholder="HH:MM"
+      <Input tipo="hora" label="Hora real" value={hora} onChangeText={setHora} mono placeholder="HH:MM"
         hint="Se guarda la hora en la que efectivamente la hiciste." />
       <Input label="Novedades" value={nov} onChangeText={setNov} multiline rows={3}
         placeholder="Sin novedad / Precinto N° …" />

@@ -1,26 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AppState, View, Text } from 'react-native';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store';
 import { visAdentro, visEspera, visNombre } from '../logic';
 import {
   Acceso, AUTZ, Visita, accNormal, autLabel, autTag, dmy, fmtDNI, hhmm, isoDate,
-  personasReales, toMin, uid,
+  personasReales, uid,
 } from '../model';
-import {
-  textoIngresoAcceso, textoEgresoAcceso, textoConfirmAcceso, sujetoAcceso,
-} from '../text';
+import { sujetoAcceso } from '../text';
 import { FONT } from '../theme';
 import {
   useTheme, Pantalla, SubCabecera, Card, Btn, Tag, Item, Empty, Stack, Row, Seg,
   Chip, Chipbar, Input, Field, Sheet, Banner, Hint, Confirmar, useToast,
 } from '../ui';
 import BloqueAcceso from './BloqueAcceso';
+import {cambiosVisita} from '../movimientosVisita';
+import {externosEnPredio} from '../presencias';
 
 const TIPOS = ['Proveedor', 'Contratista', 'Visita', 'Empleado', 'Locatario'];
 
-export default function Visitas() {
+export default function Visitas({integrado=false}:{integrado?:boolean}={}) {
   const st = useStore();
   const t = useTheme();
   const toast = useToast();
@@ -30,36 +30,19 @@ export default function Visitas() {
 
 
   const todas = st.list<Visita>('visits').sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const dentro = todas.filter(visAdentro);
-  const espera = todas.filter(visEspera);
+  const [ahora,setAhora]=useState(()=>new Date());
+  useEffect(()=>{const tick=()=>setAhora(new Date()),timer=setInterval(tick,30000),sub=AppState.addEventListener('change',s=>{if(s==='active')tick();});return()=>{clearInterval(timer);sub.remove();};},[]);
+  const vigentes=new Set(externosEnPredio(st.S,ahora).flatMap(g=>g.registros));
+  const dentro = todas.filter(v=>vigentes.has(v.id)&&visAdentro(v));
+  const espera = dentro.filter(visEspera);
   const rows = modo === 'dentro' ? dentro : todas;
 
-  /* asienta el movimiento en el libro y devuelve la visita actualizada */
-  const alLibro = (v: Visita, mov: 'in' | 'out' | 'conf'): Visita => {
-    const key = mov === 'in' ? 'novIn' : mov === 'out' ? 'novOut' : 'novConf';
-    const a = accNormal(v.acc, v);
-    let texto = '', hora = '', fecha = '';
-    if (mov === 'in') {
-      texto = textoIngresoAcceso(a, v.tipo); hora = v.horaIn || hhmm(); fecha = v.fecha || isoDate();
-    } else if (mov === 'out') {
-      let min: number | null = null;
-      if (v.horaIn && v.horaOut) { min = toMin(v.horaOut) - toMin(v.horaIn); if (min < 0) min += 1440; }
-      texto = textoEgresoAcceso(a, v.tipo, min); hora = v.horaOut || hhmm(); fecha = isoDate();
-    } else {
-      texto = textoConfirmAcceso(a, v.tipo); hora = hhmm(); fecha = isoDate();
-    }
-    const nid = (v as any)[key] || uid();
-    st.put('novedades', {
-      id: nid, fecha, hora, guardId: v.guardId || st.me!.id,
-      categoria: 'Acceso', visitId: v.id, mov, texto, acc: a,
-    });
-    return { ...v, [key]: nid } as Visita;
-  };
-
-  const egreso = (v: Visita) => {
-    const conSalida = { ...v, horaOut: hhmm() };
-    st.put('visits', alLibro(conSalida, 'out'));
-    toast('Egreso ' + conSalida.horaOut + ' asentado en el libro');
+  const egreso = async (v: Visita) => {
+    try{
+      st.putVarios(cambiosVisita({...v,horaOut:hhmm()},['out'],st.me!.id,new Date(),st.S.novedades,st.responsable?.id||st.me!.id));
+      await st.confirmarGuardado();
+      toast('Egreso asentado en el libro');
+    }catch(e:any){toast(e.message);}
   };
 
   const copiarPresentes = async () => {
@@ -77,10 +60,9 @@ export default function Visitas() {
     toast('Listado copiado');
   };
 
-  return (
-    <Pantalla top>
-      <SubCabecera titulo="Visitas y proveedores" sub="Cada ingreso y egreso se asienta solo en el libro."
-        onBack={() => router.back()} />
+  const contenido=(<>
+      {!integrado?<SubCabecera titulo="Externos" sub="Cada ingreso y egreso se asienta solo en el libro."
+        onBack={() => router.back()} />:null}
 
       {espera.length ? (
         <Banner kind="warn">
@@ -94,7 +76,7 @@ export default function Visitas() {
       ) : null}
 
       <Seg acento valor={modo} onChange={setModo}
-        opciones={[{ v: 'dentro', t: 'En el predio (' + dentro.length + ')' }, { v: 'hist', t: 'Historial' }]} />
+        opciones={[{ v: 'dentro', t: 'Ingresos vigentes (' + dentro.length + ')' }, { v: 'hist', t: 'Historial' }]} />
 
       <Btn label="Registrar ingreso" icon="plus" variant="primary" onPress={() => setEditar(null)} />
 
@@ -130,20 +112,20 @@ export default function Visitas() {
       )}
 
       {rows.length ? (
-        <Btn label="Copiar listado de presentes" icon="copy" variant="ghost" onPress={copiarPresentes} />
+        <Btn label="Copiar ingresos vigentes" icon="copy" variant="ghost" onPress={copiarPresentes} />
       ) : null}
 
       <EditorVisita abierto={editar !== undefined} visita={editar || null}
-        onClose={() => setEditar(undefined)} alLibro={alLibro} />
-      <HojaConfirmar visita={confirmar} onClose={() => setConfirmar(null)} alLibro={alLibro} />
-    </Pantalla>
+        onClose={() => setEditar(undefined)} />
+      <HojaConfirmar visita={confirmar} onClose={() => setConfirmar(null)} />
+    </>
   );
+  return integrado?contenido:<Pantalla top>{contenido}</Pantalla>;
 }
 
 /* ================= alta y edición ================= */
-function EditorVisita({ abierto, visita, onClose, alLibro }: {
+export function EditorVisita({ abierto, visita, onClose }: {
   abierto: boolean; visita: Visita | null; onClose: () => void;
-  alLibro: (v: Visita, mov: 'in' | 'out' | 'conf') => Visita;
 }) {
   const st = useStore();
   const toast = useToast();
@@ -153,9 +135,13 @@ function EditorVisita({ abierto, visita, onClose, alLibro }: {
   const [horaOut, setHoraOut] = useState('');
   const [obs, setObs] = useState('');
   const [borrar, setBorrar] = useState(false);
+  const [guardando,setGuardando]=useState(false),[error,setError]=useState('');
+  const idRegistro=useRef(uid());
 
   useEffect(() => {
     if (!abierto) return;
+    idRegistro.current=visita?.id||uid();
+    setError('');setBorrar(false);
     setTipo(visita?.tipo || 'Proveedor');
     setAcc(accNormal(visita?.acc, visita));
     setHoraIn(visita?.horaIn || hhmm());
@@ -163,26 +149,31 @@ function EditorVisita({ abierto, visita, onClose, alLibro }: {
     setObs(accNormal(visita?.acc, visita).obs || '');
   }, [abierto, visita?.id]);
 
-  const guardar = () => {
+  const guardar = async () => {
+    if(guardando)return;setGuardando(true);setError('');
+    try{
     const a = { ...acc, obs };
-    if (!a.empresa && !personasReales(a).length) { toast('Ingrese la razón social o al menos un empleado'); return; }
+    if (!a.empresa && !personasReales(a).length) { throw Error('Ingrese la razón social o al menos un empleado'); }
     let salida = horaOut;
     if (a.autoriz === 'retiro' && !salida) salida = horaIn;
-    let v: Visita = {
-      id: visita?.id || uid(), updatedAt: 0, tipo, acc: a,
+    const anterior=st.S.visits.find(v=>v.id===idRegistro.current)||visita;
+    const v: Visita = {
+      id: idRegistro.current, updatedAt: 0, tipo, acc: a,
       nombre: a.empresa || personasReales(a)[0]?.nombre || '',
       horaIn: horaIn || hhmm(), horaOut: salida,
-      fecha: visita?.fecha || isoDate(), guardId: visita?.guardId || st.me!.id,
-      createdAt: visita?.createdAt || Date.now(),
-      novIn: visita?.novIn, novOut: visita?.novOut, novConf: visita?.novConf,
+      fecha: anterior?.fecha || isoDate(), guardId: anterior?.guardId || st.responsable?.id || st.me!.id,
+      createdAt: anterior?.createdAt || Date.now(),
+      novIn: anterior?.novIn, novOut: anterior?.novOut, novConf: anterior?.novConf,
     };
-    v = alLibro(v, 'in');
-    if (v.horaOut && a.autoriz !== 'retiro') v = alLibro(v, 'out');
-    st.put('visits', v);
+    const cambios=cambiosVisita(v,v.horaOut&&a.autoriz!=='retiro'?['in','out']:['in'],st.me!.id,new Date(),st.S.novedades,st.responsable?.id||st.me!.id);
+    if(!v.horaOut&&anterior?.novOut)cambios.unshift({col:'novedades',obj:{id:anterior.novOut,deleted:true}});
+    st.putVarios(cambios);
+    await st.confirmarGuardado();
     onClose();
     toast(a.autoriz === 'retiro'
       ? 'Registrado: personal sin confirmación, se retira'
       : 'Registrado y asentado en el libro');
+    }catch(e:any){setError(e.message);}finally{setGuardando(false);}
   };
 
   return (
@@ -190,9 +181,10 @@ function EditorVisita({ abierto, visita, onClose, alLibro }: {
       footer={
         <>
           {visita ? <Btn icon="trash" variant="danger" onPress={() => setBorrar(true)} /> : null}
-          <Btn label="Guardar" variant="primary" style={{ flex: 1 }} onPress={guardar} />
+          <Btn label={guardando?"Guardando…":"Guardar"} disabled={guardando} variant="primary" style={{ flex: 1 }} onPress={guardar} />
         </>
       }>
+      {error?<Banner kind="warn">{error}</Banner>:null}
       <Field label="Tipo">
         <Chipbar>
           {TIPOS.map(x => <Chip key={x} label={x} on={tipo === x} onPress={() => setTipo(x)} />)}
@@ -201,11 +193,11 @@ function EditorVisita({ abierto, visita, onClose, alLibro }: {
       <BloqueAcceso valor={acc} onChange={setAcc} />
       <Row gap={11} style={{ alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
-          <Input label="Hora de ingreso" value={horaIn} onChangeText={setHoraIn} mono keyboardType="numbers-and-punctuation" />
+          <Input tipo="hora" label="Hora de ingreso" value={horaIn} onChangeText={setHoraIn} mono keyboardType="numbers-and-punctuation" />
         </View>
         {visita ? (
           <View style={{ flex: 1 }}>
-            <Input label="Hora de egreso" value={horaOut} onChangeText={setHoraOut} mono keyboardType="numbers-and-punctuation" />
+            <Input tipo="hora" label="Hora de egreso" value={horaOut} onChangeText={setHoraOut} mono keyboardType="numbers-and-punctuation" />
           </View>
         ) : null}
       </Row>
@@ -217,24 +209,26 @@ function EditorVisita({ abierto, visita, onClose, alLibro }: {
 
       <Confirmar visible={borrar} mensaje="¿Eliminar este registro? También se quitan sus asientos del libro."
         onCancel={() => setBorrar(false)}
-        onOk={() => {
+        onOk={async () => {
+          try{
           if (visita) {
             st.putVarios([
-              ...(['novIn', 'novOut', 'novConf'] as const).map(k => visita[k]).filter(Boolean)
+              ...[...new Set([...(['novIn', 'novOut', 'novConf'] as const).map(k => visita[k]),...st.S.novedades.filter(n=>n.visitId===visita.id&&!n.deleted).map(n=>n.id)].filter(Boolean))]
                 .map(id => ({ col: 'novedades' as const, obj: { id, deleted: true } })),
               { col: 'visits', obj: { id: visita.id, deleted: true } },
             ]);
           }
+          await st.confirmarGuardado();
           setBorrar(false); onClose(); toast('Registro eliminado');
+          }catch(e:any){setBorrar(false);setError(e.message);}
         }} />
     </Sheet>
   );
 }
 
 /* ================= confirmación posterior ================= */
-function HojaConfirmar({ visita, onClose, alLibro }: {
+function HojaConfirmar({ visita, onClose }: {
   visita: Visita | null; onClose: () => void;
-  alLibro: (v: Visita, mov: 'in' | 'out' | 'conf') => Visita;
 }) {
   const st = useStore();
   const t = useTheme();
@@ -251,19 +245,14 @@ function HojaConfirmar({ visita, onClose, alLibro }: {
   if (!visita) return null;
   const a = accNormal(visita.acc, visita);
 
-  const guardar = () => {
-    const nuevo: Acceso = { ...a, autoriz: resultado, confirmo };
-    let v: Visita = { ...visita, acc: nuevo };
-    if (resultado === 'retiro') {
-      v.horaOut = hhmm();
-      v = alLibro(v, 'out');
-    } else {
-      v = alLibro(v, 'conf');
-    }
-    // La autorización se agrega como un nuevo hecho; el asiento anterior conserva su contenido.
-    st.put('visits', v);
-    onClose();
-    toast(resultado === 'retiro' ? 'Asentado: se retira sin confirmación' : 'Autorización confirmada y asentada');
+  const guardar = async () => {
+    try{
+      const nuevo: Acceso = { ...a, autoriz: resultado, confirmo };
+      const v: Visita = { ...visita, acc: nuevo, ...(resultado==='retiro'?{horaOut:hhmm()}:{}) };
+      st.putVarios(cambiosVisita(v,[resultado==='retiro'?'out':'conf'],st.me!.id,new Date(),st.S.novedades,st.responsable?.id||st.me!.id));
+      await st.confirmarGuardado();onClose();
+      toast(resultado === 'retiro' ? 'Asentado: se retira sin confirmación' : 'Autorización confirmada y asentada');
+    }catch(e:any){toast(e.message);}
   };
 
   return (

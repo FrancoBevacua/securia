@@ -20,14 +20,16 @@ import Gate from '../src/pantallas/Gate';
 import Presentacion, { AZUL_PRESENTACION } from '../src/pantallas/Presentacion';
 import Barrera from '../src/Barrera';
 import { EstadoSincronizacion } from '../src/pantallas/Nube';
+import ChatbotFlotante from '../src/pantallas/ChatbotFlotante';
+import GuardiaACargo from '../src/pantallas/GuardiaACargo';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /* La presentación se mantiene un mínimo de tiempo para que no sea un destello. */
-const MINIMO_PRESENTACION = 2400;
+const MINIMO_PRESENTACION = 700;
 
 function Raiz() {
-  const { listo, me, S, avisos, errorInicio, reintentarInicio } = useStore();
+  const { listo, me, responsable, S, avisos, errorInicio, reintentarInicio } = useStore();
   const t = useTheme();
   const [tiempoCumplido, setTiempoCumplido] = useState(false);
 
@@ -36,7 +38,7 @@ function Raiz() {
     return () => clearTimeout(id);
   }, []);
 
-  useEffect(() => { if (listo) SplashScreen.hideAsync().catch(() => {}); }, [listo]);
+  useEffect(() => { SplashScreen.hideAsync().catch(() => {}); }, []);
 
   /* Recordatorios: se reprograman al abrir, al volver del fondo y ante cualquier
      cambio de directivas, puesto o turno. Todo va envuelto: un fallo acá no
@@ -66,7 +68,8 @@ function Raiz() {
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
       <EstadoSincronizacion />
-      {me && me.dni ? <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: t.bg } }} /> : <Gate />}
+      {me?.corporativo ? responsable?<Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: t.bg } }}/>:<GuardiaACargo/>:<Gate/>}
+      {me?.corporativo&&responsable?<ChatbotFlotante key={me.id}/>:null}
     </View>
   );
 }
@@ -83,6 +86,8 @@ function ConTema() {
 }
 
 export default function Layout() {
+  const [limiteFuentes,setLimiteFuentes]=useState(false);
+  useEffect(()=>{SplashScreen.hideAsync().catch(()=>{});const timer=setTimeout(()=>setLimiteFuentes(true),2500);return()=>clearTimeout(timer);},[]);
   const [fuentesListas, errorFuentes] = useFonts({
     IBMPlexSans_400Regular, IBMPlexSans_500Medium, IBMPlexSans_600SemiBold, IBMPlexSans_700Bold,
     IBMPlexMono_400Regular, IBMPlexMono_500Medium,
@@ -91,7 +96,7 @@ export default function Layout() {
 
   /* Si las tipografías fallan seguimos con las del sistema: quedarse esperando
      para siempre en una pantalla vacía es peor que perder la tipografía. */
-  if (!fuentesListas && !errorFuentes) {
+  if (!fuentesListas && !errorFuentes && !limiteFuentes) {
     return (
       <View style={{ flex: 1, backgroundColor: AZUL_PRESENTACION }}>
         <Presentacion />

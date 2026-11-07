@@ -1,0 +1,33 @@
+require('./register.cjs');
+const {test}=require('node:test'),assert=require('node:assert/strict'),Module=require('node:module'),React=require('react');
+const {create,act}=require('react-test-renderer');global.IS_REACT_ACT_ENVIRONMENT=true;
+const {estadoVacio}=require('../src/model.ts'),{aplicarCambios}=require('../src/mutaciones.ts');
+let S=estadoVacio(),guardados=[];
+const me={id:'corp',nombre:'Guardia Paseo',apellido:'',rol:'admin',corporativo:true},g={id:'g',nombre:'Ana',apellido:'Prueba',rol:'vigilador'};
+const st={get S(){return S;},me,responsable:g,telefonoId:'tel',list:col=>S[col].filter(x=>!x.deleted),byId:(col,id)=>S[col].find(x=>x.id===id),put:(col,obj)=>{S=aplicarCambios(S,[{col,obj}],me,false,'tel');},putVarios:cs=>{guardados.push(...cs);S=aplicarCambios(S,cs,me,false,'tel');},confirmarGuardado:async()=>{}};
+const load=Module._load;
+Module._load=function(n,...a){
+ if(n==='react-native')return{View:'View',Text:'Text'};
+ if(n==='../Imagen')return{Image:'Image'};
+ if(n==='expo-router')return{router:{back(){}}};if(n==='expo-clipboard')return{setStringAsync:async()=>{}};
+ if(n==='../store')return{useStore:()=>st};if(n==='../icons')return{Ring:'Ring'};
+ if(n==='./FotosRegistro')return()=>null;
+ if(n==='./SelectorFirma')return p=>React.createElement('SelectorFirma',p);
+ if(n==='../ui')return{useTheme:()=>({}),useToast:()=>()=>{},...Object.fromEntries(['Pantalla','SubCabecera','Card','Btn','Tag','Item','Empty','Stack','Row','Input','Sheet','Eyebrow','Hint','Seg','Confirmar','Toggle'].map(x=>[x,p=>React.createElement(x,p,p.children,p.footer,p.right)]))};
+ return load.call(this,n,...a);
+};
+const Rondas=require('../src/pantallas/Rondas.tsx').default;
+const button=(r,l)=>r.root.findAllByType('Btn').find(b=>b.props.label===l);
+test('una ronda integrada registra puntos y genera un solo asiento de Recorrido firmado por el guardia',async(t)=>{
+ S.guards=[me,g];S.rtemplates=[{id:'tpl',nombre:'Ronda nocturna del paseo',puntos:['Primer piso','Paseo']}];S.punches=[{id:'servicio',guardId:me.id,responsableId:g.id,dispositivoId:'tel',fecha:require('../src/model.ts').isoDate(),in:'00:00',out:''}];
+ let r;t.after(async()=>{if(r)await act(async()=>r.unmount());});await act(async()=>{r=create(React.createElement(Rondas,{integrado:true}));});
+ assert.equal(r.root.findAllByType('Pantalla').length,0);
+ await act(async()=>button(r,'Iniciar').props.onPress());await act(async()=>r.update(React.createElement(Rondas,{integrado:true})));
+ assert.equal(S.rounds[0].guardId,g.id);assert.equal(S.rounds[0].createdBy,me.id);assert.ok(S.rounds[0].inicioAt);
+ await act(async()=>r.root.findAllByType('Item').find(i=>i.props.title==='Primer piso').props.onPress());
+ await act(async()=>button(r,'Marcar punto').props.onPress());await act(async()=>r.update(React.createElement(Rondas,{integrado:true})));
+ assert.ok(S.rounds[0].puntos[0].hora);assert.ok(S.rounds[0].puntos[0].fecha);
+ await act(async()=>button(r,'Cerrar ronda').props.onPress());await act(async()=>r.update(React.createElement(Rondas,{integrado:true})));
+ assert.ok(S.rounds[0].fin);assert.equal(S.novedades.length,1);assert.equal(S.novedades[0].categoria,'Recorrido');assert.equal(S.novedades[0].datos.tipoRecorrido,'nocturna');assert.equal(S.novedades[0].guardId,g.id);assert.equal(S.novedades[0].createdBy,me.id);assert.match(S.novedades[0].texto,/Primer piso/);
+ assert.equal(guardados.filter(x=>x.col==='novedades').length,1);await act(async()=>r.unmount());
+});

@@ -15,7 +15,7 @@ const ejemplos=[
  ['06:30','NOVEDAD','Siendo la hora indicada, se informa un hecho de hurto en el local de ejemplo. Se preserva la evidencia y se comunica la situación al supervisor.'],
  ['06:30','ADICIONAL','Ingresa adicional policial Murillo, Jesica. Turno: 09:00-16:00.'],
  ['06:30','INGRESO','Ingresa Gs Roca, Julio al puesto Playa 2. Turno: 10:00-22:00.'],
- ['06:30','EGRESO','Se retira Gs Roca, Julio.'],
+ ['06:30','EGRESO','Se retira el Gs Roca, Julio.'],
  ['07:30','APERTURA','Se procede a la apertura del portón Río Shop.'],
  ['07:35','CIERRE','Se procede al cierre del portón Río Shop.'],
  ['09:10','EXTERNO','Ingresa personal de la firma Giro Metal a realizar trabajos en el techo de Libertad. Autorización previamente confirmada por CCTV.'],

@@ -9,9 +9,8 @@ import Topbar from '../../src/pantallas/Topbar';
 
 const TABS = [
   { name: 'index', icono: 'inicio', label: 'Inicio' },
-  { name: 'directivas', icono: 'directivas', label: 'Directivas' },
+  { name: 'libro', icono: 'libro', label: 'Libro' },
   { name: 'accesos', icono: 'accesos', label: 'Accesos' },
-  { name: 'informes', icono: 'informes', label: 'Informes' },
   { name: 'mas', icono: 'mas', label: 'Más' },
 ];
 
@@ -40,7 +39,7 @@ function BarraInferior({ state, navigation }: any) {
             <Icon name={cfg.icono} size={21} color={activo ? t.accent : t.muted} width={1.7} />
             <Text style={{
               fontFamily: FONT.bodySemi, fontSize: 10.5, letterSpacing: 0.4,
-              color: activo ? t.accent : t.muted,
+              color: activo ? t.accentText : t.muted,
             }}>{cfg.label}</Text>
           </Pressable>
         );

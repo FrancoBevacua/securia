@@ -25,7 +25,7 @@ export default function Turnos() {
   const st = useStore();
   const t = useTheme();
   const toast = useToast();
-  const [gid, setGid] = useState(st.me!.id);
+  const [gid, setGid] = useState(st.responsable?.id||st.me!.id);
   const [ym, setYm] = useState(isoDate().slice(0, 7));
   const [dia, setDia] = useState<string | null>(null);
   const [diagrama, setDiagrama] = useState(false);
@@ -88,7 +88,7 @@ export default function Turnos() {
 
       {st.list('guards').length > 1 ? (
         <Chipbar>
-          {st.list<Vigilador>('guards').map(g => (
+          {st.list<Vigilador>('guards').filter(g=>!g.corporativo).map(g => (
             <Chip key={g.id} label={g.apellido} on={g.id === gid} onPress={() => setGid(g.id)} />
           ))}
         </Chipbar>
@@ -215,10 +215,10 @@ function EditarDia({ fecha, gid, onClose }: { fecha: string | null; gid: string;
       {conHoras ? (
         <Row gap={11} style={{ alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
-            <Input label="Entrada" value={entrada} onChangeText={setEntrada} mono keyboardType="numbers-and-punctuation" />
+            <Input tipo="hora" label="Entrada" value={entrada} onChangeText={setEntrada} mono keyboardType="numbers-and-punctuation" />
           </View>
           <View style={{ flex: 1 }}>
-            <Input label="Salida" value={salida} onChangeText={setSalida} mono keyboardType="numbers-and-punctuation" />
+            <Input tipo="hora" label="Salida" value={salida} onChangeText={setSalida} mono keyboardType="numbers-and-punctuation" />
           </View>
         </Row>
       ) : null}
@@ -285,8 +285,8 @@ function GenerarDiagrama({ abierto, gid, onClose }: { abierto: boolean; gid: str
         <View style={{ flex: 1 }}><Input label="Hasta" value={hasta} onChangeText={setHasta} mono /></View>
       </Row>
       <Row gap={11} style={{ alignItems: 'flex-start' }}>
-        <View style={{ flex: 1 }}><Input label="Entrada" value={entrada} onChangeText={setEntrada} mono /></View>
-        <View style={{ flex: 1 }}><Input label="Salida" value={salida} onChangeText={setSalida} mono /></View>
+        <View style={{ flex: 1 }}><Input tipo="hora" label="Entrada" value={entrada} onChangeText={setEntrada} mono /></View>
+        <View style={{ flex: 1 }}><Input tipo="hora" label="Salida" value={salida} onChangeText={setSalida} mono /></View>
       </Row>
       <Hint>El primer día del período se toma como día de trabajo.</Hint>
     </Sheet>
@@ -308,7 +308,7 @@ function LectorDiagrama({ abierto, mes, onClose, onImportado }: { abierto: boole
 
   useEffect(() => { if (!abierto) { setJornadas([]); setFuente(''); setPagina(0); setAsignaciones({}); } }, [abierto]);
 
-  const gs = st.list<Vigilador>('guards');
+  const gs = st.list<Vigilador>('guards').filter(g=>!g.corporativo);
   const norm = (x: string) => String(x || '').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/g, '').trim();
 

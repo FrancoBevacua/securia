@@ -24,5 +24,5 @@ test('cambios de mes y año, medianoche y último período finalizado',()=>{
 test('el texto y el cierre incluyen el período real de 12 horas',()=>{
  const s=estadoVacio(),v=ventanaParaEntrega('2026-09-14','19:00',12);
  const texto=textoInformeDia([],{site:'Prueba',fecha:v.fecha,cierre:cierrePorDefecto(s,v),fotos:0,ventana:v});
- assert.match(texto,/13\/09\/2026 19:00 a 14\/09\/2026 07:00 · 12 horas/);assert.match(texto,/hasta las 07:00/);
+ assert.match(texto,/13\/09\/2026 19:00 a 14\/09\/2026 07:00 · 12 horas/);assert.equal(cierrePorDefecto(s,v),'');assert.doesNotMatch(texto,/Durante todo el servicio/);
 });

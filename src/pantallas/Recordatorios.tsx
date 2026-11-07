@@ -70,8 +70,8 @@ export default function Recordatorios(){
     {error&&!abierto?<Banner kind="warn">{error}</Banner>:null}
     <Sheet visible={abierto} title={editar?'Editar recordatorio':'Nuevo recordatorio'} onClose={()=>{if(!ocupado)setAbierto(false);}} footer={<><Btn label={ocupado?'Guardando…':'Guardar en calendario'} disabled={ocupado} onPress={guardar}/>{editar?<Btn label="Eliminar" variant="danger" disabled={ocupado} onPress={()=>setBorrar(true)}/>:null}</>}>
       <Input label="Título" value={datos.titulo} onChangeText={titulo=>cambiar({titulo})} maxLength={160}/>
-      <Input label="Fecha" value={datos.fecha} onChangeText={fecha=>cambiar({fecha})} placeholder="AAAA-MM-DD" mono/>
-      <Input label="Hora" value={datos.hora} onChangeText={hora=>cambiar({hora})} placeholder="HH:MM" mono/>
+      <Input tipo="fecha" label="Fecha" value={datos.fecha} onChangeText={fecha=>cambiar({fecha})} placeholder="AAAA-MM-DD" mono/>
+      <Input tipo="hora" label="Hora" value={datos.hora} onChangeText={hora=>cambiar({hora})} placeholder="HH:MM" mono/>
       <Field label="Avisarme"><Chipbar>{[0,5,15,30,60].map(m=><Chip key={m} label={m?m+' min antes':'A la hora'} on={datos.minutosAviso===m} onPress={()=>cambiar({minutosAviso:m})}/>)}</Chipbar></Field>
       <Input label="Notas" value={datos.notas} onChangeText={notas=>cambiar({notas})} multiline rows={4}/>
       <Hint>El calendario del teléfono emitirá el aviso. El evento dura 15 minutos.</Hint>

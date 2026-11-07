@@ -5,6 +5,28 @@ const {reconciliarNube}=require('../src/reconciliarNube.ts');
 const {COLS}=require('../src/model.ts');
 const {ColaNube}=require('../src/colaNube.ts');
 const copia=x=>JSON.parse(JSON.stringify(x));
+test('diferencias sólo de updatedAt no inventan conflicto en altas con el mismo ID',()=>{
+ const base=estado(),local=copia(base),remoto=copia(base);
+ local.novedades=[{id:'n',texto:'Mismo contenido',updatedAt:12}];remoto.novedades=[{id:'n',texto:'Mismo contenido',updatedAt:14}];
+ assert.equal(reconciliarNube(local,remoto,base).novedades.length,1);
+});
+test('el usuario puede comparar y elegir cada campo de un conflicto real',()=>{
+ const base=estado();base.novedades=[{id:'n',texto:'Original',fecha:'2026-09-19'}];
+ const local=copia(base),remoto=copia(base);local.novedades[0].texto='Teléfono';remoto.novedades[0].texto='Nube';
+ let diferencia;const r=reconciliarNube(local,remoto,base,d=>{diferencia=d;return d.local;});
+ assert.deepEqual(diferencia.ruta,['novedades','n','texto']);assert.equal(diferencia.remoto,'Nube');assert.equal(r.novedades[0].texto,'Teléfono');
+ assert.equal(remoto.novedades[0].texto,'Nube');
+});
+test('nuevas escrituras no reemplazan la base común de la cola pendiente',async()=>{
+ const base=estado(),local=copia(base);local.novedades=[{id:'n',texto:'Local'}];
+ let pendiente={estado:local,base,guardia:'a',revision:1,numero:1};
+ const remoto=copia(base);remoto.novedades=[{id:'web',texto:'Web'}];
+ const cola=new ColaNube({leer:async()=>copia(pendiente),escribir:async p=>{pendiente=copia(p);},quitar:async()=>{pendiente=null;},
+   consultar:async()=>{throw new TypeError('sin red');},enviar:async()=>2,actor:()=> 'a',revision:()=>1,base:()=>remoto,confirmar:()=>{}});
+ const siguiente=copia(local);siguiente.novedades.push({id:'otra',texto:'Otra'});
+ await assert.rejects(cola.guardar(siguiente,local),/sin red/);
+ assert.deepEqual(pendiente.base,base);
+});
 function estado(){return {...Object.fromEntries(COLS.map(k=>[k,[]])),site:{cliente:'Prueba'},guards:[{id:'a',rol:'vigilador',nombre:'Ana',updatedAt:1}],updatedAt:1};}
 test('una preparación demorada conserva cambios remotos aunque la revisión ya esté actualizada',async()=>{
  const base=estado(),local=copia(base);local.novedades=[{id:'local',texto:'Pendiente'}];

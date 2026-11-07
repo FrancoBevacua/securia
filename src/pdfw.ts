@@ -139,9 +139,24 @@ const PDFW = (() => {
         images.push({ data: pako.deflate(gris), w: decoded.width, h: decoded.height, id: id });
         }
         cur.imgs.push(id);
-        const x = o.align === 'left' ? M : (W - dw) / 2;
+        const x = o.x ?? (o.align === 'left' ? M : (W - dw) / 2);
         cur.ops.push('q ' + dw.toFixed(2) + ' 0 0 ' + dh.toFixed(2) + ' ' + x.toFixed(2) + ' ' + (y - dh).toFixed(2) + ' cm /' + id + ' Do Q');
-        y -= dh + 8;
+        if(o.stamp){
+          const fontSize=dw<180?6:8,lead=dw<180?8:11;
+          const lines=[];
+          for(const raw of o.stamp){let line='';for(const word of latin(raw).split(/\s+/)){if(line&&textWidth(line+' '+word,fontSize,false)>dw-12){lines.push(line);line='';}line+=(line?' ':'')+word;}if(line)lines.push(line);}
+          const height=Math.min(dh,lines.length*lead+10),bottom=y-dh;
+          cur.ops.push('0 0 0 rg '+x.toFixed(2)+' '+bottom.toFixed(2)+' '+dw.toFixed(2)+' '+height+' re f');
+          lines.forEach((line,i)=>cur.ops.push('BT 1 1 1 rg /F1 '+fontSize+' Tf '+(x+6).toFixed(2)+' '+(bottom+height-10-i*lead).toFixed(2)+' Td ('+escPdf(line)+') Tj ET'));
+        }
+        if(!o.noAdvance)y -= dh + 8;
+      },
+      imageRow(fotos,fechaHora,sector,columnas=fotos.length){
+        const gap=4,width=(W-M*2-gap*(columnas-1))/columnas;
+        const heights=fotos.map(f=>Math.min(width/f.w,300/f.h,3)*f.h),height=Math.max(...heights);
+        ensure(height+8);
+        fotos.forEach((f,i)=>api.image(f.bytes,f.w,f.h,{width,maxHeight:300,color:true,x:M+i*(width+gap),noAdvance:true,stamp:[fechaHora,sector]}));
+        y-=height+8;
       },
       newPage: newPage,
       build() {

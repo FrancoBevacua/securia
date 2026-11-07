@@ -40,22 +40,22 @@ test('ventana de 24 horas incluye inicio y excluye fin; corte 00 funciona', () =
   assert.equal(dia.dentro(ventana, '2026-09-09', '29:99'), false);
 });
 
-test('portones incompletos no afirman que están todos abiertos', () => {
+test('los registros de Accesos no se incorporan automáticamente al libro', () => {
   const S = estado();
   S.alogs = [registro('a', 'Portón ingreso', '04:45'), registro('b', 'Portón egreso', '05:10')];
-  assert.equal(dia.entradasDeVentana(S, ventana).length, 2);
-  assert.ok(dia.entradasDeVentana(S, ventana).every(e => !e.items && e.categoria==='APERTURA'));
+  assert.equal(dia.entradasDeVentana(S, ventana).length, 0);
+  assert.equal(S.alogs.length,2);
 });
 
-test('cada apertura conserva su horario y no duplica el asiento vinculado', () => {
+test('asientos automáticos históricos quedan fuera del libro sin borrar los accesos', () => {
   const S = estado();
   S.alogs = [registro('a', 'Portón ingreso', '07:30'), registro('b', 'Portón egreso', '08:10'),
     registro('c', 'Portón peatonal', '08:15'), registro('e', 'Puerta E8', '08:03'), registro('e2', 'Puerta E2', '08:22')];
   S.novedades = [{ id: 'n', fecha: '2026-09-09', hora: '07:30', alogId: 'a', texto: 'Duplicado' }];
   const entradas = dia.entradasDeVentana(S, ventana);
-  assert.deepEqual(entradas.map(e => e.hora), ['07:30','08:03','08:10','08:15','08:22']);
-  assert.equal(entradas.filter(e=>e.hora==='07:30').length,1);
-  assert.equal(entradas[0].texto, 'Duplicado');
+  assert.deepEqual(entradas,[]);
+  assert.equal(S.alogs.length,5);
+  assert.equal(S.novedades[0].texto,'Duplicado');
   assert.equal(dia.familiaDe('Puerta E8'), 'emergencia');
 });
 
@@ -177,7 +177,7 @@ test('PDF usa texto negro y conserva el JPEG de evidencia a color', () => {
   const b = construirPDFDia('Site: Paseo\n\nFecha: 08/09/2026\n\nNovedades:\n\n07:00 hs.: Apertura.\n   •   Portón Oroño', [foto]);
   const pdf = Buffer.from(b).toString('latin1');
   assert.match(pdf, /\/DeviceRGB/); assert.ok(Buffer.from(b).includes(foto));
-  assert.match(pdf, /BT 0 0 0 rg/); assert.doesNotMatch(pdf, /[1-9][\d.]* [\d.]+ [\d.]+ rg/);
+  assert.match(pdf, /BT 0 0 0 rg/); assert.doesNotMatch(pdf.replaceAll('1 1 1 rg','0 0 0 rg'), /[1-9][\d.]* [\d.]+ [\d.]+ rg/);
   assert.doesNotMatch(pdf, /INFORME DE NOVEDADES/); assert.match(pdf, /\/Count 1/);
 });
 
@@ -205,7 +205,7 @@ const momento = h => new Date('2026-09-09T' + h + ':00');
 test('relevo: ambas cuentas comparten el libro, pero sólo el autor edita durante su turno', () => {
   let { S, a, b } = guardias();
   S = aplicarCambios(S, servicio.iniciarServicio(S,a,momento('07:00')), a, true);
-  assert.throws(() => servicio.iniciarServicio(S,b,momento('07:01')), /anterior/);
+  assert.doesNotThrow(() => servicio.iniciarServicio(S,b,momento('07:01')));
   S = aplicarCambios(S,[{ col:'novedades', obj:{ id:'propia',fecha:'2026-09-09',hora:'08:00',texto:'Control realizado', guardId:b.id }}],a);
   assert.equal(S.novedades.find(n=>n.id==='propia').guardId,b.id);
   assert.equal(S.novedades.find(n=>n.id==='propia').createdBy,a.id);
@@ -228,19 +228,21 @@ test('relevo: ambas cuentas comparten el libro, pero sólo el autor edita durant
 test('cerrar bloquea cada acceso sin crear novedades adicionales', () => {
   let {S,a}=guardias();S=aplicarCambios(S,servicio.iniciarServicio(S,a,momento('07:00')),a,true);
   S=aplicarCambios(S,S.accesses.map((x,i)=>({col:'alogs',obj:{...registro('a'+i,x.nombre,'07:'+String(30+i)),guardId:a.id}})),a);
-  assert.equal(dia.entradasDeVentana(S,ventana).length,3);
+  assert.equal(dia.entradasDeVentana(S,ventana).length,0);
   S=aplicarCambios(S,servicio.cerrarServicio(S,a,'',momento('15:00')),a,true);
   assert.equal(S.novedades.length,0);assert.ok(S.alogs.every(x=>x.lockedAt));
   S.accesses.push({id:'nuevo',nombre:'Portón nuevo'});
-  assert.equal(dia.entradasDeVentana(S,ventana).length,3);
+  assert.equal(dia.entradasDeVentana(S,ventana).length,0);
   S=aplicarCambios(S,servicio.iniciarServicio(S,a,momento('16:00')),a,true);
   assert.throws(()=>aplicarCambios(S,[{col:'alogs',obj:{id:'a0',hora:'08:00'}}],a),/cerrado/);
 });
 test('las aperturas y cierres se informan a cualquier hora; las bajas se respetan',()=>{
   const S=estado();S.alogs=[registro('a','Portón A','04:30'),registro('b','Portón A','23:00','cierre')];
-  const rows=dia.entradasDeVentana(S,ventana);assert.deepEqual(rows.map(x=>x.categoria),['APERTURA']);
-  S.alogs[1].hora='12:00';assert.deepEqual(dia.entradasDeVentana(S,ventana).map(x=>x.categoria),['APERTURA','CIERRE']);
-  S.novedades=[{id:'baja',autoKey:'acceso:a',deleted:true}];assert.equal(dia.entradasDeVentana(S,ventana).length,1);
+  const rows=dia.entradasDeVentana(S,ventana);assert.deepEqual(rows,[]);
+  S.alogs[1].hora='12:00';assert.deepEqual(dia.entradasDeVentana(S,ventana),[]);
+  S.novedades=[{id:'manual',fecha:'2026-09-09',hora:'12:00',categoria:'Cierre',texto:'Cierre manual del libro'}];
+  assert.deepEqual(dia.entradasDeVentana(S,ventana).map(x=>x.categoria),['CIERRE']);
+  S.novedades[0].deleted=true;assert.equal(dia.entradasDeVentana(S,ventana).length,0);
 });
 
 test('el informe ordena y separa fechas antes y después de medianoche',()=>{

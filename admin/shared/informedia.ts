@@ -6,7 +6,7 @@ import {
   Estado, Novedad, AccesoLog, Visita, isoDate, addDays, dmy, toMin, pad2, accNormal,
   personasReales, fmtDNI,
 } from './model';
-import { gsName, resumenAcceso, textoIngresoAcceso } from './text';
+import { gsName, resumenAcceso, textoIngresoAcceso, textoMovimientoBreve, validarFormatoMovimientos } from './text';
 
 export type Ventana = { fecha: string; corte: string; duracion?: 12 | 24 };
 
@@ -25,6 +25,8 @@ export type EntradaDia = {
 const vivos = <T extends { deleted?: boolean }>(a: T[] = []) => a.filter(x => !x.deleted);
 
 export const horaCorte = (S: Estado) => {
+  const completa=String(S.site.corteInforme??'19');
+  if (/^([01]\d|2[0-3]):[0-5]\d$/.test(completa)) return completa;
   const h = Number(String(S.site.corteInforme ?? '19').split(':')[0]);
   return pad2(Number.isInteger(h) && h >= 0 && h <= 23 ? h : 19) + ':00';
 };
@@ -40,6 +42,10 @@ export function limites(v: Ventana) {
 export const horaFin = (v:Ventana) => {const m=limites(v).hasta.min;return pad2(Math.floor(m/60))+':'+pad2(m%60);};
 export function ventanaParaEntrega(fechaEntrega:string,corte:string,duracion:12|24=24):Ventana {
   return {fecha:addDays(fechaEntrega,-Math.floor((toMin(corte)+duracion*60)/1440)),corte,duracion};
+}
+/** La fecha del hecho nunca cambia por seleccionar otro informe. */
+export function ventanaDelHecho(fecha:string,hora:string,corte='19:00'):Ventana {
+  return {fecha:hora>=corte?fecha:addDays(fecha,-1),corte,duracion:24};
 }
 export function ventanaReciente(corte:string,duracion:12|24,cerrada:boolean,ahora=new Date()):Ventana {
   const hoy=isoDate(ahora),min=ahora.getHours()*60+ahora.getMinutes();
@@ -104,25 +110,16 @@ function lineaSuelta(r: AccesoLog) {
 /* ---------- armado ---------- */
 export function entradasDeVentana(S: Estado, v: Ventana): EntradaDia[] {
   const out: EntradaDia[] = [];
-  const alogs = vivos(S.alogs).filter(a => dentro(v, a.fecha, a.hora))
-    .sort((a, b) => relativo(v, a.fecha, a.hora) - relativo(v, b.fecha, b.hora));
-  for (const a of alogs) {
-    const clave='acceso:'+a.id;
-    if(S.novedades.some(n=>n.autoKey===clave||n.alogId===a.id))continue;
-    out.push({clave,hora:a.hora,fecha:a.fecha,texto:lineaSuelta(a)+(a.nota?' '+a.nota:''),
-      categoria:a.tipo.toUpperCase(),firma:gsName(S.guards.find(g=>g.id===a.guardId),S.site),origen:'acceso',ids:[a.id]});
-  }
-
-  /* 2. El libro. Los asientos que nacieron de una apertura ya están arriba. */
+  /* Accesos mantiene su propio informe. El libro contiene sus novedades explícitas. */
   vivos(S.novedades)
     .filter(n => dentro(v, n.fecha, n.hora))
     .filter(n => !/^servicio-(in|out):/.test(n.id))
-    .filter(n => !n.autoKey?.startsWith('playa:') || !alogs.some(a=>a.fecha===n.fecha))
+    .filter(n => !n.alogId && !/^(acceso:|playa:)/.test(n.autoKey || ''))
     .forEach(n => {
       const res = resumenAcceso(n);
       out.push({
         clave: 'n:' + n.id, hora: n.hora, fecha: n.fecha,
-        texto: n.texto || res, categoria:(n.alogId?S.alogs.find(a=>a.id===n.alogId)?.tipo.toUpperCase():undefined)||categoriaAsiento(n), firma:gsName(S.guards.find(g=>g.id===n.guardId),S.site), origen: 'novedad', ids: [n.id],
+        texto: textoMovimientoBreve(n.texto || res), categoria:(n.alogId?S.alogs.find(a=>a.id===n.alogId)?.tipo.toUpperCase():undefined)||categoriaAsiento(n), firma:gsName(S.guards.find(g=>g.id===n.guardId),S.site), origen: 'novedad', ids: [n.id],
       });
     });
 
@@ -200,7 +197,8 @@ export function textoInformeDia(entradas: EntradaDia[], o: OpcionesDia) {
 
 /** Rechaza respuestas truncadas o con entradas/datos numéricos modificados. */
 export function validarRedaccionDia(original: string, revisado: string) {
-  const horas = (s: string) => s.split('\n').filter(l=>/^\d{2}:\d{2} [A-ZÁÉÍÓÚ/]+$/.test(l));
+  validarFormatoMovimientos(original, revisado);
+  const horas = (s: string) => s.split('\n').filter(l=>/^\d{2}:\d{2} [A-ZÁÉÍÓÚÑ/ ]+$/.test(l));
   const firmas=(s:string)=>s.split('\n').filter(l=>/^Gs /.test(l));
   const items = (s: string) => s.split('\n').filter(l => /^\s*•/.test(l)).map(l => l.trim());
   const fechas = (s: string) => s.split('\n').filter(l => /^Día \d{2}\/\d{2}\/\d{4}$/.test(l));
@@ -213,13 +211,8 @@ export function validarRedaccionDia(original: string, revisado: string) {
   }
 }
 
-/** Párrafo de cierre por defecto, el que se repite todos los días. */
-export function cierrePorDefecto(S: Estado, v: Ventana) {
-  const sitio = S.site.cliente || 'el objetivo';
-  return 'Durante todo el servicio los guardias realizaron recorridos en forma aleatoria en ' +
-    sitio + ' y en los sectores de playa.\n\n' +
-    'En la fecha hasta las ' + horaFin(v) + ' no se produjeron novedades de trascendencia.';
-}
+/** El informe contiene las novedades registradas, sin cierre automático. */
+export function cierrePorDefecto(_S: Estado, _v: Ventana) { return ''; }
 
 /* ---------- resumen corto para las tarjetas ---------- */
 export function resumenCorto(e: EntradaDia) {

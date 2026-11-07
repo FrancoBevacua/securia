@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "VIGELIUM",
+    "name": "Securia",
     "slug": "securia",
-    "version": "1.6.0",
+    "version": "2.3.2",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/securia/icon.png",
     "scheme": "securia",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/securia/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B1F3A"
+      "backgroundColor": "#06142D"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,19 +20,20 @@
       "supportsTablet": true,
       "bundleIdentifier": "ar.com.securia.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "VIGELIUM usa la cámara para adjuntar evidencia fotográfica a los informes de seguridad.",
-        "NSPhotoLibraryUsageDescription": "VIGELIUM accede a sus fotos para adjuntar evidencia a los informes.",
-        "NSPhotoLibraryAddUsageDescription": "VIGELIUM guarda los informes y fotos que generás.",
-        "NSMicrophoneUsageDescription": "VIGELIUM usa el micrófono para que puedas dictar las novedades en vez de escribirlas."
+        "NSCameraUsageDescription": "SECURIA usa la cámara para adjuntar evidencia fotográfica a los informes de seguridad.",
+        "NSPhotoLibraryUsageDescription": "SECURIA accede a sus fotos para adjuntar evidencia a los informes.",
+        "NSPhotoLibraryAddUsageDescription": "SECURIA guarda los informes y fotos que generás.",
+        "NSMicrophoneUsageDescription": "SECURIA usa el micrófono para que puedas dictar las novedades en vez de escribirlas."
       }
     },
     "android": {
-      "versionCode": 10,
+      "versionCode": 27,
       "softwareKeyboardLayoutMode": "resize",
       "package": "ar.com.securia.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B1F3A"
+        "foregroundImage": "./assets/securia/adaptive-icon.png",
+        "backgroundColor": "#06142D",
+        "monochromeImage": "./assets/securia/monochrome.png"
       },
       "permissions": [
         "CAMERA",
@@ -49,19 +50,19 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/securia/favicon.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-icon.png",
+          "image": "./assets/securia/splash-icon.png",
           "imageWidth": 250,
           "resizeMode": "contain",
-          "backgroundColor": "#0B1F3A",
+          "backgroundColor": "#06142D",
           "dark": {
-            "image": "./assets/splash-icon.png",
-            "backgroundColor": "#0B1F3A"
+            "image": "./assets/securia/splash-icon.png",
+            "backgroundColor": "#06142D"
           }
         }
       ],
@@ -70,16 +71,22 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "VIGELIUM accede a sus fotos para adjuntar evidencia a los informes.",
-          "cameraPermission": "VIGELIUM usa la cámara para adjuntar evidencia fotográfica a los informes."
+          "photosPermission": "SECURIA accede a sus fotos para adjuntar evidencia a los informes.",
+          "cameraPermission": "SECURIA usa la cámara para adjuntar evidencia fotográfica a los informes."
         }
       ],
       "expo-secure-store",
-      ["expo-calendar", {"calendarPermission": "VIGELIUM accede al calendario para guardar y actualizar sus recordatorios del servicio.", "remindersPermission": false}],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "SECURIA accede al calendario para guardar y actualizar sus recordatorios del servicio.",
+          "remindersPermission": false
+        }
+      ],
       [
         "expo-audio",
         {
-          "microphonePermission": "VIGELIUM usa el micrófono para que puedas dictar las novedades en vez de escribirlas."
+          "microphonePermission": "SECURIA usa el micrófono para que puedas dictar las novedades en vez de escribirlas."
         }
       ],
       "expo-document-picker",
@@ -94,8 +101,8 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "VIGELIUM usa el micrófono para dictar novedades.",
-          "speechRecognitionPermission": "VIGELIUM convierte su voz en texto para el Informe general."
+          "microphonePermission": "SECURIA usa el micrófono para dictar novedades.",
+          "speechRecognitionPermission": "SECURIA convierte su voz en texto para el Informe general."
         }
       ],
       [
@@ -111,7 +118,8 @@
         }
       ],
       "expo-build-properties",
-      "expo-sqlite"
+      "expo-sqlite",
+      "./plugins/with-securia-logo"
     ],
     "experiments": {
       "typedRoutes": false

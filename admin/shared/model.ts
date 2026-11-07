@@ -3,6 +3,12 @@
 export type Rec = { id: string; updatedAt: number; deleted?: boolean };
 
 export type Persona = { nombre: string; dni: string };
+/** Ficha reutilizable; no conserva autorizaciones ni documentos de visitas previas. */
+export type Externo = Rec & { empresa: string; tarea: string; lugar: string; personas: Persona[]; createdBy: string };
+export type PuertaPrecintos = { id: string; nombre: string; precintos: string[]; sinPrecinto?: boolean };
+export type TipoAccesoFisico = 'emergencia' | 'porton' | 'otro';
+// Se reconoce ingreso-egreso para conservar registros históricos de ambas hojas.
+export type ConfiguracionPorton = 'ingreso' | 'egreso' | 'ingreso-egreso';
 
 export type ClaseAdjunto = 'seguro' | 'dni' | 'autorizacion' | 'cedula' | 'otro';
 export type Adjunto = {
@@ -43,6 +49,8 @@ export type Franja = Rec & {
 export type Vigilador = Rec & {
   apellido: string; nombre: string; edad: string; email: string; tel: string;
   puestoId: string; puesto?: string; franjaId: string; legajo: string; dni?: string; foto: string;
+  /** Puestos que puede cubrir. puestoId conserva el puesto principal de perfiles anteriores. */
+  puestoIds?: string[];
   horaIn: string; horaOut: string; francos: string;
   rol: 'admin' | 'vigilador'; pin?: string;
   /* Fecha de nacimiento en ISO. La edad se calcula, no se carga a mano. */
@@ -51,6 +59,7 @@ export type Vigilador = Rec & {
   /* Marca la cuenta creada en este teléfono, para distinguirla de la dotación
      precargada que solo sirve para elegir quién hizo cada apertura. */
   cuenta?: boolean;
+  corporativo?: boolean;
 };
 
 /** Edad cumplida a partir de la fecha de nacimiento en ISO. */
@@ -98,7 +107,7 @@ export type DirectivaLog = Rec & {
   fecha: string; directiveId: string; guardId: string;
   estado: 'ok' | 'na'; horaReal: string; novedades: string;
 };
-export type AccesoCat = Rec & { nombre: string; tipo: string; precintos: number; orden: number; playa?: boolean };
+export type AccesoCat = Rec & { nombre: string; tipo: string; precintos: number; orden: number; playa?: boolean; configuracionPorton?: ConfiguracionPorton; sinPrecinto?: boolean };
 export type TipoPrecinto = 'plastico' | 'chapa' | '';
 export const TIPOS_PRECINTO: [TipoPrecinto, string, string][] = [
   ['plastico', 'Plástico', 'rojo'],
@@ -108,14 +117,20 @@ export const TIPOS_PRECINTO: [TipoPrecinto, string, string][] = [
 export const nombrePrecinto = (t?: TipoPrecinto) =>
   t === 'plastico' ? 'plástico' : t === 'chapa' ? 'chapa' : '';
 
-export type AccesoLog = Rec & {
+export type GrupoAccesos = 'portones' | 'emergencias' | 'otros';
+export type SeleccionAccesos = { grupoAccesos?: GrupoAccesos; accesos?: string[] };
+export type AccesoLog = Rec & SeleccionAccesos & {
   tipo: 'apertura' | 'cierre'; hora: string; fecha: string;
   guardId: string; gs: string; acceso: string;
   p1: string; p2: string; p1tipo?: TipoPrecinto; p2tipo?: TipoPrecinto;
-  nota: string; orden: number; novId?: string;
+  puertas?: PuertaPrecintos[];
+  tipoAcceso?: TipoAccesoFisico; configuracionPorton?: ConfiguracionPorton; sinPrecinto?: boolean;
+  nota: string; motivo?: string; incluirMotivo?: boolean; orden: number; novId?: string;
   createdBy?: string; turnoId?: string; lockedAt?: number;
 };
 export type Novedad = Rec & {
+  sector?:string;
+  descripcionEvidencia?:string;
   createdBy?: string;
   fecha: string; hora: string; guardId: string; categoria: string;
   texto: string; acc?: Acceso | null; visitId?: string;
@@ -134,10 +149,14 @@ export type Visita = Rec & {
   fecha: string; guardId: string; createdAt: number;
   novIn?: string; novOut?: string; novConf?: string;
 };
-export type PuntoRonda = { n: string; hora: string; estado: string; obs: string };
+export type PuntoRonda = { n: string; hora: string; fecha?:string; estado: string; obs: string };
 export type Ronda = Rec & {
   tplId: string; nombre: string; guardId: string; fecha: string;
+  createdBy?: string; fotos?: string[]; alLibro?: boolean;
+  dispositivoId?: string; tipoRecorrido?: 'general' | 'puntos';
+  puestoId?: string; puesto?: string; novedades?: string; fechaFin?: string;
   inicio: string; fin: string; createdAt: number; puntos: PuntoRonda[];
+  inicioAt?:number;
 };
 export type RondaTpl = Rec & { nombre: string; puntos: string[] };
 export type Turno = Rec & {
@@ -146,6 +165,8 @@ export type Turno = Rec & {
   entrada: string; salida: string;
 };
 export type Fichaje = Rec & {
+  dispositivoId?: string;
+  responsableId?: string;
   guardId: string; fecha: string; in: string; out: string;
   fechaOut?: string; startedAt?: number; closedAt?: number;
   puestoId?: string; puesto?: string; franjaId?: string; turno?: string;
@@ -156,6 +177,7 @@ export type ControlLocal = { localId: string; nombre: string; previsto: string; 
 export type RecorridoLocales = Rec & {
   tipo: 'apertura' | 'cierre'; fecha: string; hora: string; guardId: string; turnoId: string;
   controles: ControlLocal[]; observaciones: string; novId: string;
+  fotos?: string[];
 };
 export type AvisoEnvio = Rec & {
   recorridoId: string; destino: string; texto: string;
@@ -178,6 +200,8 @@ export type InformeDia = Rec & {
 };
 
 export type Informe = Rec & {
+  firmaId?: string;
+ sector?:string;
   fecha: string; hora: string; createdBy: string; plantilla: string;
   estado: string; createdAt: number; fotos: string[];
   [k: `f${number}`]: any;
@@ -193,6 +217,10 @@ export type Site = {
   corteInforme?: string;
   inmobiliariaTel?: string;
   supervisorTel?: string;
+  supervisorNombre?: string;
+  /* Envío automático del reporte diario al supervisor. */
+  autoEnvioHora?: string;
+  autoEnvioActivo?: boolean;
 };
 
 export const LARGO_SUFIJO_PRECINTO = 3;
@@ -216,6 +244,7 @@ export type Estado = {
   posts: Puesto[]; franjas: Franja[]; guards: Vigilador[]; directives: Directiva[]; dlogs: DirectivaLog[];
   accesses: AccesoCat[]; alogs: AccesoLog[]; reports: Informe[]; novedades: Novedad[];
   visits: Visita[]; rounds: Ronda[]; rtemplates: RondaTpl[]; shifts: Turno[];
+  externals: Externo[];
   punches: Fichaje[]; contacts: Contacto[]; infdias: InformeDia[];
   locales: LocalComercial[]; recorridos: RecorridoLocales[]; envios: AvisoEnvio[];
 };
@@ -223,7 +252,7 @@ export type Estado = {
 export const COLS = [
   'posts', 'franjas', 'guards', 'directives', 'dlogs', 'accesses', 'alogs', 'reports',
   'novedades', 'visits', 'rounds', 'rtemplates', 'shifts', 'punches', 'contacts', 'infdias',
-  'locales', 'recorridos', 'envios',
+  'locales', 'recorridos', 'envios', 'externals',
 ] as const;
 export type Col = (typeof COLS)[number];
 

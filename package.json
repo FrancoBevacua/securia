@@ -1,6 +1,6 @@
 {
   "name": "securia-app",
-  "version": "1.6.0",
+  "version": "2.3.2",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
@@ -8,6 +8,7 @@
     "@expo-google-fonts/saira-condensed": "^0.4.1",
     "@expo/metro-runtime": "~57.0.14",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/datetimepicker": "9.1.0",
     "expo": "~57.0.17",
     "expo-audio": "^57.0.4",
     "expo-build-properties": "~57.0.17",
@@ -49,9 +50,10 @@
     "react-native-worklets": "0.10.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/pako": "^2.0.4",
     "@types/react": "~19.2.2",
-    "react-test-renderer": "^19.2.3",
+    "react-test-renderer": "^19.3.0",
     "typescript": "~6.0.3"
   },
   "scripts": {

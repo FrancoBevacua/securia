@@ -1,6 +1,7 @@
 import SelectorFirma from './SelectorFirma';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image } from 'react-native';
+import { ActivityIndicator } from 'react-native';
+import {Image} from '../Imagen';
 import { router } from 'expo-router';
 import { useStore } from '../store';
 import { AsientoLeido, leerConfigIA, fichaProveedor, pedirIA, promptLibroFisico, parsearLibroFisico } from '../ai';
@@ -44,7 +45,7 @@ export default function ImportarLibro({ abierto, fecha, onClose }: { abierto: bo
     try {
       if (asientos.some(a=>!st.S.guards.some(g=>g.id===a.guardId&&!g.deleted)))throw Error('Seleccione el vigilador de cada asiento.');
       if (!asientos.length || asientos.some(a => !fechaValida(a.fecha) || !horaValida(a.hora) || !a.texto.trim() || /\[ilegible\]/i.test(a.texto))) throw new Error('Revise las fechas, complete los horarios y resolvé las partes marcadas como [ilegible] antes de importar.');
-      if (!turnoAbierto(st.S, st.me?.id)) throw new Error('Inicie su turno antes de importar.');
+      if (!turnoAbierto(st.S, st.me?.id, st.telefonoId)) throw new Error('Inicie sesión antes de importar.');
       const nuevas = asientos.filter((a,i,lista) => !st.S.novedades.some(n => n.fecha === a.fecha && n.hora === a.hora && n.texto.trim() === a.texto.trim()) &&
         lista.findIndex(b => b.fecha === a.fecha && b.hora === a.hora && b.texto.trim() === a.texto.trim()) === i);
       if (!nuevas.length) throw new Error('Estos asientos ya están cargados. No se importaron duplicados.');
@@ -56,11 +57,11 @@ export default function ImportarLibro({ abierto, fecha, onClose }: { abierto: bo
     } catch (e: any) { setError(e.message || 'No se pudieron importar los asientos.'); }
     finally { setGuardando(false); }
   };
-  return <Sheet visible={abierto} title="Leer libro físico" onClose={() => { if (!guardando) onClose(); }} footer={asientos.length ? <Btn label={guardando ? 'Importando…' : 'Importar ' + asientos.length + ' novedades'} variant="primary" disabled={guardando || !turnoAbierto(st.S, st.me?.id)} onPress={importar} /> : undefined}>
-    {!turnoAbierto(st.S, st.me?.id) ? <ServicioActual /> : null}
+  return <Sheet visible={abierto} title="Leer libro físico" onClose={() => { if (!guardando) onClose(); }} footer={asientos.length ? <Btn label={guardando ? 'Importando…' : 'Importar ' + asientos.length + ' novedades'} variant="primary" disabled={guardando || !turnoAbierto(st.S, st.me?.id, st.telefonoId)} onPress={importar} /> : undefined}>
+    {!turnoAbierto(st.S, st.me?.id, st.telefonoId) ? <ServicioActual /> : null}
     {!asientos.length ? <>
       <Hint>Fotografiá una página completa, de frente y con buena luz. Podrás revisar y corregir cada asiento antes de guardarlo.</Hint>
-      <Input label="Fecha de la página" value={dia} onChangeText={setDia} placeholder="AAAA-MM-DD" mono />
+      <Input tipo="fecha" label="Fecha de la página" value={dia} onChangeText={setDia} placeholder="AAAA-MM-DD" mono />
       <Row><Btn label="Tomar foto" variant="primary" disabled={leyendo} onPress={() => leer(true)} /><Btn label="Elegir foto" disabled={leyendo} onPress={() => leer(false)} /></Row>
       {leyendo ? <Row><ActivityIndicator color={t.accent} /><Hint>Leyendo los asientos de la página…</Hint></Row> : null}
     </> : <>
@@ -71,8 +72,8 @@ export default function ImportarLibro({ abierto, fecha, onClose }: { abierto: bo
         const indice = pagina*8+i;
         const cambiar = (campo: keyof AsientoLeido, v: string) => setAsientos(rows => rows.map((x,k) => k===indice ? { ...x, [campo]: v } : x));
         return <Card pad key={indice}><Stack gap={10}>
-          <Input label="Fecha" value={a.fecha} onChangeText={v => cambiar('fecha',v)} mono />
-          <Input label="Hora" value={a.hora} onChangeText={v => cambiar('hora',v)} mono placeholder="HH:MM" />
+          <Input tipo="fecha" label="Fecha" value={a.fecha} onChangeText={v => cambiar('fecha',v)} mono />
+          <Input tipo="hora" label="Hora" value={a.hora} onChangeText={v => cambiar('hora',v)} mono placeholder="HH:MM" />
           <SelectorFirma valor={a.guardId||''} onChange={v=>setAsientos(rows=>rows.map((x,k)=>k===indice?{...x,guardId:v}:x))}/>
           <Input label="Novedad leída" value={a.texto} onChangeText={v => cambiar('texto',v)} multiline rows={5} />
           <Btn label="Excluir este asiento" variant="ghost" size="sm" onPress={() => { setAsientos(rows => rows.filter((_,k) => k!==indice)); setPagina(0); }} />

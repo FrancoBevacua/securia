@@ -3,6 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),ts=require('typescript');
 const {estadoVacio}=require('../src/model.ts');
 const movil=require('../src/informedia.ts');
+const web=require('../admin/shared/informedia.ts');
 const {construirPDFDia}=require('../src/pdfplantilla.ts');
 const {periodoParaDescarga,periodosDeReportes,correspondeAEntrega}=require('../admin/src/periodos.ts');
 // Ejecutar el módulo web real; sólo el navegador y la API se sustituyen abajo.
@@ -24,6 +25,17 @@ function ejemplo(){
  S.guards=[{id:'prueba',apellido:'Prueba',nombre:'Vigilador'}];
  return S;
 }
+
+test('web y móvil muestran el mismo ingreso breve sin cambiar el registro guardado',()=>{
+ const S=ejemplo();S.novedades=[{id:'ingreso',fecha:'2026-10-24',hora:'23:00',categoria:'Ingreso',texto:'Se registra el ingreso de Gs Villaroel, Sebastián al puesto Playa 1 para cumplir el turno de 23:00 a 07:00 horas.'}];
+ S.novedades.push({id:'egreso',fecha:'2026-10-24',hora:'23:10',categoria:'Egreso',texto:'Se registra el egreso de Gs Cuevas, Gustavo.'});
+ const guardado=JSON.stringify(S),v={fecha:'2026-10-24',corte:'00:00'};
+ const entradas=web.entradasDeVentana(S,v);
+ assert.equal(entradas[0].texto,'Ingresa Gs Villaroel, Sebastián al puesto Playa 1. Turno: 23:00-07:00.');
+ assert.equal(entradas[1].texto,'Se retira el Gs Cuevas, Gustavo.');
+ assert.deepEqual(entradas,movil.entradasDeVentana(S,v));
+ assert.equal(JSON.stringify(S),guardado);
+});
 
 test('web: entrega del 13/09 reúne del 12 a las 19 hasta el 13 a las 19 en un período',()=>{
  const S=ejemplo(),v=periodoParaDescarga(S,'2026-09-13');
@@ -70,6 +82,7 @@ test('web: la descarga genera un único PDF idéntico al celular con novedades y
  });
  assert.match(texto,/12\/09\/2026 19:00 a 13\/09\/2026 19:00 · 24 horas/);
  const pdf=new Uint8Array(await blob.arrayBuffer());
- assert.deepEqual(pdf,construirPDFDia(texto,[jpeg]));
+ const conFotos=structuredClone(S);for(const n of conFotos.novedades)if(pedidos.includes(n.id))n.fotos=[uri];
+ assert.deepEqual(pdf,construirPDFDia(texto,[jpeg],require('../src/evidencias.ts').agruparEvidencias(conFotos,[uri]).map(g=>({...g,fotos:g.fotos.map(()=>jpeg)}))));
  if(process.env.VIGELIUM_PDF_QA){fs.mkdirSync(path.dirname(process.env.VIGELIUM_PDF_QA),{recursive:true});fs.writeFileSync(process.env.VIGELIUM_PDF_QA,pdf);}
 });

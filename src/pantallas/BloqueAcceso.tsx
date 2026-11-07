@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, Image, Pressable } from 'react-native';
+import React, { useState,useMemo } from 'react';
+import { View, Text, Pressable } from 'react-native';
+import {Image} from '../Imagen';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useStore } from '../store';
 import {
   Acceso, Adjunto, AUTZ, CLASES_ADJUNTO, ClaseAdjunto, Persona,
-  TIPOS_VEHICULO, Vehiculo, uid, vehiculoVacio,
+  TIPOS_VEHICULO, Vehiculo, uid, vehiculoVacio, fmtDNI,
 } from '../model';
 import { FONT, R } from '../theme';
 import {
@@ -13,12 +14,18 @@ import {
   Toggle, Sheet, Item, useToast,
 } from '../ui';
 import { Icon } from '../icons';
+import { historialExternos, accesoDesdeFicha } from '../externos';
 
 /* Editor compartido por el Informe general y por visitas y proveedores. */
 export default function BloqueAcceso({ valor, onChange }: {
   valor: Acceso; onChange: (a: Acceso) => void;
 }) {
   const t = useTheme();
+  const st = useStore();
+  const [busqueda, setBusqueda] = useState('');
+  const [historial, setHistorial] = useState(false);
+  const historialGuardado=useMemo(()=>historialExternos(st.S),[st.S.externals,st.S.visits,st.S.novedades]);
+  const fichas = historialGuardado.filter(f => (f.empresa+' '+f.personas.map(p=>p.nombre+' '+p.dni).join(' ')).toLowerCase().replace(/[.\s]/g,'').includes(busqueda.toLowerCase().replace(/[.\s]/g,'')));
   const set = (k: keyof Acceso, v: any) => onChange({ ...valor, [k]: v });
   const personas: Persona[] = valor.personas?.length ? valor.personas : [{ nombre: '', dni: '' }];
   const setPersona = (i: number, k: keyof Persona, v: string) =>
@@ -28,10 +35,18 @@ export default function BloqueAcceso({ valor, onChange }: {
 
   return (
     <Stack gap={14}>
+      <Btn label="Elegir externo del historial" variant="ghost" onPress={()=>setHistorial(true)}/>
+      <Sheet visible={historial} title="Historial de externos" onClose={()=>setHistorial(false)}>
+        <Input label="Buscar empresa, empleado o DNI" value={busqueda} onChangeText={setBusqueda}/>
+        <Hint>Se recuperan los empleados y datos habituales. Revise la autorización y documentación de este ingreso.</Hint>
+        {fichas.slice(0,30).map(f=><Item key={f.id} title={f.empresa} subs={[f.personas.map(p=>p.nombre+' · '+fmtDNI(p.dni)).join(' / '),f.tarea+' · '+f.lugar]} onPress={()=>{onChange(accesoDesdeFicha(f));setHistorial(false);}}/>)}
+        {!fichas.length?<Hint>Las empresas se guardan al registrar un ingreso o una novedad de Externos.</Hint>:null}
+        {fichas.length>30?<Hint>Afine la búsqueda para encontrar más empresas.</Hint>:null}
+      </Sheet>
       <Card pad style={{ backgroundColor: t.surface2 }}>
         <Stack gap={11}>
           <Eyebrow>Quién ingresa</Eyebrow>
-          <Input label="Razón social" value={valor.empresa} onChangeText={v => set('empresa', v)}
+          <Input label="Razón social" value={valor.empresa} maxLength={120} onChangeText={v => set('empresa', v)}
             placeholder="Distribuidora Sur" />
           <Input label="Tarea a realizar" value={valor.tarea} onChangeText={v => set('tarea', v)}
             placeholder="mantenimiento de equipos de frío" />
@@ -46,7 +61,7 @@ export default function BloqueAcceso({ valor, onChange }: {
                     <Input value={p.nombre} onChangeText={v => setPersona(i, 'nombre', v)} placeholder="Nombre completo" />
                   </View>
                   <View style={{ width: 116 }}>
-                    <Input value={p.dni} onChangeText={v => setPersona(i, 'dni', v)}
+                    <Input value={fmtDNI(p.dni)} onChangeText={v => setPersona(i, 'dni', fmtDNI(v.replace(/\D/g,'').slice(0,8)))}
                       placeholder="DNI" mono keyboardType="number-pad" />
                   </View>
                   {personas.length > 1 ? (
@@ -91,7 +106,7 @@ export default function BloqueAcceso({ valor, onChange }: {
                     placeholder="Nombre completo" />
                 </View>
                 <View style={{ width: 116 }}>
-                  <Input label="DNI" value={veh.dniChofer} onChangeText={v => setVeh('dniChofer', v)}
+                  <Input label="DNI" value={fmtDNI(veh.dniChofer)} onChangeText={v => setVeh('dniChofer', fmtDNI(v.replace(/\D/g,'').slice(0,8)))}
                     mono keyboardType="number-pad" />
                 </View>
               </Row>

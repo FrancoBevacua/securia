@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
+import {Image} from '../Imagen';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store';
@@ -9,11 +10,15 @@ import { gsName } from '../text';
 import { FONT, R } from '../theme';
 import {
   useTheme, Pantalla, SubCabecera, Card, Btn, Tag, Item, Empty, Stack, Row,
-  Input, Sheet, Eyebrow, Hint, Seg, Confirmar, useToast,
+  Input, Sheet, Eyebrow, Hint, Seg, Confirmar, Toggle, useToast,
 } from '../ui';
 import { Ring } from '../icons';
+import SelectorFirma from './SelectorFirma';
+import FotosRegistro from './FotosRegistro';
+import {segundosRonda,formatoCronometro} from '../rondaNocturna';
+function ContenidoRonda({integrado,children}:{integrado:boolean;children:React.ReactNode}){return integrado?<View style={{gap:14}}>{children}</View>:<Pantalla top>{children}</Pantalla>;}
 
-export default function Rondas() {
+export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
   const st = useStore();
   const t = useTheme();
   const toast = useToast();
@@ -23,10 +28,12 @@ export default function Rondas() {
   const [cancelar, setCancelar] = useState(false);
   const [ver, setVer] = useState<Ronda | null>(null);
   const [, tick] = useState(0);
+  const [guardando,setGuardando]=useState(false);
+  const [cargandoFotos,setCargandoFotos]=useState(false);
 
-  useEffect(() => { const i = setInterval(() => tick(x => x + 1), 30000); return () => clearInterval(i); }, []);
+  useEffect(() => { const i = setInterval(() => tick(x => x + 1), 1000); return () => clearInterval(i); }, []);
 
-  const activa = rondaActiva(st.S, st.me!.id);
+  const activa = rondaActiva(st.S, st.me!.id, st.telefonoId,'puntos');
   const tpls = st.list<RondaTpl>('rtemplates');
   const hist = st.list<Ronda>('rounds').filter(r => r.fin)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 25);
@@ -45,17 +52,16 @@ export default function Rondas() {
   /* ---------- ronda en curso ---------- */
   if (activa) {
     const hechos = activa.puntos.filter(p => p.hora).length;
-    const pct = Math.round((hechos / activa.puntos.length) * 100);
-    let dur = new Date().getHours() * 60 + new Date().getMinutes() - toMin(activa.inicio);
-    if (dur < 0) dur += 1440;
+    const pct = activa.puntos.length?Math.round((hechos / activa.puntos.length) * 100):0;
+    const dur=segundosRonda(activa);
     return (
-      <Pantalla top>
-        <SubCabecera titulo={activa.nombre} sub={'Ronda en curso desde las ' + activa.inicio}
-          onBack={() => router.back()} />
+      <ContenidoRonda integrado={integrado}>
+        {!integrado?<SubCabecera titulo={activa.nombre} sub={'Ronda en curso desde las ' + activa.inicio}
+          onBack={() => router.back()} />:null}
         <Card pad>
           <Row style={{ justifyContent: 'space-between' }}>
             <View>
-              <Text style={{ fontFamily: FONT.monoMed, fontSize: 28, letterSpacing: -1, color: t.text }}>{hs(dur)}</Text>
+              <Text style={{ fontFamily: FONT.monoMed, fontSize: 28, letterSpacing: -1, color: t.text }}>{formatoCronometro(dur)}</Text>
               <Hint>{hechos + ' de ' + activa.puntos.length + ' puntos'}</Hint>
             </View>
             <Ring pct={pct} color={t.accent} track={t.surface3} bg={t.surface} label={pct + '%'} font={FONT.monoMed} />
@@ -72,13 +78,23 @@ export default function Rondas() {
               onPress={() => setPunto(i)} />
           ))}
         </Card>
+        <Card pad><Stack>
+          <SelectorFirma label="Guardia que hizo el recorrido" valor={activa.guardId} onChange={guardId=>st.put('rounds',{...activa,createdBy:activa.createdBy||st.me!.id,guardId})}/>
+          <FotosRegistro fotos={activa.fotos||[]} onChange={fotos=>st.put('rounds',{...activa,fotos})} disabled={guardando} onBusyChange={setCargandoFotos}/>
+          <Hint>Al finalizar se agrega automáticamente a Novedades, en la categoría Recorrido.</Hint>
+        </Stack></Card>
         <Row gap={9}>
           <Btn label="Cancelar ronda" variant="ghost" style={{ flex: 1 }} onPress={() => setCancelar(true)} />
-          <Btn label="Cerrar ronda" variant="primary" style={{ flex: 1 }}
-            onPress={() => {
-              const r = { ...activa, fin: hhmm() };
-              st.put('rounds', r);
-              setVer(r as Ronda);
+          <Btn label={guardando?'Guardando…':'Cerrar ronda'} variant="primary" style={{ flex: 1 }} disabled={guardando||cargandoFotos}
+            onPress={async () => {
+              setGuardando(true);
+              try {
+                if(!st.S.guards.some(g=>g.id===activa.guardId&&!g.deleted))throw Error('Seleccione el guardia que hizo el recorrido.');
+                const r = { ...activa, fin: hhmm(),fechaFin:isoDate(),alLibro:true };
+                st.putVarios([{col:'rounds',obj:r},...(r.alLibro?[{col:'novedades' as const,obj:{id:'ronda:'+r.id,fecha:isoDate(),hora:r.fin,guardId:r.guardId,categoria:'Recorrido',datos:{tipoRecorrido:'nocturna'},texto:texto(r),fotos:r.fotos||[],origenTipo:'recorrido',origenId:r.id}}]:[])]);
+                await st.confirmarGuardado();setVer(r);
+              }catch(e:any){toast(e.message||'No se pudo guardar el recorrido.');}
+              finally{setGuardando(false);}
             }} />
         </Row>
 
@@ -88,15 +104,15 @@ export default function Rondas() {
           onCancel={() => setCancelar(false)}
           onOk={() => { st.drop('rounds', activa.id); setCancelar(false); }} />
         <VerRonda ronda={ver} texto={texto} onClose={() => setVer(null)} />
-      </Pantalla>
+      </ContenidoRonda>
     );
   }
 
   /* ---------- listado ---------- */
   return (
-    <Pantalla top>
-      <SubCabecera titulo="Rondas" sub="Recorridas con puntos de control y horario de paso."
-        onBack={() => router.back()} />
+    <ContenidoRonda integrado={integrado}>
+      {!integrado?<SubCabecera titulo="Ronda Nocturna" sub="Recorridas con puntos de control y horario de paso."
+        onBack={() => router.back()} />:null}
 
       {tpls.length ? (
         <Card>
@@ -112,7 +128,7 @@ export default function Rondas() {
                   <Btn icon="edit" variant="ghost" size="xs" onPress={() => setTpl(x)} />
                   <Btn label="Iniciar" variant="primary" size="xs" onPress={() => {
                     st.put('rounds', {
-                      id: uid(), tplId: x.id, nombre: x.nombre, guardId: st.me!.id,
+                      id: uid(), dispositivoId:st.telefonoId, tipoRecorrido:'puntos', tplId: x.id, nombre: x.nombre, guardId: st.responsable?.id||st.me!.id, createdBy: st.me!.id,alLibro:true,inicioAt:Date.now(),
                       fecha: isoDate(), inicio: hhmm(), fin: '', createdAt: Date.now(),
                       puntos: x.puntos.map(p => ({ n: p, hora: '', estado: '', obs: '' })),
                     });
@@ -151,7 +167,7 @@ export default function Rondas() {
 
       <EditorRecorrido abierto={tpl !== undefined} tpl={tpl || null} onClose={() => setTpl(undefined)} />
       <VerRonda ronda={ver} texto={texto} onClose={() => setVer(null)} />
-    </Pantalla>
+    </ContenidoRonda>
   );
 }
 
@@ -180,7 +196,7 @@ function MarcarPunto({ ronda, indice, onClose }: { ronda: Ronda; indice: number 
           <Btn label="Cancelar" variant="ghost" style={{ flex: 1 }} onPress={onClose} />
           <Btn label="Marcar punto" variant="primary" style={{ flex: 1 }} onPress={() => {
             const puntos = ronda.puntos.map((x, i) =>
-              i === indice ? { ...x, hora: hora || hhmm(), estado, obs } : x);
+              i === indice ? { ...x, hora: hora || hhmm(), fecha:x.fecha||isoDate(), estado, obs } : x);
             st.put('rounds', { ...ronda, puntos });
             onClose();
             toast('Punto marcado');
@@ -189,7 +205,7 @@ function MarcarPunto({ ronda, indice, onClose }: { ronda: Ronda; indice: number 
       }>
       <Seg valor={estado} onChange={setEstado}
         opciones={[{ v: 'ok', t: 'Sin novedad' }, { v: 'nov', t: 'Con novedad' }]} />
-      <Input label="Hora de paso" value={hora} onChangeText={setHora} mono keyboardType="numbers-and-punctuation" />
+      <Input tipo="hora" label="Hora de paso" value={hora} onChangeText={setHora} mono keyboardType="numbers-and-punctuation" />
       <Input label="Observación" value={obs} onChangeText={setObs} multiline rows={3}
         placeholder="Portón cerrado, precinto sin violar…" />
     </Sheet>
@@ -248,6 +264,7 @@ function VerRonda({ ronda, texto, onClose }: { ronda: Ronda | null; texto: (r: R
       <View style={{ backgroundColor: t.surface2, borderWidth: 1, borderColor: t.line, borderRadius: R.md, padding: 14 }}>
         <Text selectable style={{ fontFamily: FONT.mono, fontSize: 12.5, lineHeight: 20, color: t.text }}>{x}</Text>
       </View>
+      {ronda.fotos?.map((uri,i)=><Image key={i} source={{uri}} style={{width:'100%',height:240,resizeMode:'contain'}}/>)}
     </Sheet>
   );
 }

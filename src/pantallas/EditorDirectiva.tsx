@@ -53,7 +53,7 @@ export default function EditorDirectiva({ abierto, directiva, onClose }: {
           <Btn label="Guardar" variant="primary" style={{ flex: 1 }} onPress={guardar} />
         </>
       }>
-      <Input label="Hora" value={hora} onChangeText={setHora} mono placeholder="04:45"
+      <Input tipo="hora" label="Hora" value={hora} onChangeText={setHora} mono placeholder="04:45"
         hint="A qué hora hay que ejecutarla." keyboardType="numbers-and-punctuation" />
       <Input label="Nombre" value={nombre} onChangeText={setNombre} placeholder="Apertura de accesos del paseo" />
       <Input label="Novedades / detalle" value={nov} onChangeText={setNov} multiline rows={3}

@@ -18,6 +18,22 @@ function escenario(){
  actor:()=>s.actor,revision:()=>s.cliente,confirmar:r=>{s.cliente=r;}};
  return {s,io};
 }
+
+test('recuperación sólo limpia después del respaldo remoto y la confirmación local',async()=>{
+ const {s,io}=escenario();s.local={estado:{n:1},guardia:'a',revision:1,numero:1};const cola=new ColaNube(io);
+ await assert.rejects(cola.recuperar(async()=>{throw Error('sin red');}),/sin red/);assert.equal(s.local.estado.n,1);
+ const confirmado=io.confirmar;io.confirmar=async()=>{throw Error('disco lleno');};
+ await assert.rejects(cola.recuperar(async p=>({estado:{n:9},revision:2})),/disco lleno/);assert.equal(s.local.estado.n,1);
+ io.confirmar=confirmado;await cola.recuperar(async p=>{assert.equal(p.estado.n,1);assert.ok(s.local);return {estado:{n:9},revision:2};});
+ assert.equal(s.local,null);assert.equal(s.cliente,2);
+});
+test('una novedad guardada durante la recuperación permanece pendiente',async()=>{
+ const {s,io}=escenario();s.local={estado:{n:1},guardia:'a',revision:1,numero:1};const cola=new ColaNube(io);
+ let liberar,comenzo;const inicio=new Promise(r=>comenzo=r),espera=new Promise(r=>liberar=r);
+ const recuperar=cola.recuperar(async()=>{comenzo();await espera;return {estado:{n:9},revision:2};});await inicio;
+ io.consultar=async()=>{throw Error('sin red');};const escritura=cola.encolar({n:2});await escritura.local;liberar();
+ await assert.rejects(recuperar,/cambios nuevos/);await assert.rejects(escritura.sincronizado,/sin red/);assert.equal(s.local.estado.n,2);
+});
 test('la segunda novedad se guarda en disco mientras la primera espera Internet',async()=>{
  const {s,io}=escenario();let liberar;const espera=new Promise(r=>liberar=r);const enviar=io.enviar;
  io.enviar=async p=>{if(p.estado.n===1)await espera;return enviar(p);};const cola=new ColaNube(io);

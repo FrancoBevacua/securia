@@ -5,6 +5,6 @@ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'vigelium-sqlite-'));
 const conexiones=new Map();
 module.exports={dir,conexiones,async openDatabaseAsync(nombre){
  const ruta=path.join(dir,nombre),native=new DatabaseSync(ruta);
- const db={native,ruta,execAsync:async sql=>native.exec(sql),runAsync:async(sql,...args)=>native.prepare(sql).run(...args),getFirstAsync:async(sql,...args)=>native.prepare(sql).get(...args)||null,closeAsync:async()=>native.close()};
+ const db={native,ruta,execAsync:async sql=>native.exec(sql),runAsync:async(sql,...args)=>native.prepare(sql).run(...args),getFirstAsync:async(sql,...args)=>native.prepare(sql).get(...args)||null,getAllAsync:async(sql,...args)=>native.prepare(sql).all(...args),closeAsync:async()=>native.close()};
  conexiones.set(nombre,db);return db;
 }};

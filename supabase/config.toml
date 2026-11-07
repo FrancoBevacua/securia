@@ -1,0 +1,3 @@
+[functions.whatsapp-reportes]
+verify_jwt = false
+# El cuerpo comprueba REPORT_CRON_SECRET; no usa la clave pública del cliente.

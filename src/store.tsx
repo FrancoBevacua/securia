@@ -17,6 +17,9 @@ import { guardarPIN, tienePIN, borrarPIN } from './cuentas';
 import { aplicarCambios, restaurarRespaldo } from './mutaciones';
 import * as nube from './nube';
 import {CODIGO_CORPORATIVO} from './provisionCorporativa';
+import {asegurarPuestosCobertura,idsPuestosGuardia,validarPuestosGuardia} from './puestosGuardia';
+import {guardiaResponsable,cambiarResponsable,pinCorporativoValido} from './corporativo';
+import {verificarPIN} from './cuentas';
 
 const K_ESTADO = 'consigna.estado.v1';
 const K_SESION = 'consigna.sesion.v1';
@@ -24,15 +27,20 @@ const K_TEMA = 'consigna.tema';
 const K_PALETA = 'consigna.paleta';
 const K_ASIS = 'consigna.asistente';
 const K_AVISOS = 'consigna.avisos';
+const K_DISENO = 'securia.diseno';
 
 type Ctx = {
   listo: boolean;
+  telefonoId:string;
   errorInicio:string;
   errorGuardado:string;
   confirmarGuardado:()=>Promise<void>;
   reintentarInicio:()=>void;
   S: Estado;
   me: Vigilador | null;
+  responsable: Vigilador | null;
+  seleccionarResponsable:(id:string)=>Promise<void>;
+  ingresarCorporativo:(pin:string)=>Promise<void>;
   tema: ModoTema;
   paleta: PaletaId;
   asistente: boolean;
@@ -44,14 +52,15 @@ type Ctx = {
   entrar: (id: string) => void;
   salir: () => Promise<void>;
   nube: nube.EstadoNube;
-  ingresarNube: (dni:string,pin:string) => Promise<void>;
+  ingresarNube: (dni:string,pin:string,puestoId?:string) => Promise<void>;
   vincularCuentaNube: (dni:string,pin:string,nombre:string,nacimiento:string) => Promise<void>;
   registrarNube: (g:Vigilador,pin:string) => Promise<void>;
     entrarCorporativo:(id:string,pin:string)=>Promise<void>;
   reintentarNube: () => Promise<void>;
+  resolverDiferencias:(r:nube.RevisionDiferencias,op:('local'|'remoto')[])=>Promise<void>;
+  recuperarSincronizacion:()=>Promise<nube.ResultadoRecuperacion|null>;
+  reiniciarSesionRecuperada:()=>Promise<void>;
   cargarCatalogoNube: () => Promise<void>;
-  iniciarTurno: () => void;
-  cerrarTurno: (cierre: string) => Promise<void>;
   list: <T = any>(c: Col) => T[];
   byId: <T = any>(c: Col, id: string) => T | undefined;
   put: <T extends Partial<Rec>>(c: Col, obj: T) => T & Rec;
@@ -121,6 +130,7 @@ function migrar(S: Estado) {
     vivos(S.directives).forEach(d => { if (d.puesto && mapa[d.puesto]) { d.puestoId = mapa[d.puesto]; d.updatedAt = now(); } });
   }
   const gs = vivos(S.guards);
+  asegurarPuestosCobertura(S);
   gs.forEach(g => {
     if (!g.puestoId && g.puesto) {
       const p = vivos(S.posts).find(x => x.nombre === g.puesto);
@@ -169,14 +179,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       try {
         // Desde 1.4.2 no se ejecuta ninguna limpieza de cuentas, claves ni historial.
         let vinculada=await nube.iniciarNube();
-        if(Platform.OS!=='web'){await nube.conectarTelefono();vinculada=true;}
-        const [crudo, sesion, tm, pal, asis, avi] = await Promise.all([
+        if(Platform.OS!=='web'&&!vinculada){await nube.conectarTelefono();vinculada=true;}
+        const [crudo, sesion, tm, pal, asis, avi, diseno] = await Promise.all([
           vinculada ? Promise.resolve(null) : almacenLocal.getItem(K_ESTADO), vinculada ? Promise.resolve(null) : AsyncStorage.getItem(K_SESION),
           AsyncStorage.getItem(K_TEMA), AsyncStorage.getItem(K_PALETA),
           AsyncStorage.getItem(K_ASIS), AsyncStorage.getItem(K_AVISOS),
+          AsyncStorage.getItem(K_DISENO),
         ]);
         let e = crudo ? merge(estadoVacio(), JSON.parse(crudo)) : estadoVacio();
-        if(vinculada){try{e=await nube.catalogoNube();}catch{e=estadoVacio();}}
+        if(vinculada){
+          const recuperada=await nube.restaurarSesionNube();
+          if(recuperada){
+            e=recuperada.estado;baseVista.current=recuperada.base;
+            const g=e.guards.find(g=>g.id===recuperada.guardia&&!g.deleted);
+            if(g){const abierta=abrirActividad(e,g);if(abierta!==e)await persistir(abierta);e=abierta;setMe(perfilTelefono(e,g));}
+          }
+          else {try{e=await nube.catalogoNube();}catch{e=estadoVacio();}}
+        }
         else migrar(e);
         for (const g of e.guards) {
           if (g.cuenta && g.pin) {
@@ -189,10 +208,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if(!vinculada)await almacenLocal.setItem(K_ESTADO, JSON.stringify(e));
         if (sesion && Platform.OS==='web') {
           const g = e.guards.find(x => x.id === sesion && !x.deleted);
-          if (g?.cuenta) setMe(g);
+          if (g?.cuenta) {e=abrirActividad(e,g);ref.current=e;setS(e);await almacenLocal.setItem(K_ESTADO,JSON.stringify(e));setMe(g);}
         }
         if (tm) setTemaEstado(tm as ModoTema);
         if (pal) setPaletaEstado(pal as PaletaId);
+        if(diseno!=='centro-control'){
+          setTemaEstado('dark');setPaletaEstado('securia');
+          await Promise.all([[K_TEMA,'dark'],[K_PALETA,'securia'],[K_DISENO,'centro-control']].map(([k,v])=>AsyncStorage.setItem(k,v))).catch(()=>{});
+        }
         if (asis != null) setAsisEstado(asis !== '0');
         if (avi != null) setAvisosEstado(avi !== '0');
       } catch (err) {
@@ -208,7 +231,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const base=baseVista.current;
     const escritura=guardadoLocal.current.catch(()=>{}).then(()=>nube.verEstadoNube().vinculada
       ? nube.guardarLocal(e,confirmado=>{
-        if(ref.current===e){baseVista.current=confirmado;ref.current=confirmado;setS(confirmado);setMe(g=>g?confirmado.guards.find(x=>x.id===g.id)||g:null);setVocabulario(vocabulario(confirmado));}
+        if(ref.current===e){baseVista.current=confirmado;ref.current=confirmado;setS(confirmado);setMe(g=>g?perfilTelefono(confirmado,confirmado.guards.find(x=>x.id===g.id)||g):null);setVocabulario(vocabulario(confirmado));}
       },base) : almacenLocal.setItem(K_ESTADO,JSON.stringify(e)));
     guardadoLocal.current=escritura;
     escritura.then(()=>{if(guardadoLocal.current===escritura)setErrorGuardado('');},()=>{
@@ -220,21 +243,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Reintenta al volver a la app y cada 30 s en primer plano. La copia local
   // nunca espera Internet y la confirmación remota no pisa nuevas ediciones.
   useEffect(()=>{
-    if(!listo||!me)return;
+    if(!listo||!me||!nube.verEstadoNube().vinculada)return;
     let ocupado=false;
-    const reintentar=async()=>{
-      if(ocupado||AppState.currentState!=='active'||nube.verEstadoNube().guardando||nube.verEstadoNube().reautenticar)return;
-      if(!errorGuardado&&!nube.verEstadoNube().pendiente)return;
+    const reintentar=async(alVolver=false)=>{
+      if(ocupado||AppState.currentState!=='active'||nube.revisionEnCurso?.()||nube.verEstadoNube().guardando||nube.verEstadoNube().reautenticar)return;
+      if(!alVolver&&!errorGuardado&&!nube.verEstadoNube().pendiente)return;
       ocupado=true;const actual=ref.current;
       try{
         if(errorGuardado)await persistir(actual);
-        await nube.reintentarNube();
+        if(nube.verEstadoNube().pendiente)await nube.reintentarNube();
+        else await nube.consultarNube();
         const confirmado=nube.estadoConfirmado();
         if(confirmado&&ref.current===actual){baseVista.current=confirmado;ref.current=confirmado;setS(confirmado);}
       }catch{}finally{ocupado=false;}
     };
-    const sub=AppState.addEventListener('change',s=>{if(s==='active')void reintentar();});
-    const timer=setInterval(reintentar,30000);
+    const sub=AppState.addEventListener('change',s=>{if(s==='active')void reintentar(true);});
+    void reintentar(true);
+    const timer=setInterval(()=>void reintentar(),30000);
     return()=>{sub.remove();clearInterval(timer);};
   },[listo,me?.id,errorGuardado,persistir]);
 
@@ -254,31 +279,78 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [persistir]);
 
   const lote = useCallback((cambios: { col: Col; obj: any }[], servicio = false) => {
-    aplicar(e => Object.assign(e, aplicarCambios(e, cambios, me, servicio)));
+    aplicar(e => Object.assign(e, aplicarCambios(e, cambios, me, servicio, nube.telefonoId?.())));
   }, [aplicar, me]);
 
-  const aceptarNube=async(r:{estado:Estado;guardia:string;base?:Estado})=>{
-    baseVista.current=r.base||r.estado;
-    ref.current=r.estado;setS(r.estado);meRef.current=r.estado.guards.find(g=>g.id===r.guardia&&!g.deleted)||null;setMe(meRef.current);
+  const perfilTelefono=(e:Estado,g:Vigilador)=>{const p=turnoAbierto(e,g.id,nube.telefonoId?.());return p?{...g,puestoId:p.puestoId||g.puestoId,franjaId:p.franjaId||g.franjaId}:g;};
+  const abrirActividad = (e: Estado, g: Vigilador) => e.guards.some(c=>c.corporativo&&!c.deleted)||turnoAbierto(e,g.id,nube.telefonoId?.()) ? e
+    : aplicarCambios(e,iniciarServicio(e,g,new Date(),true,nube.telefonoId?.()),g,true);
+  const entrarLocal = (g: Vigilador) => {
+    const e=abrirActividad(ref.current,g);
+    ref.current=e;setS(e);meRef.current=g;setMe(g);persistir(e);
+    AsyncStorage.setItem(K_SESION,g.id).catch(()=>{});
+  };
+
+  const aceptarNube=async(r:{estado:Estado;guardia:string;base?:Estado},puestoId?:string)=>{
+    baseVista.current=r.base;
+    let g=r.estado.guards.find(g=>g.id===r.guardia&&!g.deleted);
+    if(!g)throw Error('Cuenta no disponible.');
+    if(puestoId){if(!r.estado.posts.some(p=>p.id===puestoId&&!p.deleted))throw Error('El puesto ya no está disponible.');g={...g,puestoId,franjaId:r.estado.franjas.find(f=>f.puestoId===puestoId&&!f.deleted)?.id||''};}
+    let e=r.estado;const anterior=turnoAbierto(e,g.id,nube.telefonoId?.());
+    if(puestoId&&anterior&&anterior.puestoId!==puestoId)e=aplicarCambios(e,cerrarServicio(e,g,'Cambio de puesto',new Date(),nube.telefonoId?.()),g,true);
+    e=abrirActividad(e,g);
+    g=perfilTelefono(e,g);
+    ref.current=e;setS(e);
+    await persistir(e);
+    meRef.current=g;setMe(g);
     setVocabulario(vocabulario(r.estado));
     await almacenLocal.removeItem(K_ESTADO);await AsyncStorage.removeItem(K_SESION);
   };
 
   const api: Ctx = useMemo(() => ({
-    listo, S, me, tema, paleta, asistente, avisos,
+    listo, S, me, tema, paleta, asistente, avisos, telefonoId:nube.telefonoId?.()||'',
+    responsable:guardiaResponsable(S,me,nube.telefonoId?.()),
+    seleccionarResponsable:async(id)=>{
+      const cuenta=meRef.current;if(!cuenta)throw Error('Ingrese al corporativo.');
+      const cambios=cambiarResponsable(ref.current,cuenta,id,nube.telefonoId?.()||'');
+      if(cambios.length)lote(cambios,true);
+      await guardadoLocal.current;
+    },
+    ingresarCorporativo:async(pin)=>{
+      if(!pinCorporativoValido(pin))throw Error('Ingrese el PIN de seis números del corporativo.');
+      await guardadoLocal.current;
+      if(nube.verEstadoNube().vinculada){await aceptarNube(await nube.ingresarCorporativoNube(pin));return;}
+      const cuenta=ref.current.guards.find(g=>g.corporativo&&!g.deleted);
+      if(!cuenta||!await verificarPIN(cuenta.id,pin))throw Error('PIN incorrecto.');
+      entrarLocal(cuenta);await guardadoLocal.current;
+    },
     errorInicio,errorGuardado,confirmarGuardado:()=>guardadoLocal.current,reintentarInicio:()=>setIntentoInicio(v=>v+1),
     nube:estadoNube,
-    ingresarNube:async(dni,pin)=>{await guardadoLocal.current;await aceptarNube(await nube.ingresarNube(dni,pin));},
+    ingresarNube:async(dni,pin,puestoId)=>{await guardadoLocal.current;await aceptarNube(await nube.ingresarNube(dni,pin),puestoId);},
     vincularCuentaNube:async(dni,pin,nombre,nacimiento)=>aceptarNube(await nube.vincularCuentaNube(dni,pin,nombre,nacimiento)),
     registrarNube:async(g,pin)=>aceptarNube(await nube.registrarNube(g,pin)),
       entrarCorporativo:async(id,pin)=>{
         const g=ref.current.guards.find(x=>x.id===id&&!x.deleted);if(!g)throw Error('Cuenta no disponible.');
-        if(Platform.OS==='web'){setMe(g);return;}
+        if(Platform.OS==='web'){entrarLocal(g);await guardadoLocal.current;return;}
         await guardadoLocal.current;
         await almacenLocal.setItem(K_ESTADO,JSON.stringify(ref.current));
         await aceptarNube(await nube.vincularNube(CODIGO_CORPORATIVO,ref.current,g,pin));
       },
     reintentarNube:async()=>{const actual=ref.current;await persistir(actual);await nube.reintentarNube();const confirmado=nube.estadoConfirmado();if(confirmado&&ref.current===actual){baseVista.current=confirmado;ref.current=confirmado;setS(confirmado);}},
+    resolverDiferencias:async(r,op)=>{await guardadoLocal.current;const actual=ref.current;const e=await nube.resolverDiferenciasNube(r,op);if(ref.current===actual){baseVista.current=e;ref.current=e;setS(e);setVocabulario(vocabulario(e));}},
+    recuperarSincronizacion:async()=>{
+      const actual=ref.current;
+      // Si hubo un fallo de disco, primero debe conservarse lo que aún está en memoria.
+      if(errorGuardado)await persistir(actual);else await guardadoLocal.current;
+      const r=await nube.recuperarSincronizacion();
+      const e=r?.estado||nube.estadoConfirmado();
+      if(e&&ref.current===actual){baseVista.current=e;ref.current=e;setS(e);setMe(g=>g?e.guards.find(x=>x.id===g.id)||g:null);setVocabulario(vocabulario(e));setErrorGuardado('');}
+      return r;
+    },
+    reiniciarSesionRecuperada:async()=>{
+      await guardadoLocal.current;await nube.reiniciarSesionRecuperada();
+      baseVista.current=undefined;ref.current=estadoVacio();setS(ref.current);meRef.current=null;setMe(null);setErrorGuardado('');
+    },
     cargarCatalogoNube:async()=>{const e=await nube.catalogoNube();if(!meRef.current){ref.current=e;setS(e);}},
     esAdmin: !!me && me.rol === 'admin',
     setTema: (m) => { setTemaEstado(m); AsyncStorage.setItem(K_TEMA, m).catch(() => {}); },
@@ -287,32 +359,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setAvisos: (v) => { setAvisosEstado(v); AsyncStorage.setItem(K_AVISOS, v ? '1' : '0').catch(() => {}); },
     entrar: (id) => {
       const g = ref.current.guards.find(x => x.id === id);
-      if (g) { setMe(g); AsyncStorage.setItem(K_SESION, id).catch(() => {}); }
+      if (g) entrarLocal(g);
     },
     salir: async () => {
-      if (turnoAbierto(ref.current, me?.id)) throw new Error('Cierre su turno desde Inicio o Informe general antes de salir.');
-      await guardadoLocal.current;
-      if(nube.verEstadoNube().vinculada){await nube.guardarEnNube(ref.current,baseVista.current);await nube.cerrarSesionNube();ref.current=estadoVacio();setS(estadoVacio());}
-      setMe(null); AsyncStorage.removeItem(K_SESION).catch(() => {});
-    },
-    iniciarTurno: () => {
-      if (!me) throw new Error('Inicie sesión.');
-      lote(iniciarServicio(ref.current, me), true);
-    },
-    cerrarTurno: async cierre => {
-      if (!me) throw new Error('Inicie sesión.');
-      const e = aplicarCambios(ref.current, cerrarServicio(ref.current, me, cierre), me, true);
-      e.updatedAt = now();
+      const g=meRef.current;
+      if(g && turnoAbierto(ref.current,g.id,nube.telefonoId?.())) {
+        const e=aplicarCambios(ref.current,cerrarServicio(ref.current,g,'',new Date(),nube.telefonoId?.()),g,true);
+        e.updatedAt=now();ref.current=e;setS(e);persistir(e);
+      }
       await guardadoLocal.current;
       if(nube.verEstadoNube().vinculada){
-        await nube.guardarLocal(e,undefined,baseVista.current);
-        ref.current=e;setS(e);
-        await nube.reintentarNube();await nube.cerrarSesionNube();setMe(null);ref.current=estadoVacio();setS(estadoVacio());return;
+        await nube.guardarEnNube(ref.current,baseVista.current);
+        await nube.cerrarSesionNube();
+        ref.current=estadoVacio();setS(ref.current);
       }
-      try { await almacenLocal.setItem(K_ESTADO, JSON.stringify(e)); }
-      catch { throw new Error('No se pudo guardar el cierre en el teléfono. Liberá espacio y vuelva a intentarlo.'); }
-      ref.current = e; setS(e);
-      setMe(null); await AsyncStorage.removeItem(K_SESION).catch(() => {});
+      meRef.current=null;setMe(null);await AsyncStorage.removeItem(K_SESION);
     },
     list: (c) => ((S as any)[c] || []).filter((r: Rec) => !r.deleted),
     byId: (c, id) => ((S as any)[c] || []).find((r: Rec) => r.id === id),
@@ -330,7 +391,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     reemplazar: (e) => { if (me) e = restaurarRespaldo(ref.current, e, me); migrar(e); setVocabulario(vocabulario(e)); ref.current = e; setS(e); persistir(e); },
     guardarArchivo: async (uri: string, nombre: string) => {
       try {
-        if (Platform.OS === 'web' || nube.verEstadoNube().vinculada) {
+        if (Platform.OS === 'web') {
           const mime = /\.pdf$/i.test(nombre) ? 'application/pdf' : 'application/octet-stream';
           return 'data:' + mime + ';base64,' + bytesBase64(await leerBytes(uri));
         }
@@ -348,7 +409,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     guardarFoto: async (uri: string) => {
       try {
         const foto = await prepararFoto(uri);
-        if (Platform.OS === 'web' || nube.verEstadoNube().vinculada) {if(nube.verEstadoNube().vinculada)nube.borrarTemporalNube(foto.uri);return 'data:image/jpeg;base64,' + foto.base64;}
+        if (Platform.OS === 'web') return 'data:image/jpeg;base64,' + foto.base64;
         const dir = new Directory(Paths.document, 'fotos');
         if (!dir.exists) dir.create({ intermediates: true });
         const destino = new File(dir, uid() + '.jpg');
@@ -370,7 +431,7 @@ export function crearObjetivo(
   S: Estado,
   datos: {
     cliente: string; region: string; nombre: string; prefijo: string;
-    apellido: string; nombreVig: string; puestoId: string; franjaId: string;
+    apellido: string; nombreVig: string; puestoId: string; puestoIds?: string[]; franjaId: string;
     legajo?: string; dni?: string; fechaNac?: string; foto?: string; sexo?: Vigilador['sexo'];
     guardId?: string;
   }
@@ -384,10 +445,11 @@ export function crearObjetivo(
   const fr = e.franjas.find(f => f.id === datos.franjaId);
   const puestoNombre = (e.posts.find(p => p.id === datos.puestoId) || { nombre: '' }).nombre;
   const existente = datos.guardId ? e.guards.find(x => x.id === datos.guardId) : undefined;
+  const puestoIds=validarPuestosGuardia(e,idsPuestosGuardia({puestoId:datos.puestoId,puestoIds:datos.puestoIds??existente?.puestoIds}));
   let g: Vigilador;
   if (existente) {
     Object.assign(existente, {
-      puestoId: datos.puestoId, franjaId: datos.franjaId, puesto: puestoNombre,
+      puestoId: datos.puestoId, puestoIds, franjaId: datos.franjaId, puesto: puestoNombre,
       horaIn: fr?.entrada || '06:00', horaOut: fr?.salida || '14:00',
       legajo: datos.legajo ?? existente.legajo, dni: datos.dni ?? existente.dni,
       fechaNac: datos.fechaNac ?? existente.fechaNac, sexo: datos.sexo ?? existente.sexo,
@@ -398,7 +460,7 @@ export function crearObjetivo(
   } else {
     g = {
       id: uid(), apellido: titulo(datos.apellido), nombre: titulo(datos.nombreVig),
-      edad: '', email: '', tel: '', puestoId: datos.puestoId, franjaId: datos.franjaId,
+      edad: '', email: '', tel: '', puestoId: datos.puestoId, puestoIds, franjaId: datos.franjaId,
       puesto: puestoNombre, legajo: datos.legajo || '', dni: datos.dni || '', foto: datos.foto || '',
       fechaNac: datos.fechaNac || '', sexo: datos.sexo,
       horaIn: fr?.entrada || '06:00', horaOut: fr?.salida || '14:00', francos: '',

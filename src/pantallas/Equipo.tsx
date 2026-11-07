@@ -12,10 +12,13 @@ import {
 import { FONT } from '../theme';
 import {
   useTheme, Pantalla, SubCabecera, Card, Btn, Tag, Item, Stack, Row, Input, Selector,
-  Sheet, Hint, Metric, Confirmar, useToast, Eyebrow,
+  Sheet, Hint, Metric, Confirmar, useToast, Eyebrow, Banner,
 } from '../ui';
 import { Avatar } from './Gate';
 import Credencial from './Credencial';
+import SelectorPuestosGuardia from './SelectorPuestosGuardia';
+import {idsPuestosGuardia,nombresPuestosGuardia} from '../puestosGuardia';
+import CuentaCorporativo from './CuentaCorporativo';
 
 /* ================= editor de vigilador ================= */
 export function EditorVigilador({ abierto, vigilador, onClose }: {
@@ -31,16 +34,20 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
   const [tel, setTel] = useState('');
   const [email, setEmail] = useState('');
   const [puestoId, setPuestoId] = useState('');
+  const [puestoIds,setPuestoIds]=useState<string[]>([]);
+  const [error,setError]=useState('');
   const [franjaId, setFranjaId] = useState('');
   const [rol, setRol] = useState<'admin' | 'vigilador'>('vigilador');
   const [francos, setFrancos] = useState('');
   const [foto, setFoto] = useState('');
   const [borrar, setBorrar] = useState(false);
 
-  const puedeRol = st.esAdmin || !st.list('guards').length;
+  const puedeRol = !st.me?.corporativo&&(st.esAdmin || !st.list('guards').length);
 
   useEffect(() => {
     if (!abierto) return;
+    setError('');
+    const base=st.S.guards.find(g=>g.id===vigilador?.id)||vigilador;
     setSexo(vigilador?.sexo||'');
     setApellido(vigilador?.apellido || '');
     setNombre(vigilador?.nombre || '');
@@ -48,8 +55,9 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
     setLegajo(vigilador?.legajo || '');
     setTel(vigilador?.tel || '');
     setEmail(vigilador?.email || '');
-    setPuestoId(vigilador?.puestoId || '');
-    setFranjaId(vigilador?.franjaId || '');
+    setPuestoId(base?.puestoId || '');
+    setPuestoIds(idsPuestosGuardia(base||{puestoId:''}));
+    setFranjaId(base?.franjaId || '');
     setRol(vigilador?.rol || 'vigilador');
     setFrancos(vigilador?.francos || '');
     setFoto(vigilador?.foto || '');
@@ -64,6 +72,7 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
   };
 
   const guardar = () => {
+    setError('');try{
     if (!apellido.trim()) { toast('Falta el apellido'); return; }
     const fr = franjaPorId(st.S, franjaId);
     const fechaNac = isoDesdeDmy(nac);
@@ -71,7 +80,7 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
     const g = st.put('guards', {
       id: vigilador?.id || uid(), apellido: titulo(apellido), nombre: titulo(nombre),
       fechaNac, sexo:sexo as Vigilador['sexo'], edad: edadDe(fechaNac), cuenta: vigilador?.cuenta,
-      legajo, dni: vigilador?.dni, tel, email, puestoId, franjaId, puesto: nombrePuesto(st.S, puestoId),
+      legajo, dni: vigilador?.dni, tel, email, puestoId, puestoIds, franjaId, puesto: nombrePuesto(st.S, puestoId),
       rol: puedeRol ? rol : (vigilador?.rol || 'vigilador'),
       horaIn: fr?.entrada || vigilador?.horaIn || '06:00',
       horaOut: fr?.salida || vigilador?.horaOut || '14:00',
@@ -82,6 +91,7 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
     }
     onClose();
     toast('Datos guardados');
+    }catch(e:any){setError(e.message||'No se pudieron guardar los datos.');}
   };
 
   const esUnicoAdmin = vigilador?.rol === 'admin' &&
@@ -100,6 +110,7 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
           <Btn label="Guardar" variant="primary" style={{ flex: 1 }} onPress={guardar} />
         </>
       }>
+      {error?<Banner kind="warn">{error}</Banner>:null}
       <View style={{ alignItems: 'center', gap: 9 }}>
         <Avatar g={{ ...(vigilador || {} as any), apellido, nombre, foto }} size={82} />
         <Row gap={7}>
@@ -113,16 +124,16 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
       </Row>
       <Row gap={11} style={{ alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
-          <Input label="Fecha de nacimiento" value={nac} onChangeText={v => setNac(mascaraDmy(v))}
+          <Input tipo="fecha" formatoFecha="dmy" label="Fecha de nacimiento" value={nac} onChangeText={v => setNac(mascaraDmy(v))}
             mono keyboardType="number-pad" placeholder="24/07/1990"
             hint={edadDe(isoDesdeDmy(nac)) ? edadDe(isoDesdeDmy(nac)) + ' años' : undefined} />
         </View>
         <View style={{ flex: 1 }}><Input label="Legajo" value={legajo} onChangeText={setLegajo} mono /></View>
       </Row>
       <Selector label="Sexo" valor={sexo} onChange={setSexo} opciones={[{v:'',t:'Seleccionar'},{v:'masculino',t:'Masculino'},{v:'femenino',t:'Femenino'}]}/>
-      <Selector label="Puesto" valor={puestoId}
-        onChange={v => { setPuestoId(v); setFranjaId(franjasDe(st.S, v)[0]?.id || ''); }}
-        opciones={[{ v: '', t: 'Sin puesto asignado' }, ...puestos(st.S).map(p => ({ v: p.id, t: p.nombre }))]} />
+      <SelectorPuestosGuardia puestos={puestos(st.S)} seleccion={puestoIds} principal={puestoId} onChange={(ids,principal)=>{
+        setPuestoIds(ids);if(principal!==puestoId){setPuestoId(principal);setFranjaId(principal?franjasDe(st.S,principal)[0]?.id||'':'');}
+      }}/>
       <Selector label="Turno" valor={franjaId} onChange={setFranjaId}
         opciones={[
           { v: '', t: 'Sin turno' },
@@ -149,22 +160,23 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
 
 /* ================= listado del equipo ================= */
 export default function Equipo() {
-  const st = useStore();
+  const st = useStore(),t=useTheme();
   const [editar, setEditar] = useState<Vigilador | null | undefined>(undefined);
-  const gs = st.list<Vigilador>('guards');
+  const gs = st.list<Vigilador>('guards').filter(g=>!g.corporativo);
 
   return (
     <Pantalla top>
       <SubCabecera titulo="Equipo del objetivo"
         sub={gs.length + (gs.length === 1 ? ' vigilador registrado' : ' vigiladores registrados')}
         onBack={() => router.back()} />
+      {st.me?.corporativo?<Card pad><Eyebrow>Cuenta del corporativo</Eyebrow><Text style={{fontFamily:FONT.dispBold,fontSize:26,color:t.text}}>Guardia Paseo</Text><Hint>Administrador · Acceso con PIN de seis números</Hint><Btn label="Administrar PIN del corporativo" onPress={()=>router.push('/perfil')}/></Card>:null}
       <Card>
         {gs.map((g, i) => (
           <Item key={g.id} last={i === gs.length - 1}
             lead={<Avatar g={g} />}
             title={g.apellido + ', ' + g.nombre}
             subs={[
-              (nombrePuesto(st.S, g.puestoId) || 'Sin puesto') +
+              (nombresPuestosGuardia(st.S, g) || 'Sin puesto') +
               (g.franjaId ? ' · ' + etiquetaFranja(franjaPorId(st.S, g.franjaId)) : ''),
               [g.tel, g.email].filter(Boolean).join(' · '),
             ]}
@@ -195,7 +207,10 @@ export function Perfil() {
   const [pin, setPin] = useState('');
   const [pinAnterior, setPinAnterior] = useState('');
   const me = st.me!;
+  const perfil=st.S.guards.find(g=>g.id===me.id)||me;
   const enTurno = fichajeAbierto(st.S, me.id);
+
+  if(me.corporativo)return <CuentaCorporativo/>;
 
   return (
     <Pantalla top>
@@ -205,25 +220,27 @@ export function Perfil() {
 
       <Card pad>
         <Stack gap={14}>
-          <Eyebrow>Mi puesto</Eyebrow>
-          <Selector label="Puesto" valor={me.puestoId}
+          <Eyebrow>Mis puestos</Eyebrow>
+          <Hint>{nombresPuestosGuardia(st.S,perfil)||'Sin puestos asignados'}</Hint>
+          <Selector label="Puesto principal" valor={perfil.puestoId}
+            hint="Es su puesto de referencia. Al iniciar sesión elige el puesto que va a cubrir."
             onChange={v => {
               const f = franjasDe(st.S, v)[0];
               st.put('guards', {
-                ...me, puestoId: v, puesto: nombrePuesto(st.S, v),
+                ...perfil, puestoId: v, puestoIds:idsPuestosGuardia({...perfil,puestoId:v}), puesto: nombrePuesto(st.S, v),
                 franjaId: f?.id || '', horaIn: f?.entrada || '', horaOut: f?.salida || '',
               });
               toast('Puesto actualizado');
             }}
             opciones={puestos(st.S).map(p => ({ v: p.id, t: p.nombre, sub: p.descripcion }))} />
-          <Selector label="Turno" valor={me.franjaId}
-            hint="De acá salen sus directivas y sus recordatorios."
+          <Selector label="Turno de referencia" valor={perfil.franjaId}
+            hint="Las directivas del servicio corresponden al puesto de la actividad iniciada en este teléfono."
             onChange={v => {
               const f = franjaPorId(st.S, v);
-              st.put('guards', { ...me, franjaId: v, horaIn: f?.entrada || '', horaOut: f?.salida || '' });
+              st.put('guards', { ...perfil, franjaId: v, horaIn: f?.entrada || '', horaOut: f?.salida || '' });
               toast('Turno actualizado');
             }}
-            opciones={franjasDe(st.S, me.puestoId).map(f => ({
+            opciones={franjasDe(st.S, perfil.puestoId).map(f => ({
               v: f.id, t: f.alias ? f.nombre + ' — ' + f.alias : f.nombre, sub: f.entrada + ' a ' + f.salida,
             }))} />
           <Row gap={9}>

@@ -25,7 +25,7 @@ export default function Movimientos({ policial = false }: { policial?: boolean }
       const ps = st.S.posts.find(p => p.id === puesto)?.nombre;
       if (!policial && !ps) throw new Error('Seleccione el puesto.');
       const id = uid();
-      st.put('novedades', { id, origenId: id, origenTipo: origen, fecha, hora, guardId: st.me!.id,
+      st.put('novedades', { id, origenId: id, origenTipo: origen, fecha, hora, guardId: st.responsable?.id||st.me!.id,
         categoria: policial ? 'Adicional policial' : 'Relevo',
         texto: 'Se registra el ' + mov + ' de ' + (policial ? 'personal adicional policial: ' : 'Gs ') + nombre.trim() +
           (!policial ? ', puesto ' + ps : '') + ', turno ' + turno.trim() + '.' });
@@ -39,17 +39,17 @@ export default function Movimientos({ policial = false }: { policial?: boolean }
       setNombre(''); setTurno(''); setMov('ingreso'); setFecha(isoDate()); setHora(hhmm()); setError(''); setNuevo(true);
     }} />
     <Card>{rows.length ? rows.map((n,i) => <Item key={n.id} last={i === rows.length-1} lead={n.hora} title={n.texto} tituloLineas={2} lineas={1} subs={[dmy(n.fecha)]} onPress={() => setEditar(n)} />) : <Empty>Sin movimientos registrados.</Empty>}</Card>
-    <Sheet visible={nuevo} title={policial ? 'Adicional policial' : 'Movimiento de guardia'} onClose={() => setNuevo(false)} footer={<Btn label="Guardar movimiento" variant="primary" disabled={!turnoAbierto(st.S, st.me?.id)} onPress={guardar} />}>
-      {!turnoAbierto(st.S, st.me?.id) ? <ServicioActual /> : null}
+    <Sheet visible={nuevo} title={policial ? 'Adicional policial' : 'Movimiento de guardia'} onClose={() => setNuevo(false)} footer={<Btn label="Guardar movimiento" variant="primary" disabled={!turnoAbierto(st.S, st.me?.id, st.telefonoId)} onPress={guardar} />}>
+      {!turnoAbierto(st.S, st.me?.id, st.telefonoId) ? <ServicioActual /> : null}
       <Seg valor={mov} onChange={setMov} opciones={[{ v: 'ingreso', t: 'Ingreso' }, { v: 'egreso', t: 'Egreso' }]} />
       {!policial ? <Selector label="Elegir del equipo (opcional)" valor="" onChange={v => {
         const g = st.byId<Vigilador>('guards', v); if (!g) return;
         setNombre((g.apellido + ' ' + g.nombre).trim()); setPuesto(g.puestoId || puesto);
         const f = st.S.franjas.find(f => f.id === g.franjaId); setTurno(f ? etiquetaFranja(f) : '');
-      }} opciones={[{ v: '', t: 'Elegir guardia' }, ...st.list<Vigilador>('guards').map(g => ({ v: g.id, t: (g.apellido + ' ' + g.nombre).trim() }))]} /> : null}
+      }} opciones={[{ v: '', t: 'Elegir guardia' }, ...st.list<Vigilador>('guards').filter(g=>!g.corporativo).map(g => ({ v: g.id, t: (g.apellido + ' ' + g.nombre).trim() }))]} /> : null}
       <Input label="Nombre completo" value={nombre} onChangeText={setNombre} />
-      <Input label="Fecha" value={fecha} onChangeText={setFecha} placeholder="AAAA-MM-DD" mono />
-      <Input label="Horario" value={hora} onChangeText={setHora} placeholder="HH:MM" mono keyboardType="numbers-and-punctuation" />
+      <Input tipo="fecha" label="Fecha" value={fecha} onChangeText={setFecha} placeholder="AAAA-MM-DD" mono />
+      <Input tipo="hora" label="Horario" value={hora} onChangeText={setHora} placeholder="HH:MM" mono keyboardType="numbers-and-punctuation" />
       {!policial ? <Selector label="Puesto" valor={puesto} onChange={setPuesto} opciones={puestos(st.S).map(p => ({ v: p.id, t: p.nombre }))} /> : null}
       <Input label="Turno" value={turno} onChangeText={setTurno} placeholder="Mañana · 07:00 a 15:00" />
       {error ? <Banner kind="warn">{error}</Banner> : null}

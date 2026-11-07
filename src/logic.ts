@@ -93,7 +93,7 @@ export function ultimoPrecinto(S: Estado): string {
   const registros = vivos(S.alogs).slice().sort((a, b) =>
     (b.orden || b.updatedAt) - (a.orden || a.updatedAt));
   for (const a of registros) {
-    for (const p of [a.p2, a.p1]) if (/^\d{4,}$/.test(p || '')) return p;
+    for (const p of [...(a.puertas?.flatMap(p=>p.precintos)||[]).slice().reverse(), a.p2, a.p1]) if (/^\d{4,}$/.test(p || '')) return p;
   }
   return '';
 }
@@ -101,7 +101,7 @@ export function ultimoPrecinto(S: Estado): string {
 export function proximoPrecinto(S: Estado): string {
   let max: number | null = null;
   vivos(S.alogs).forEach(a => {
-    [a.p1, a.p2].forEach(p => {
+    [...(a.puertas?.flatMap(p=>p.precintos)||[]),a.p1, a.p2].forEach(p => {
       const n = numOf(p);
       if (n != null && (max == null || n > max)) max = n;
     });
@@ -121,8 +121,8 @@ export function visNombre(v: Visita) {
 }
 
 /* ---------- rondas ---------- */
-export const rondaActiva = (S: Estado, guardId: string) =>
-  vivos(S.rounds).find(r => !r.fin && r.guardId === guardId);
+export const rondaActiva = (S: Estado, guardId: string, telefonoId?:string, tipo?:'general'|'puntos') =>
+  vivos(S.rounds).find(r => !r.fin && (r.createdBy || r.guardId) === guardId && (!telefonoId||r.dispositivoId===telefonoId) && (!tipo||(r.tipoRecorrido||'puntos')===tipo));
 
 /* ---------- generador de diagrama ---------- */
 export const CICLOS: Record<string, number[] | null> = {

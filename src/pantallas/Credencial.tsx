@@ -1,7 +1,8 @@
 /* Credencial del vigilador. Se toca y gira: adelante la identificación, atrás
    los datos personales. Es la vista de identidad del perfil. */
 import React, { useRef, useState } from 'react';
-import { View, Text, Image, Pressable, Animated, Easing } from 'react-native';
+import { View, Text, Pressable, Animated, Easing } from 'react-native';
+import {Image} from '../Imagen';
 import { useStore } from '../store';
 import { nombrePuesto, franjaPorId, etiquetaFranja } from '../logic';
 import { Vigilador, edadDe, dmy } from '../model';
@@ -62,7 +63,7 @@ export default function Credencial({ g }: { g: Vigilador }) {
           <View style={{ height: 42, backgroundColor: t.accent, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 9 }}>
             <EscudoMarca size={19} />
             <Text style={{ fontFamily: FONT.dispBold, fontSize: 17, color: t.accentInk, letterSpacing: 0.6 }}>
-              VIGEL<Text style={{color: '#31C9DF'}}>IUM</Text>
+              SECUR<Text style={{color: '#FFFFFF'}}>IA</Text>
             </Text>
             <View style={{ flex: 1 }} />
             <Text style={{ fontFamily: FONT.bodySemi, fontSize: 10.5, color: t.accentInk, opacity: 0.85, letterSpacing: 1 }}>
@@ -89,7 +90,7 @@ export default function Credencial({ g }: { g: Vigilador }) {
               <Text numberOfLines={2} style={{ fontFamily: FONT.dispBold, fontSize: 21, lineHeight: 23, color: t.text }}>
                 {nombre || 'Sin nombre'}
               </Text>
-              <Dato etiqueta="Puesto" valor={puesto} color={t.text2} muted={t.muted} />
+              <Dato etiqueta="Puesto de trabajo" valor={puesto} color={t.text2} muted={t.muted} />
               <Dato etiqueta="Turno" valor={turno} color={t.text2} muted={t.muted} />
               <Dato etiqueta="Legajo" valor={g.legajo} color={t.text2} muted={t.muted} />
             </View>

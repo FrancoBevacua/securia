@@ -3,18 +3,26 @@ import { View, Text } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store';
 import { motivoSoloLectura, turnoAbierto } from '../servicio';
+import SelectorFirma from './SelectorFirma';
+import {nuevoAcceso,mismoNombre} from '../altasCatalogo';
 import ServicioActual from './ServicioActual';
+import TipoAcceso from './TipoAcceso';
+import SeleccionAccesos from './SeleccionAccesos';
+import PuertasAcceso from './PuertasAcceso';
+import LeerPrecintos from './LeerPrecintos';
+import {puertasDeAcceso,inicioPrecinto,nuevasPuertas,precintosPorton,completarPuertas} from '../precintos';
+import {validarGuardiaEnServicio} from '../controlesServicio';
 import { alogsDe, catalogoAccesos, ultimoPrecinto } from '../logic';
 import {
-  AccesoLog, AccesoCat, DOW,
+  AccesoLog, AccesoCat, PuertaPrecintos, TipoAccesoFisico, ConfiguracionPorton, SeleccionAccesos as DatosSeleccion, DOW,
   addDays, dmy, hhmm, isoDate, parseISO, uid,
   prefijoPrecinto, sufijoPrecinto, armarPrecinto, soloDigitos,
 } from '../model';
-import { gsName, textoInformeAccesos, textoAlogLibro, lineaPrecintos, OpcInforme } from '../text';
+import { gsName, textoInformeAccesos, textoAlogLibro, lineaPrecintos, motivoDeAcceso, nombreGrupoAccesos, listaAccesos, OpcInforme } from '../text';
 import { FONT } from '../theme';
 import {
   useTheme, Pantalla, Cabecera, Card, Btn, Tag, Seg, Item, Empty, Stack, Row, Chip, Chipbar,
-  Input, Selector, Sheet, Toggle, Field, Eyebrow, useToast, Hint, Banner,
+  Input, Selector, Sheet, Toggle, Confirmar, Field, Eyebrow, useToast, Hint, Banner,
 } from '../ui';
 
 export default function Accesos() {
@@ -35,7 +43,7 @@ export default function Accesos() {
 
   return (
     <Pantalla>
-      <Cabecera titulo="Accesos" sub="Aperturas y cierres con precinto, listos para pasar al CCTV."
+      <Cabecera titulo="Accesos" sub="Aperturas y cierres de puertas, portones y otros accesos para CCTV."
         derecha={modo === 'reg' ? <Btn icon="plus" variant="primary" onPress={() => setEditar(null)} /> : undefined} />
 
       <Seg acento valor={modo} onChange={setModo}
@@ -63,7 +71,7 @@ export default function Accesos() {
                     stripe={r.tipo === 'apertura' ? 'acc' : 'info'}
                     lead={r.hora} title={r.acceso}
                     tituloLineas={1} lineas={1}
-                    subs={[r.gs, lineaPrecintos(r).replace('\n', ' · ') || r.nota || null]}
+                    subs={[r.gs, lineaPrecintos(r).replace('\n', ' · ') || r.nota || null, motivoDeAcceso(r) || null]}
                     right={<Tag label={r.tipo === 'apertura' ? 'Apert.' : 'Cierre'} kind={r.tipo === 'apertura' ? 'acc' : 'info'} />}
                     onPress={() => setEditar(r)} />
                 ))}
@@ -109,11 +117,16 @@ function EditorAlog({ abierto, registro, fecha, onClose }: {
   const toast = useToast();
   const [tipo, setTipo] = useState<'apertura' | 'cierre'>('apertura');
   const [acceso, setAcceso] = useState('');
+  const [seleccion, setSeleccion] = useState<DatosSeleccion>({});
   const [hora, setHora] = useState(hhmm());
   const [guardId, setGuardId] = useState('');
-  const [p1, setP1] = useState('');   // solo los últimos tres dígitos
-  const [p2, setP2] = useState('');
+  const [puertas,setPuertas]=useState<PuertaPrecintos[]>(puertasDeAcceso());
+  const [leerPrecintos,setLeerPrecintos]=useState(false);
   const [nota, setNota] = useState('');
+  const [tipoAcceso,setTipoAcceso]=useState<TipoAccesoFisico>('emergencia');
+  const [configuracion,setConfiguracion]=useState<ConfiguracionPorton>('ingreso');
+  const [sinPrecinto,setSinPrecinto]=useState(false);
+  const [alta,setAlta]=useState(false);
 
   const catalogo = catalogoAccesos(st.S);
   const sug = ultimoPrecinto(st.S);
@@ -125,43 +138,51 @@ function EditorAlog({ abierto, registro, fecha, onClose }: {
     if (!abierto) return;
     setTipo((registro?.tipo as any) || 'apertura');
     setAcceso(registro?.acceso || '');
+    setSeleccion({grupoAccesos:registro?.grupoAccesos,accesos:registro?.accesos});
+    setAlta(false);
+    setLeerPrecintos(false);
     setHora(registro?.hora || hhmm());
-    setGuardId(registro?.guardId || '');
-    setP1(registro?.p1 || '');
-    setP2(registro?.p2 || '');
+    setGuardId(registro?.guardId || st.responsable?.id || '');
+    const inicial=puertasDeAcceso(registro);
+    if(!registro)inicial[0].precintos=[inicioPrecinto(pref)];
+    setPuertas(inicial);
     setNota(registro?.nota || '');
+    setTipoAcceso(registro?.tipoAcceso||'emergencia');
+    setConfiguracion(registro?.configuracionPorton||'ingreso');
+    setSinPrecinto(registro?.sinPrecinto??(!!registro&&!(registro.p1||registro.p2||registro.puertas?.some(p=>p.precintos.some(Boolean)))));
   }, [abierto, registro?.id]);
 
-  const elegir = (c: AccesoCat) => {
-    setAcceso(c.nombre);
-  };
+  const varios = !!seleccion.grupoAccesos;
+  const nombreAcceso = seleccion.grupoAccesos ? nombreGrupoAccesos(seleccion.grupoAccesos) : acceso.trim();
+  const mensajeGrupo = varios ? textoAlogLibro({tipo,acceso:nombreAcceso,...seleccion,incluirMotivo:false,nota,p1:'',p2:''} as AccesoLog) : '';
 
-  const guardar = () => {
-    if (!acceso.trim()) { toast('Indique el acceso'); return; }
+  const guardar = (agregar?:boolean) => {
+    if (varios ? !listaAccesos(seleccion).length : !acceso.trim()) { toast('Indique el acceso'); return; }
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) { toast('Ingrese una hora válida (HH:MM)'); return; }
-    if ([p1, p2].some(p => p && !(p.length === 7 || (p.length === 3 && pref.length === 4) || (registro && [registro.p1, registro.p2].includes(p))))) {
-      toast('El precinto debe tener 7 números, o los últimos 3 si hay un prefijo guardado'); return;
-    }
     const g = st.byId<any>('guards', guardId);
     if(!g||g.deleted){toast('Seleccione el vigilador que realizó la novedad');return;}
-    const n1 = pref ? armarPrecinto(pref, p1) : soloDigitos(p1);
-    const n2 = pref ? armarPrecinto(pref, p2) : soloDigitos(p2);
-    const nuevoPref = prefijoPrecinto(n2 || n1) || pref;
+    let completas:PuertaPrecintos[];
+    try{completas=varios?[]:completarPuertas(tipoAcceso==='porton'?precintosPorton(puertas,pref):puertas,pref,sinPrecinto);}catch(e:any){toast(e.message);return;}
+    const numeros=completas.flatMap(p=>p.precintos);
+    const n1=numeros[0]||'',n2=numeros[1]||'';
+    const nuevoPref = prefijoPrecinto(numeros[numeros.length-1] || '') || pref;
     const id = registro?.id || uid();
     const vinculadas = st.list<any>('novedades').filter(n => n.alogId === id);
-    const novId = registro?.novId || vinculadas[0]?.id || (st.S.site.alogLibro ? uid() : undefined);
+    const novId = undefined; // No agregar aperturas ni cierres de la seccion Accesos al libro automáticamente
     const r = {
       id, tipo, hora: hora || hhmm(), guardId: g.id,
-      gs: gsName(g, st.S.site), acceso, p1: n1, p2: n2,
-      nota, fecha,
+      gs: gsName(g, st.S.site), acceso:nombreAcceso, ...seleccion, p1: n1, p2: n2, puertas:completas,
+      nota, fecha, incluirMotivo:false, motivo:undefined, tipoAcceso, configuracionPorton:tipoAcceso==='porton'?undefined:configuracion, sinPrecinto:varios?false:sinPrecinto,
       orden: registro?.orden ?? Date.now(),
       novId, p1tipo: '', p2tipo: '',
     };
+    const falta=!varios&&!st.S.accesses.some(c=>!c.deleted&&mismoNombre(c.nombre,acceso));
+    if(falta&&agregar===undefined){setAlta(true);return;}setAlta(false);
     const cambios: any[] = [{ col: 'alogs', obj: r }];
-    if (!st.list<AccesoCat>('accesses').some(c => c.nombre.toLowerCase() === acceso.toLowerCase())) {
+    if (falta && agregar) {
       cambios.push({ col: 'accesses', obj: {
-        id: uid(), nombre: acceso, tipo: 'acceso',
-        precintos: n2 ? 2 : n1 ? 1 : 0, orden: Date.now(),
+        id: uid(), nombre: acceso, tipo: tipoAcceso, configuracionPorton:tipoAcceso==='porton'?undefined:configuracion, sinPrecinto,
+        precintos: numeros.length, orden: Date.now(),
       } });
     }
     if (novId) {
@@ -177,12 +198,12 @@ function EditorAlog({ abierto, registro, fecha, onClose }: {
     toast('Registro guardado');
   };
 
-  const motivo = registro ? motivoSoloLectura(st.S, { ...registro, guardId: registro.createdBy || registro.guardId } as any, st.me?.id) : '';
+  const motivo = registro ? motivoSoloLectura(st.S, { ...registro, guardId: registro.createdBy || registro.guardId } as any, st.me?.id, st.telefonoId) : '';
   if (motivo) return <Sheet visible={abierto} title="Detalle del acceso" onClose={onClose}><Banner kind="info">{motivo}</Banner><Input label="Registro" value={textoAlogLibro(registro!)} editable={false} multiline rows={8} /></Sheet>;
-  if (!turnoAbierto(st.S, st.me?.id)) return <Sheet visible={abierto} title="Registrar acceso" onClose={onClose}><ServicioActual /></Sheet>;
+  if (!turnoAbierto(st.S, st.me?.id, st.telefonoId)) return <Sheet visible={abierto} title="Registrar acceso" onClose={onClose}><ServicioActual /></Sheet>;
 
   return (
-    <Sheet visible={abierto} title={registro ? 'Editar registro' : 'Registrar acceso'} onClose={onClose}
+      <><Sheet visible={abierto&&!leerPrecintos} title={registro ? 'Editar registro' : 'Registrar acceso'} onClose={onClose}
       footer={
         <>
           {registro ? (
@@ -191,44 +212,42 @@ function EditorAlog({ abierto, registro, fecha, onClose }: {
                 ...st.list<any>('novedades').filter(n => n.alogId === registro.id || n.id === registro.novId).map(n => ({ col: 'novedades' as const, obj: { id: n.id, deleted: true } }))]); onClose(); toast('Registro eliminado');
             }} />
           ) : null}
-          <Btn label={registro ? 'Guardar' : 'Agregar a la lista'} variant="primary" style={{ flex: 1 }} onPress={guardar} />
+          <Btn label={registro ? 'Guardar' : 'Agregar a la lista'} variant="primary" style={{ flex: 1 }} onPress={()=>guardar()} />
         </>
       }>
       <Seg acento valor={tipo} onChange={v => setTipo(v as any)}
         opciones={[{ v: 'apertura', t: 'Apertura' }, { v: 'cierre', t: 'Cierre' }]} />
-      {catalogo.length ? (
-        <Field label="Acceso">
-          <Chipbar>
-            {catalogo.map(c => <Chip key={c.id} label={c.nombre} on={acceso === c.nombre} onPress={() => elegir(c)} />)}
-          </Chipbar>
-        </Field>
-      ) : null}
-      <Input label="Nombre del acceso" value={acceso} onChangeText={setAcceso} placeholder="Portón ingreso Oroño" />
+      <SeleccionAccesos datos={{acceso,...seleccion}} catalogo={catalogo} onChange={cambio=>{
+        if(cambio.acceso!==undefined)setAcceso(cambio.acceso);
+        if('grupoAccesos' in cambio || 'accesos' in cambio)setSeleccion(s=>({...s,...cambio}));
+      }} onElegirCatalogo={c=>{
+        const tp:TipoAccesoFisico=c.tipo==='porton'?'porton':['pecera','ventanal','otro','acceso'].includes(c.tipo)?'otro':'emergencia';
+        setTipoAcceso(tp);setConfiguracion(c.configuracionPorton||'ingreso');setSinPrecinto(c.sinPrecinto??(c.precintos===0||tp==='otro'));
+        const ps=nuevasPuertas(tp,c.configuracionPorton,pref);
+        if(tp==='emergencia'&&c.precintos>0)ps[0].precintos=Array(Math.min(c.precintos,20)).fill(inicioPrecinto(pref));
+        setPuertas(ps);
+      }}/>
+      {alta?<Confirmar visible etiqueta="Aceptar" variante="primary" mensaje="El acceso no existe. ¿Desea agregarlo al catálogo? Si cancela, se guarda sólo el registro." onOk={()=>guardar(true)} onCancel={()=>guardar(false)}/>:null}
+
       <Row gap={11} style={{ alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
-          <Input label="Hora" value={hora} onChangeText={setHora} mono keyboardType="numbers-and-punctuation" />
+          <Input tipo="hora" label="Hora" value={hora} onChangeText={setHora} mono keyboardType="numbers-and-punctuation" />
         </View>
         <View style={{ flex: 1 }}>
-          <Selector label="Vigilador" valor={guardId} onChange={setGuardId}
-            opciones={[{v:'',t:'Seleccione el vigilador'},...st.list<any>('guards')
-              .slice().sort((a, b) => a.apellido.localeCompare(b.apellido))
-              .map(g => ({ v: g.id, t: gsName(g, st.S.site) }))]} />
+          <SelectorFirma label="Vigilador" valor={guardId} onChange={setGuardId}/>
         </View>
       </Row>
-      <Row gap={11} style={{ alignItems: 'flex-start' }}>
-        <View style={{ flex: 1 }}>
-          <Input label="Precinto N°" value={p1}
-            onChangeText={v => setP1(soloDigitos(v).slice(0, 7))}
-            mono keyboardType="number-pad" maxLength={7} placeholder={pref} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Input label="Segundo precinto" value={p2}
-            onChangeText={v => setP2(soloDigitos(v).slice(0, 7))}
-            mono keyboardType="number-pad" maxLength={7} placeholder={pref} />
-        </View>
-      </Row>
+      {varios ? <Hint>Para registrar puertas y precintos, cargue cada acceso por separado.</Hint> : <>
+       <TipoAcceso tipo={tipoAcceso} configuracion={configuracion} sinPrecinto={sinPrecinto} onChange={(tp,cf,sp)=>{setTipoAcceso(tp);setConfiguracion(cf);setSinPrecinto(sp);if(tp!==tipoAcceso||cf!==configuracion||(!sp&&!puertas.length))setPuertas(nuevasPuertas(tp==='otro'?'emergencia':tp,cf,pref));}}/>
+       {!sinPrecinto?<><PuertasAcceso valor={puertas} onChange={setPuertas} prefijo={pref} porton={tipoAcceso==='porton'}/><Btn label="Leer precintos con cámara" icon="informes" disabled={!acceso.trim()} onPress={()=>setLeerPrecintos(true)}/></>:null}
+      </>}
       <Input label="Nota (opcional)" value={nota} onChangeText={setNota} placeholder="Camión de descarga KFC" />
-    </Sheet>
+      {varios ? <>
+        <Input label="Mensaje automático" value={mensajeGrupo} editable={false} multiline rows={6} fixedHeight/>
+        <Btn label="Copiar mensaje" icon="copy" disabled={!listaAccesos(seleccion).length}
+          onPress={async()=>{await Clipboard.setStringAsync(mensajeGrupo);toast('Mensaje copiado');}}/>
+      </> : null}
+    </Sheet><LeerPrecintos visible={abierto&&leerPrecintos} acceso={acceso} porton={tipoAcceso==='porton'} onClose={()=>setLeerPrecintos(false)} onAceptar={setPuertas}/></>
   );
 }
 
@@ -239,11 +258,14 @@ function EditorCatalogo({ abierto, item, onClose }: { abierto: boolean; item: Ac
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('porton');
   const [precintos, setPrecintos] = useState('1');
+  const [configuracion,setConfiguracion]=useState<ConfiguracionPorton>('ingreso');
+  const [sinPrecinto,setSinPrecinto]=useState(false);
 
   useEffect(() => {
     if (!abierto) return;
     setNombre(item?.nombre || '');
-    setTipo(item?.tipo || 'porton');
+    setTipo(item?.tipo==='porton'?'porton':!item||['puerta','emergencia'].includes(item.tipo)?'emergencia':'otro');
+    setConfiguracion(item?.configuracionPorton||'ingreso');setSinPrecinto(item?.sinPrecinto??item?.precintos===0);
     setPrecintos(String(item?.precintos ?? 1));
   }, [abierto, item?.id]);
 
@@ -254,8 +276,9 @@ function EditorCatalogo({ abierto, item, onClose }: { abierto: boolean; item: Ac
           {item ? <Btn icon="trash" variant="danger" onPress={() => { st.drop('accesses', item.id); onClose(); toast('Acceso quitado'); }} /> : null}
           <Btn label="Guardar" variant="primary" style={{ flex: 1 }} onPress={() => {
             if (!nombre.trim()) { toast('Ingrese un nombre'); return; }
+            if(!sinPrecinto&&(!/^\d{1,3}$/.test(precintos)||+precintos<1)){toast('Indique una cantidad válida de precintos.');return;}
             st.put('accesses', {
-              id: item?.id || uid(), nombre, tipo, precintos: +precintos,
+              id: item?.id || uid(), nombre, tipo, configuracionPorton:configuracion,sinPrecinto, precintos:sinPrecinto?0:+precintos,
               orden: item?.orden ?? Date.now(),
             });
             onClose(); toast('Acceso guardado');
@@ -263,11 +286,8 @@ function EditorCatalogo({ abierto, item, onClose }: { abierto: boolean; item: Ac
         </>
       }>
       <Input label="Nombre" value={nombre} onChangeText={setNombre} placeholder="Portón ingreso Oroño" />
-      <Selector label="Tipo" valor={tipo} onChange={setTipo} opciones={[
-        { v: 'puerta', t: 'Puerta' }, { v: 'porton', t: 'Portón' },
-        { v: 'pecera', t: 'Pecera' }, { v: 'acceso', t: 'Acceso' }]} />
-      <Selector label="Precintos" valor={precintos} onChange={setPrecintos} opciones={[
-        { v: '0', t: 'Sin precinto' }, { v: '1', t: 'Un precinto' }, { v: '2', t: 'Dos precintos' }]} />
+      <TipoAcceso tipo={tipo as TipoAccesoFisico} configuracion={configuracion} sinPrecinto={sinPrecinto} onChange={(tp,cf,sp)=>{setTipo(tp);setConfiguracion(cf);setSinPrecinto(sp);}}/>
+      {!sinPrecinto&&tipo!=='porton'?<Input label="Cantidad de precintos" value={precintos} onChangeText={v=>setPrecintos(soloDigitos(v).slice(0,3))} keyboardType="number-pad" hint="Cantidad habitual; puede agregar puertas al registrar."/>:null}
     </Sheet>
   );
 }
@@ -279,13 +299,15 @@ function HojaInforme({ visible, fecha, onClose }: { visible: boolean; fecha: str
   const toast = useToast();
   const [o, setO] = useState<OpcInforme>({ orden: 'carga', tipo: 'ambos', encabezado: false });
   const texto = textoInformeAccesos(alogsDe(st.S, fecha), fecha, o, st.S.site);
+  const advertencias=alogsDe(st.S,fecha).filter(r=>o.tipo==='ambos'||r.tipo===o.tipo).flatMap(r=>{try{validarGuardiaEnServicio(st.S,r.guardId,r.fecha,r.hora);return [];}catch(e:any){return [r.acceso+': '+e.message];}});
 
   return (
     <Sheet visible={visible} title="Informe para CCTV" onClose={onClose}
       footer={
-        <Btn label="Copiar" icon="copy" variant="primary" style={{ flex: 1 }}
+        <Btn label="Copiar" icon="copy" variant="primary" style={{ flex: 1 }} disabled={!!advertencias.length}
           onPress={async () => { await Clipboard.setStringAsync(texto); toast('Informe copiado. Péguelo en el chat del CCTV.'); }} />
       }>
+      {advertencias.length?<Banner kind="warn">{advertencias.join('\n')}</Banner>:<Banner kind="info">Guardias verificados en servicio para los horarios registrados.</Banner>}
       <Field label="Incluir">
         <Seg valor={o.tipo} onChange={v => setO(x => ({ ...x, tipo: v as any }))}
           opciones={[{ v: 'ambos', t: 'Todo' }, { v: 'apertura', t: 'Aperturas' }, { v: 'cierre', t: 'Cierres' }]} />

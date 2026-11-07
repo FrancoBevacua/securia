@@ -20,7 +20,7 @@ export class Barrera extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: any) {
     // en release no hay consola a la vista, pero sirve con el cable conectado
-    console.error('VIGELIUM — error atrapado por la barrera', error, info?.componentStack);
+    console.error('SECURIA — error atrapado por la barrera', error, info?.componentStack);
     this.setState({ info: String(info?.componentStack || '').slice(0, 1500) });
   }
 
@@ -32,7 +32,7 @@ export class Barrera extends React.Component<Props, State> {
   copiar = async () => {
     const e = this.state.error;
     const t = [
-      'VIGELIUM — error',
+      'SECURIA — error',
       Platform.OS + ' ' + String(Platform.Version),
       e?.message || '',
       e?.stack || '',

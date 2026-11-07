@@ -1,8 +1,11 @@
 import { Platform } from 'react-native';
 import { File } from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
+import {resolverAdjunto} from './adjuntosNube';
 
 export async function leerBytes(uri: string): Promise<Uint8Array> {
+  uri=await resolverAdjunto(uri);
+  if(uri.startsWith('data:')){const s=atob(uri.slice(uri.indexOf(',')+1));return Uint8Array.from(s,c=>c.charCodeAt(0));}
   if (Platform.OS !== 'web') return new File(uri).bytes();
   const r = await fetch(uri);
   if (!r.ok) throw new Error('No se pudo leer el archivo.');
@@ -17,6 +20,7 @@ export function bytesBase64(bytes: Uint8Array): string {
 
 /** Convierte también PNG/HEIC a JPEG; cambiar sólo la extensión no los convierte. */
 export async function prepararFoto(uri: string, max = 1600) {
+  uri=await resolverAdjunto(uri);
   const contexto = ImageManipulator.ImageManipulator.manipulate(uri);
   const original = await contexto.renderAsync();
   if (Math.max(original.width, original.height) > max) {

@@ -34,6 +34,12 @@ async function leerAnterior(clave: string): Promise<string | null> {
 }
 
 export const almacenLocal = {
+  async claves(prefijo:string):Promise<string[]> {
+    return (await (await db()).getAllAsync<{clave:string}>('SELECT clave FROM documentos WHERE valor IS NOT NULL AND substr(clave,1,?) = ? ORDER BY clave',prefijo.length,prefijo)).map(x=>x.clave);
+  },
+  async compactar():Promise<void>{
+    await (await db()).execAsync('PRAGMA wal_checkpoint(TRUNCATE); VACUUM;');
+  },
   async getItem(clave: string): Promise<string | null> {
     const d = await db();
     const fila = await d.getFirstAsync<{valor:string|null}>('SELECT valor FROM documentos WHERE clave = ?', clave);

@@ -11,8 +11,8 @@ export class ColaNube {
   constructor(private io:{
     leer:()=>Promise<SobreNube|null>; escribir:(p:SobreNube)=>Promise<void>; quitar:()=>Promise<void>;
     consultar:()=>Promise<{estado:Estado;revision:number}>;
-    enviar:(p:SobreNube)=>Promise<number>; actor:()=>string; revision:()=>number;
-    confirmar:(rev:number,estado?:Estado)=>void;
+    enviar:(p:SobreNube,remoto:Estado)=>Promise<number>; actor:()=>string; revision:()=>number;
+    confirmar:(rev:number,estado?:Estado)=>void|Promise<void>;
     base?:()=>Estado|undefined;
     reconciliar?:(local:Estado,remoto:Estado,base?:Estado)=>Estado;
   }){}
@@ -25,7 +25,7 @@ export class ColaNube {
       const anterior=await this.io.leer();
       if(anterior && anterior.guardia!==guardia)throw new Error('El guardia anterior debe sincronizar sus cambios pendientes.');
       const numero=this.numero=Math.max(this.numero,anterior?.numero??0)+1;
-      await this.io.escribir({estado:copia,guardia,numero,revision:anterior?.revision??this.io.revision(),enviado:anterior?.enviado,origenEnviado:anterior?.origenEnviado,base:baseCopia??anterior?.base??this.io.base?.()});
+      await this.io.escribir({estado:copia,guardia,numero,revision:anterior?.revision??this.io.revision(),enviado:anterior?.enviado,origenEnviado:anterior?.origenEnviado,base:anterior ? anterior.base : baseCopia??this.io.base?.()});
     });
     const enviado=this.red.catch(()=>{}).then(async()=>{await listo;await this.vaciar();});this.red=enviado;
     // Quien espera sólo el disco no debe producir un rechazo no manejado de red.
@@ -34,7 +34,45 @@ export class ColaNube {
   }
   reintentar():Promise<void>{const p=this.red.catch(()=>{}).then(()=>this.vaciar());this.red=p;return p;}
   async esperar(){await this.disco;await this.red;}
+  /** Sólo descarta la cola después del respaldo remoto confirmado y de guardar la nueva base. */
+  recuperar<T extends {estado:Estado;revision:number}>(respaldar:(p:SobreNube)=>Promise<T>):Promise<T|null>{
+    const trabajo=this.red.catch(()=>{}).then(async()=>{
+      const pendiente=await this.exclusivo(()=>this.io.leer());
+      if(!pendiente)return null;
+      if(pendiente.guardia!==this.io.actor())throw Error('Ingrese con la cuenta que tiene cambios pendientes.');
+      const resultado=await respaldar(pendiente);
+      await this.exclusivo(async()=>{
+        const actual=await this.io.leer();
+        if(!actual||actual.numero!==pendiente.numero||actual.guardia!==this.io.actor())
+          throw Error('Se guardaron cambios nuevos durante la recuperación. Se conservaron; vuelva a recuperar la sincronización.');
+        await this.io.confirmar(resultado.revision,resultado.estado);
+        await this.io.quitar();
+      });
+      return resultado;
+    });
+    this.red=trabajo;return trabajo;
+  }
+  resolver(estado:Estado,base:Estado,revision:number,numero:number):Promise<void>{
+    const p=this.red.catch(()=>{}).then(()=>this.exclusivo(async()=>{
+      const actual=await this.io.leer();
+      if(!actual||actual.numero!==numero||actual.guardia!==this.io.actor())throw Error('Hay cambios nuevos. Vuelva a revisar las diferencias.');
+      await this.io.escribir({...actual,estado,base,revision,numero:actual.numero+1,enviado:undefined,origenEnviado:undefined});
+    }));
+    this.red=p;return p;
+  }
   private async vaciar(){
+    // Reconsultar antes de reenviar: una cancelación puede haber perdido sólo
+    // la respuesta de un guardado ya confirmado por el servidor.
+    for(let intento=0;;intento++){
+      try{return await this.vaciarIntento();}
+      catch(e:any){
+        if(!e.sinConexion||intento>=2)throw e;
+        await new Promise(resolve=>setTimeout(resolve,500*2**intento));
+      }
+    }
+  }
+  private async vaciarIntento(){
+    let colisiones=0;
     for(;;){
       let p=await this.exclusivo(()=>this.io.leer());if(!p)return;
       if(!this.io.actor() || p.guardia!==this.io.actor())throw new Error('Ingrese con la cuenta que tiene cambios pendientes.');
@@ -57,12 +95,15 @@ export class ColaNube {
       }
       const enviado=p;
       await this.exclusivo(async()=>{const actual=await this.io.leer();if(actual)await this.io.escribir({...actual,revision:enviado.revision,enviado:enviado.estado,origenEnviado:origen});});
-      const revision=await this.io.enviar(enviado);
+      let revision:number;
+      try{revision=await this.io.enviar(enviado,servidor.estado);}
+      catch(e:any){if(e.codigo==='conflicto'&&++colisiones<=3)continue;throw e;}
+      colisiones=0;
       await this.aceptar(enviado,revision,origen);
     }
   }
   private async aceptar(enviado:SobreNube,revision:number,origen:Estado=enviado.estado){
-    this.io.confirmar(revision,enviado.estado);
+    await this.io.confirmar(revision,enviado.estado);
     await this.exclusivo(async()=>{
       const actual=await this.io.leer();
       if(actual?.numero===enviado.numero)await this.io.quitar();

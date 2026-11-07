@@ -90,12 +90,60 @@ export function resumenAcceso(n: Novedad) {
   if (a.vehiculo?.activo && a.vehiculo.dominio) p.push(a.vehiculo.dominio);
   return p.join(' · ');
 }
+/** Abrevia esta redacción anterior sin consultar perfiles ni cambiar datos históricos. */
+export function textoMovimientoBreve(texto: string) {
+  return texto.replace(/^Se registra el ingreso de Gs ([^\n]+?) al puesto ([^\n]+?) para cumplir el turno de ((?:[01]\d|2[0-3]):[0-5]\d) a ((?:[01]\d|2[0-3]):[0-5]\d) horas\.(?=\s|$)/gim,
+    (_frase, persona, puesto, entrada, salida) => 'Ingresa Gs ' + persona + ' al puesto ' + puesto + '. Turno: ' + entrada + '-' + salida + '.')
+    .replace(/^(?:Se registra el egreso de (?:el )?Gs|Se retira Gs) /gim, 'Se retira el Gs ');
+}
+
+/** La revisión de estilo debe conservar la plantilla y los datos de cada ingreso. */
+export function validarFormatoMovimientos(original: string, revisado: string) {
+  const movimientos = (texto: string) => texto.match(/^(?:Ingresa Gs [^\n]+? al puesto [^\n]+?\. Turno: (?:[01]\d|2[0-3]):[0-5]\d-(?:[01]\d|2[0-3]):[0-5]\d\.|Se retira el Gs [^\n]+?\.(?=\s|$))/gm) || [];
+  const protegidos = movimientos(original);
+  if (protegidos.length && JSON.stringify(protegidos) !== JSON.stringify(movimientos(revisado))) {
+    throw new Error('La IA cambió el formato o los datos del ingreso o egreso. Se conserva el texto original.');
+  }
+}
+
 export const novTextoCompleto = (n: Novedad) => {
   const acc = resumenAcceso(n);
-  return (acc ? acc + '\n' : '') + n.texto;
+  return (acc ? acc + '\n' : '') + textoMovimientoBreve(n.texto);
 };
 
 /* ---------- aperturas y cierres ---------- */
+type DatosMotivo = { motivo?: string; incluirMotivo?: boolean };
+type DatosApertura = DatosMotivo & import('./model').SeleccionAccesos;
+export const nombreGrupoAccesos = (grupo: import('./model').GrupoAccesos) => grupo === 'portones' ? 'Portones de playa' : grupo === 'emergencias' ? 'Puertas de emergencias' : 'Otros accesos';
+export const listaAccesos = (datos: import('./model').SeleccionAccesos) => [...new Set((datos.accesos || []).map(a=>a.trim()).filter(Boolean))];
+export const motivoDeAcceso = (datos: DatosMotivo) => datos.incluirMotivo === false ? '' : (datos.motivo || '').trim();
+/** Conserva el motivo tal como se escribió; sólo integra conectores explícitos. */
+export function conMotivoAcceso(frase: string, datos: DatosMotivo) {
+  const motivo = motivoDeAcceso(datos);
+  if (!motivo) return frase;
+  const integrado = /^(para|por|debido a|a fin de|con el fin de|ante|a pedido de)\s/i.test(motivo);
+  const texto = integrado
+    ? frase.replace(/[.]+$/, '') + ' ' + motivo.charAt(0).toLowerCase() + motivo.slice(1)
+    : frase + ' Motivo: ' + motivo;
+  return /[.!?]$/.test(texto) ? texto : texto + '.';
+}
+export function fraseAperturaCierre(tipo: 'apertura' | 'cierre', nombre: string, datos: DatosApertura = {}) {
+  if (datos.grupoAccesos) {
+    const elegidos = listaAccesos(datos);
+    if (!elegidos.length) return '';
+    const grupo = datos.grupoAccesos === 'portones' ? 'de los portones de playa' : datos.grupoAccesos === 'emergencias' ? 'de las puertas de emergencias' : 'de otros accesos';
+    const motivo = motivoDeAcceso(datos);
+    return (tipo === 'apertura' ? 'Se procede a la apertura ' : 'Se procede al cierre ') + grupo + ':\n' +
+      elegidos.map(a=>'- '+a).join('\n') + (motivo ? '\n\nMotivo: '+motivo : '');
+  }
+  const acceso = nombre.trim();
+  const complemento = /^(?:los\s+)?portones\s/i.test(acceso) ? 'de los portones ' + acceso.replace(/^(?:los\s+)?portones\s+/i, '')
+    : /^(?:el\s+)?port[oó]n\s/i.test(acceso) ? 'del portón ' + acceso.replace(/^(?:el\s+)?port[oó]n\s+/i, '')
+    : /^(?:las\s+)?puertas\s/i.test(acceso) ? 'de las puertas ' + acceso.replace(/^(?:las\s+)?puertas\s+/i, '')
+    : /^(?:la\s+)?puerta\s/i.test(acceso) ? 'de la puerta ' + acceso.replace(/^(?:la\s+)?puerta\s+/i, '')
+    : /^el\s/i.test(acceso) ? 'del ' + acceso.slice(3) : 'de ' + acceso;
+  return conMotivoAcceso((tipo === 'apertura' ? 'Se procede a la apertura ' : 'Se procede al cierre ') + complemento + '.', datos);
+}
 export type OpcInforme = { orden: 'carga' | 'hora' | 'guardia' | 'acceso'; tipo: 'ambos' | 'apertura' | 'cierre'; encabezado: boolean };
 export function textoInformeAccesos(rows: AccesoLog[], fecha: string, o: OpcInforme, site: Site) {
   let r = rows.slice();
@@ -104,9 +152,11 @@ export function textoInformeAccesos(rows: AccesoLog[], fecha: string, o: OpcInfo
   if (o.orden === 'guardia') r.sort((a, b) => (a.gs || '').localeCompare(b.gs || '') || toMin(a.hora) - toMin(b.hora));
   if (o.orden === 'acceso') r.sort((a, b) => (a.acceso || '').localeCompare(b.acceso || ''));
   const bloques = r.map(x => {
-    let t = x.hora + ' ' + x.gs + '\n' + x.acceso;
+    let t = x.hora + ' ' + x.gs + '\n' + (x.grupoAccesos ? fraseAperturaCierre(x.tipo,x.acceso,{...x,incluirMotivo:false}) : x.acceso);
     const lp = lineaPrecintos(x);
     if (lp) t += '\n' + lp;
+    const motivo = motivoDeAcceso(x);
+    if (motivo) t += '\nMotivo: ' + motivo;
     if (x.nota) t += '\nNota: ' + x.nota;
     return t;
   });
@@ -119,20 +169,22 @@ export function textoInformeAccesos(rows: AccesoLog[], fecha: string, o: OpcInfo
 }
 /** Línea de precintos del bloque de apertura o cierre. */
 export function lineaPrecintos(x: AccesoLog) {
+  if(x.sinPrecinto)return 'Sin precinto (no aplica)';
+  if(x.puertas?.length)return x.puertas.filter(p=>p.sinPrecinto||p.precintos.some(Boolean)).map(p=>p.nombre+': '+(p.sinPrecinto?'sin precinto (no aplica)':p.precintos.filter(Boolean).join(' - '))).join('\n');
   if (!x.p1) return '';
   if (!x.p2) return 'Precinto N° ' + x.p1;
   return 'Precintos N° ' + x.p1 + ' - ' + x.p2;
 }
 
 export function textoAlogLibro(r: AccesoLog) {
-  const verbo = r.tipo === 'apertura' ? 'la apertura' : 'el cierre';
-  let t = 'Se procede a ' + verbo + ' de ' + r.acceso + '.';
-  if (r.p1) {
-    t += r.p2
+  let t = fraseAperturaCierre(r.tipo, r.acceso, r);
+  if(r.puertas?.length){const linea=lineaPrecintos(r);if(linea)t+='\n'+linea;}
+  else if (r.p1) {
+    t += (r.grupoAccesos ? '\n' : '') + (r.p2
       ? ' Se colocan precintos N° ' + r.p1 + ' y N° ' + r.p2 + '.'
-      : ' Se coloca precinto N° ' + r.p1 + '.';
+      : ' Se coloca precinto N° ' + r.p1 + '.');
   }
-  if (r.nota) t += ' ' + r.nota.replace(/\.?$/, '.');
+  if (r.nota) t += (r.grupoAccesos ? '\n\n' : ' ') + r.nota.replace(/\.?$/, '.');
   return t;
 }
 

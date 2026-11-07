@@ -12,6 +12,7 @@ import { ANTICIPO_MIN, permisoAvisos, reprogramarAvisos } from '../avisos';
 import { FONT } from '../theme';
 import { SelectorPaleta } from './Paletas';
 import ConfigurarNube from './Nube';
+import {horaCorte} from '../informedia';
 import {
   useTheme, Pantalla, SubCabecera, Card, Btn, Input, Selector, Seg, Toggle, Stack, Row,
   Eyebrow, Hint, Banner, Divider, useToast, Tag,
@@ -27,7 +28,7 @@ export default function Ajustes() {
   const [nombre, setNombre] = useState(st.S.site.nombre);
   const [prefijo, setPrefijo] = useState(st.S.site.prefijo || 'Gs');
   const [precPref, setPrecPref] = useState((st.S.site.precintoPrefijo || '').slice(0, 4));
-  const [corte, setCorte] = useState(st.S.site.corteInforme || '19');
+  const [corte, setCorte] = useState(horaCorte(st.S));
   const [supervisor,setSupervisor]=useState(st.S.site.supervisorTel||'');
 
   const [ia, setIa] = useState<ConfigIA>(CONFIG_VACIA);
@@ -59,7 +60,7 @@ export default function Ajustes() {
     <Pantalla top>
       <SubCabecera titulo="Ajustes" onBack={() => router.back()} />
       <ConfigurarNube />
-      <Card pad><Stack gap={12}><Eyebrow>Supervisor</Eyebrow><Input label="Número de WhatsApp" value={supervisor} onChangeText={setSupervisor} keyboardType="phone-pad" placeholder="Código de país y número" hint="Se utilizará para compartir el PDF del Informe general."/><Btn label="Guardar número" onPress={()=>{const n=supervisor.replace(/[^0-9]/g,'');if(n&&!/^[1-9][0-9]{7,14}$/.test(n)){toast('Ingrese el número completo con código de país.');return;}st.setSite({supervisorTel:n});toast('Número del supervisor guardado');}}/></Stack></Card>
+      <Card pad><Stack gap={12}><Eyebrow>Supervisor</Eyebrow><Hint>El guardia comparte el informe general desde el libro de novedades.</Hint><Input label="Número de WhatsApp" value={supervisor} onChangeText={setSupervisor} keyboardType="phone-pad" placeholder="Código de país y número" hint="Referencia del destinatario al compartir el PDF. Elija su chat en el selector de WhatsApp."/><Btn label="Guardar número" onPress={()=>{const n=supervisor.replace(/[^0-9]/g,'');if(n&&!/^[1-9][0-9]{7,14}$/.test(n)){toast('Ingrese el número completo con código de país.');return;}st.setSite({supervisorTel:n});toast('Número del supervisor guardado');}}/></Stack></Card>
 
       <Card pad>
         <Stack gap={12}>
@@ -71,13 +72,13 @@ export default function Ajustes() {
           <Input label="Prefijo de los precintos" value={precPref}
             onChangeText={v => setPrecPref(v.replace(/\D/g, '').slice(0, 4))}
             mono keyboardType="number-pad" maxLength={4} placeholder="7652" />
-          <Input label="Hora de corte del informe de 24 hs" value={corte}
-            onChangeText={v => setCorte(v.replace(/\D/g, '').slice(0, 2))}
-            mono keyboardType="number-pad" placeholder="19"
+          <Input tipo="hora" label="Hora de corte del informe de 24 hs" value={corte}
+            onChangeText={setCorte}
+            mono placeholder="19:00"
             hint="El informe general va de esta hora a la misma del día siguiente." />
           <Btn label="Guardar" variant="primary" onPress={() => {
             if (precPref && precPref.length !== 4) { toast('El prefijo debe tener 4 números'); return; }
-            if (corte && (!/^\d{1,2}$/.test(corte) || +corte > 23)) { toast('La hora de corte debe estar entre 0 y 23'); return; }
+            if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(corte)) { toast('Elija una hora de corte válida'); return; }
             st.setSite({
               cliente, region, nombre, prefijo: prefijo || 'Gs',
               precintoPrefijo: precPref, corteInforme: corte || '19',
@@ -100,7 +101,7 @@ export default function Ajustes() {
             </Banner>
           ) : null}
           <Selector label="Proveedor" valor={ia.proveedor}
-            onChange={v => setIa(c => ({ ...c, proveedor: v as any, modelo: '' }))}
+            onChange={v => {setIa(c => ({ ...c, proveedor: v as any, modelo: '',apiKey:'',baseUrl:'' }));setProbado(null);}}
             opciones={PROVEEDORES.map(p => ({
               v: p.v,
               t: p.t + (p.gratis ? '  · gratis' : ''),
@@ -166,10 +167,6 @@ export default function Ajustes() {
                 toast('Recordatorios desactivados');
               }
             }} />
-          <Toggle label="Asentar aperturas y cierres"
-            sub="Cada apertura o cierre que cargues en Accesos genera también su asiento en el libro."
-            value={!!st.S.site.alogLibro}
-            onChange={v => { st.setSite({ alogLibro: v }); toast(v ? 'Las aperturas pasan al libro' : 'Solo quedan en Accesos'); }} />
         </Stack>
       </Card>
 
@@ -197,7 +194,7 @@ export default function Ajustes() {
         </Stack>
       </Card>
 
-      <Hint>VIGELIUM · versión nativa para Android e iOS</Hint>
+      <Hint>SECURIA · versión nativa para Android e iOS</Hint>
     </Pantalla>
   );
 }

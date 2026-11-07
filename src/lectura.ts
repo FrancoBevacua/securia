@@ -1,7 +1,7 @@
 /* Lectura local con selección y cancelación protegidas en Android y web. */
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { extraerTextoPDF } from './pdfr';
+import { extraerTextoPDFConCobertura } from './pdfr';
 import { ImagenIA } from './ai';
 import { leerBytes, bytesBase64, prepararFoto } from './media';
 
@@ -36,8 +36,10 @@ export async function elegirDocumento(opciones: { conservarPDF?: boolean } = {})
     if (String.fromCharCode(...bytes.subarray(0, 5)) !== '%PDF-') throw new Error('El archivo no es un PDF válido.');
     if (!opciones.conservarPDF) {
       try {
-        const crudo = await extraerTextoPDF(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
-        if (crudo?.trim().length >= 20) return { clase: 'texto', texto: crudo, nombre };
+        const lectura = await extraerTextoPDFConCobertura(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+        // Un PDF mixto puede tener texto en una página e imágenes en las demás.
+        // En ese caso se conserva el archivo entero para la lectura con visión.
+        if (lectura.lecturaCompleta && lectura.texto.trim().length >= 20) return { clase: 'texto', texto: lectura.texto, nombre };
       } catch { /* Un PDF sin capa legible se interpreta como documento completo. */ }
     }
     return { clase: 'pdf', nombre, imagen: { mime: 'application/pdf', base64: bytesBase64(bytes) } };

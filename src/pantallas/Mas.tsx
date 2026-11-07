@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { useStore } from '../store';
-import { visAdentro } from '../logic';
 import { FONT, R } from '../theme';
 import { useTheme, Pantalla, Cabecera, Btn, Tile, Row, Eyebrow, Card, useToast } from '../ui';
 import { Icon } from '../icons';
@@ -11,8 +10,7 @@ export default function Mas() {
   const st = useStore();
   const t = useTheme();
   const toast=useToast();
-  const dentro = st.list('visits').filter(visAdentro).length;
-  const gs = st.list('guards').length;
+  const gs = st.list<any>('guards').filter(g=>!g.corporativo).length;
   const ir = (r: string) => () => router.push(r as any);
 
   return (
@@ -20,7 +18,7 @@ export default function Mas() {
       <Cabecera titulo="Más" sub={(st.S.site.cliente || 'Puesto') + (st.S.site.region ? ' · Región ' + st.S.site.region : '')} />
 
       <Eyebrow>Prioridad del servicio</Eyebrow>
-      <Tile icon="informes" titulo="Informe general · 12 / 24 hs" sub="Revisar, adjuntar evidencia y compartir con el supervisor" onPress={ir('/informedia')} />
+      <Tile icon="libro" titulo="Libro de novedades" sub="Revisar novedades y exportar el informe" onPress={ir('/informedia')} />
 
       {st.esAdmin ? (
         <Pressable onPress={ir('/admin')} style={({ pressed }) => ({
@@ -41,12 +39,11 @@ export default function Mas() {
       ) : null}
 
       <Eyebrow>Operación</Eyebrow>
+      <Tile icon="ronda" titulo="Recorridos" sub="Control de locales, Playa y Ronda Nocturna" onPress={ir('/recorridos')}/>
+      <Tile icon="equipo" titulo="Ingresos/Egresos" sub="Vigiladores, adicionales y externos" onPress={ir('/ingresos')}/>
       <Tile icon="bell" titulo="Recordatorios" sub="Avisos en Google Calendar o el calendario del teléfono" onPress={ir('/recordatorios')} />
       <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="informes" titulo="Informes de seguridad" sub="Registrar un incidente" onPress={ir('/informes')} />
-      </Row>
-      <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="ronda" titulo="Rondas" sub="Recorridas con puntos de control" onPress={ir('/rondas')} />
       </Row>
       <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="turnos" titulo="Turnos y francos" sub="Diagrama del supervisor y horas" onPress={ir('/turnos')} />
@@ -54,14 +51,13 @@ export default function Mas() {
       </Row>
 
       
-      <Tile icon="ronda" titulo="Recorrido de locales" sub="Abiertos, cerrados y avisos a inmobiliaria" onPress={ir('/locales')} />
       <Eyebrow>Puesto</Eyebrow>
       <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="equipo" titulo="Equipo" sub={gs + (gs === 1 ? ' vigilador' : ' vigiladores')} onPress={ir('/equipo')} />
         <Tile icon="contactos" titulo="Contactos" sub="Teléfonos de emergencia" onPress={ir('/contactos')} />
       </Row>
       <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="perfil" titulo="Mi perfil" sub="Datos, foto y PIN" onPress={ir('/perfil')} />
+        <Tile icon="perfil" titulo="Cuenta del corporativo" sub="Guardia a cargo y PIN" onPress={ir('/perfil')} />
         <Tile icon="ajustes" titulo="Ajustes" sub="Site, tema y respaldo" onPress={ir('/ajustes')} />
       </Row>
 

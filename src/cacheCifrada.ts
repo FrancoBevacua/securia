@@ -21,3 +21,12 @@ export async function sellarCache(p:SobreNube,clave:Crypto.AESEncryptionKey):Pro
  try{const cifrado=await Crypto.aesEncryptAsync(new TextEncoder().encode(JSON.stringify(p)),clave);return await cifrado.combined('base64');}
  catch{throw Error('No se pudo guardar la copia cifrada del teléfono. Vuelva a intentar.');}
 }
+
+export async function sellarJSON(p:unknown,clave:Crypto.AESEncryptionKey):Promise<string>{
+ const cifrado=await Crypto.aesEncryptAsync(new TextEncoder().encode(JSON.stringify(p)),clave);
+ return cifrado.combined('base64');
+}
+export async function abrirJSON<T>(texto:string,clave:Crypto.AESEncryptionKey):Promise<T>{
+ const claro=await Crypto.aesDecryptAsync(Crypto.AESSealedData.fromCombined(bytesDesdeBase64(texto)),clave);
+ return JSON.parse(new TextDecoder().decode(claro));
+}

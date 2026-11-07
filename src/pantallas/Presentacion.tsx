@@ -4,9 +4,10 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, Easing, StatusBar } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { FONT } from '../theme';
+import {LogoVigelium,LEMA_APP} from '../Marca';
 
-export const AZUL_PRESENTACION = '#0B1F3A';
-const ROJO = '#31C9DF';
+export const AZUL_PRESENTACION = '#06142D';
+const ROJO = '#D42D41';
 
 export function EscudoMarca({ size = 96 }: { size?: number }) {
   return (
@@ -48,19 +49,19 @@ export default function Presentacion({ sub }: { sub?: string }) {
       alignItems: 'center', justifyContent: 'center', padding: 32,
     }}>
       <StatusBar barStyle="light-content" backgroundColor={AZUL_PRESENTACION} />
-      <Animated.View style={{ alignItems: 'center', opacity: op, transform: [{ translateY: sube }] }}>
-        <EscudoMarca size={104} />
+      <Animated.View style={{ width:'100%',maxWidth:360,alignItems: 'center', opacity: op, transform: [{ translateY: sube }] }}>
+        <LogoVigelium size={104} />
         <Text style={{
-          fontFamily: FONT.dispBold, fontSize: 54, lineHeight: 60,
+          fontFamily: 'SairaCondensed_700Bold', fontSize: 48, lineHeight: 66,textAlign:'center',width:'100%',includeFontPadding:true,
           color: '#FFFFFF', marginTop: 22, letterSpacing: 1,
         }}>
-          VIGEL<Text style={{color: '#31C9DF'}}>IUM</Text>
+          SECUR<Text style={{color: '#FF7585'}}>IA</Text>
         </Text>
         <Text style={{
           fontFamily: FONT.bodyMed, fontSize: 11.5, letterSpacing: 2,
-          color: '#8FA6C4', marginTop: 2,
+          color: '#8FA6C4', marginTop: 2,textAlign:'center',width:'100%',lineHeight:20,flexWrap:'wrap',
         }}>
-          BIENVENIDO A TU PUESTO
+          {LEMA_APP}
         </Text>
       </Animated.View>
 

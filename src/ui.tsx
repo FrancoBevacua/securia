@@ -2,12 +2,14 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, Modal, Animated,
-  useColorScheme, ViewStyle, TextStyle, StyleProp, Platform,
+  useColorScheme, useWindowDimensions, ViewStyle, TextStyle, StyleProp, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Theme, LIGHT, DARK, FONT, R, PaletaId, temaDe } from './theme';
 import { Icon } from './icons';
+import FechaHoraControl from './FechaHoraControl';
+import type {TipoFechaHora,FormatoFecha} from './fechaHora';
 
 /* ---------------- tema ---------------- */
 const ThemeCtx = createContext<Theme>(DARK);
@@ -78,13 +80,13 @@ export function Divider() {
 
 /* ---------------- botones ---------------- */
 type BtnVar = 'primary' | 'ghost' | 'danger' | 'default';
-export function Btn({ label, icon, onPress, variant = 'default', size = 'md', style, disabled }: {
-  label?: string; icon?: string; onPress?: () => void; variant?: BtnVar;
+export function Btn({ label, icon, onPress, variant = 'default', size = 'md', style, disabled, accessibilityLabel }: {
+  label?: string; icon?: string; accessibilityLabel?: string; onPress?: () => void; variant?: BtnVar;
   size?: 'md' | 'sm' | 'xs'; style?: StyleProp<ViewStyle>; disabled?: boolean;
 }) {
   const t = useTheme();
   const toast = useToast();
-  const h = size === 'md' ? 46 : size === 'sm' ? 38 : 32;
+  const h = size === 'md' ? 52 : 44;
   const fs = size === 'md' ? 14.5 : size === 'sm' ? 13.5 : 12.5;
   const iz = size === 'md' ? 18 : size === 'sm' ? 16 : 14;
   const bg = variant === 'primary' ? t.accent : variant === 'default' ? t.surface2 : 'transparent';
@@ -92,6 +94,8 @@ export function Btn({ label, icon, onPress, variant = 'default', size = 'md', st
   const fg = variant === 'primary' ? t.accentInk : variant === 'danger' ? t.crit : t.text;
   return (
     <Pressable
+      accessibilityRole="button" accessibilityLabel={accessibilityLabel||label||({back:'Volver',x:'Cerrar',plus:'Agregar',share:'Compartir',trash:'Eliminar',copy:'Copiar'} as Record<string,string>)[icon||'']||icon}
+      accessibilityState={{disabled:!!disabled}}
       onPress={async () => { try { await onPress?.(); } catch (e: any) { toast(e?.message || 'No se pudo completar la operación.'); } }} disabled={disabled}
       style={({ pressed }) => [{
         minHeight: h, paddingHorizontal: label ? 15 : 0, width: label ? undefined : h,
@@ -108,21 +112,21 @@ export function Btn({ label, icon, onPress, variant = 'default', size = 'md', st
 export function Chip({ label, on, onPress, icon }: { label: string; on?: boolean; onPress?: () => void; icon?: string }) {
   const t = useTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({
-      minHeight: 31, paddingHorizontal: 11, borderRadius: R.pill, borderWidth: 1,
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected:!!on}} onPress={onPress} style={({ pressed }) => ({
+      minHeight: 44, paddingHorizontal: 13, borderRadius: R.pill, borderWidth: 1,
       borderColor: on ? t.accentLine : t.line, backgroundColor: on ? t.accentSoft : t.surface2,
       flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.7 : 1,
     })}>
-      {icon ? <Icon name={icon} size={13} color={on ? t.accent : t.text2} /> : null}
-      <Text style={{ fontFamily: on ? FONT.bodySemi : FONT.bodyMed, fontSize: 12.5, color: on ? t.accent : t.text2 }}>{label}</Text>
+      {icon ? <Icon name={icon} size={13} color={on ? t.accentText : t.text2} /> : null}
+      <Text style={{ fontFamily: on ? FONT.bodySemi : FONT.bodyMed, fontSize: 12.5, color: on ? t.accentText : t.text2 }}>{label}</Text>
     </Pressable>
   );
 }
 export function Chipbar({ children }: { children: React.ReactNode }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingRight: 6 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
       {children}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -131,7 +135,7 @@ export function Tag({ label, kind = 'mute' }: { label: string; kind?: TagKind })
   const t = useTheme();
   const map: Record<TagKind, [string, string]> = {
     ok: [t.okSoft, t.ok], warn: [t.warnSoft, t.warn], crit: [t.critSoft, t.crit],
-    info: [t.slateSoft, t.slate], mute: [t.surface3, t.muted], acc: [t.accentSoft, t.accent],
+    info: [t.slateSoft, t.slate], mute: [t.surface3, t.muted], acc: [t.accentSoft, t.accentText],
   };
   const [bg, fg] = map[kind];
   return (
@@ -153,10 +157,10 @@ export function Seg({ opciones, valor, onChange, acento }: {
         const on = o.v === valor;
         return (
           <Pressable key={o.v} onPress={() => onChange(o.v)} style={{
-            flex: 1, minHeight: 38, borderRadius: 7, alignItems: 'center', justifyContent: 'center',
+            flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 7, paddingHorizontal: 4, borderRadius: 7, alignItems: 'center', justifyContent: 'center',
             backgroundColor: on ? (acento ? t.accent : t.surface) : 'transparent',
           }}>
-            <Text numberOfLines={1} style={{
+            <Text style={{ textAlign: 'center',
               fontFamily: FONT.bodySemi, fontSize: 13.5,
               color: on ? (acento ? t.accentInk : t.text) : t.muted,
             }}>{o.t}</Text>
@@ -194,7 +198,7 @@ export function Field({ label, hint, children }: { label?: string; hint?: string
   return (
     <View style={{ gap: 6, minWidth: 0 }}>
       {label ? (
-        <Text style={{ fontFamily: FONT.disp, fontSize: 12.5, letterSpacing: 1.3, color: t.muted, textTransform: 'uppercase' }}>
+        <Text style={{ fontFamily: FONT.bodySemi, fontSize: 13.5, lineHeight:20, color: t.text2 }}>
           {label}
         </Text>
       ) : null}
@@ -203,13 +207,19 @@ export function Field({ label, hint, children }: { label?: string; hint?: string
     </View>
   );
 }
-export function Input(props: {
+type InputProps = {
   label?: string; hint?: string; value: string; onChangeText?: (v: string) => void;
   placeholder?: string; mono?: boolean; multiline?: boolean; rows?: number;
   keyboardType?: any; autoCapitalize?: any; maxLength?: number; style?: StyleProp<ViewStyle>;
   secureTextEntry?: boolean; editable?: boolean; fixedHeight?: boolean;
   prefijo?: string; derecha?: React.ReactNode;
-}) {
+  tipo?:TipoFechaHora; formatoFecha?:FormatoFecha;
+};
+export function Input({tipo,formatoFecha,...props}:InputProps){
+  const tema=useTheme();
+  return tipo?<Field label={props.label} hint={props.hint}><FechaHoraControl {...props} tipo={tipo} formatoFecha={formatoFecha} tema={tema}/></Field>:<InputTexto {...props}/>;
+}
+function InputTexto(props:InputProps) {
   const t = useTheme();
   const { label, hint, mono, rows, style, prefijo, derecha, fixedHeight, ...rest } = props;
   const alto = props.multiline ? (rows || 4) * 22 + 20 : 46;
@@ -251,7 +261,7 @@ export function Input(props: {
         {...rest}
         scrollEnabled={fixedHeight || undefined}
         onContentSizeChange={fixedHeight ? e => setContenidoAlto(e.nativeEvent.contentSize.height) : undefined}
-        onScroll={fixedHeight ? e => setDesplazamiento(e.nativeEvent.contentOffset.y) : undefined}
+        onScroll={fixedHeight ? e => setDesplazamiento(e.nativeEvent.contentOffset?.y ?? 0) : undefined}
         placeholderTextColor={t.muted}
         style={[{
           minHeight: alto, ...(fixedHeight ? { height: alto, maxHeight: alto, overflow: 'scroll' as const } : {}),
@@ -379,13 +389,15 @@ export function Sheet({ visible, title, onClose, onBack, children, footer }: {
 }) {
   const t = useTheme();
   const ins = useSafeAreaInsets();
+  const {height} = useWindowDimensions();
+  const espacioInferior = Math.max(ins.bottom, Platform.OS === 'android' ? 32 : 12);
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <View style={{ flex: 1, backgroundColor: 'rgba(8,12,16,0.55)', justifyContent: 'flex-end' }}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
         <View style={{
           backgroundColor: t.surface, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg,
-          maxHeight: '92%', width: '100%', maxWidth: 600, alignSelf: 'center',
+          maxHeight: Math.max(120, height - ins.top - 16), width: '100%', maxWidth: 600, alignSelf: 'center',
         }}>
           <View style={{ alignItems: 'center', paddingTop: 8 }}>
             <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: t.lineStrong }} />
@@ -398,11 +410,11 @@ export function Sheet({ visible, title, onClose, onBack, children, footer }: {
             <Text style={{ flex: 1, fontFamily: FONT.dispBold, fontSize: 21, color: t.text }}>{title}</Text>
             <Btn icon="x" variant="ghost" size="sm" onPress={onClose} />
           </View>
-          <KeyboardAwareScrollView bottomOffset={24} style={{flexShrink:1}} contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <KeyboardAwareScrollView bottomOffset={24} style={{flexShrink:1}} contentContainerStyle={{ padding: 16, paddingBottom: 16 + espacioInferior, gap: 14 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
             {children}
           {footer ? (
             <View style={{
-              flexDirection: 'row', gap: 9, padding: 12, paddingBottom: 12 + ins.bottom,
+              flexDirection: 'row', flexWrap: 'wrap', gap: 9, padding: 12,
               borderTopWidth: 1, borderTopColor: t.line,
             }}>{footer}</View>
           ) : null}
@@ -469,7 +481,7 @@ export function Pantalla({ children, gap = 14, top }:
       style={{ flex: 1, backgroundColor: t.bg }}
       contentContainerStyle={{
         padding: 14, paddingTop: 14 + (top ? ins.top : 0),
-        paddingBottom: 40 + ins.bottom, gap,
+          paddingBottom: 106 + ins.bottom, gap,
       }}
       keyboardShouldPersistTaps="handled">
       {children}
@@ -539,8 +551,8 @@ export function Selector({ label, hint, valor, opciones, onChange, placeholder }
 }
 
 /* ---------------- confirmación ---------------- */
-export function Confirmar({ visible, titulo, mensaje, etiqueta, onCancel, onOk }: {
-  visible: boolean; titulo?: string; mensaje: string; etiqueta?: string;
+export function Confirmar({ visible, titulo, mensaje, etiqueta, variante = 'danger', onCancel, onOk }: {
+  visible: boolean; titulo?: string; mensaje: string; etiqueta?: string; variante?: BtnVar;
   onCancel: () => void; onOk: () => void;
 }) {
   const t = useTheme();
@@ -549,7 +561,7 @@ export function Confirmar({ visible, titulo, mensaje, etiqueta, onCancel, onOk }
       footer={
         <>
           <Btn label="Cancelar" variant="ghost" style={{ flex: 1 }} onPress={onCancel} />
-          <Btn label={etiqueta || 'Eliminar'} variant="danger" style={{ flex: 1 }} onPress={onOk} />
+          <Btn label={etiqueta || 'Eliminar'} variant={variante} style={{ flex: 1 }} onPress={onOk} />
         </>
       }>
       <Text style={{ fontFamily: FONT.body, fontSize: 14.5, lineHeight: 21, color: t.text }}>{mensaje}</Text>

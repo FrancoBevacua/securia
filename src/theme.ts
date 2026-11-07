@@ -6,6 +6,7 @@ export type Theme = {
   line: string; lineStrong: string;
   text: string; text2: string; muted: string;
   accent: string; accentInk: string; accentSoft: string; accentLine: string;
+  accentText: string;
   slate: string; slateSoft: string;
   ok: string; okSoft: string;
   warn: string; warnSoft: string;
@@ -57,11 +58,11 @@ const SEM_CLA: Semantico = {
 };
 
 function armar(dark: boolean, n: Neutro, a: Acento): Theme {
-  return { dark, ...n, ...(dark ? SEM_OSC : SEM_CLA), ...a };
+  return { dark, ...n, ...(dark ? SEM_OSC : SEM_CLA), ...a, accentText: dark && a.accent === '#D82C47' ? '#FF8CA0' : a.accent };
 }
 
 /* ---------- paletas ---------- */
-export type PaletaId = 'grafito' | 'ambar' | 'acero' | 'oliva' | 'bordo';
+export type PaletaId = 'securia' | 'grafito' | 'ambar' | 'acero' | 'oliva' | 'bordo';
 
 export type Paleta = {
   id: PaletaId;
@@ -73,6 +74,18 @@ export type Paleta = {
 };
 
 export const PALETAS: Paleta[] = [
+  {
+    id: 'securia', nombre: 'Securia', desc: 'Azul Francia oscuro, rojo y blanco.',
+    muestra: ['#102D78', '#D42D41', '#FFFFFF'],
+    oscuro: armar(true, {
+      bg:'#06142D',surface:'#0C2144',surface2:'#102E59',surface3:'#193D6E',
+      line:'#213C62',lineStrong:'#315580',text:'#FFFFFF',text2:'#D0E0FF',muted:'#A9BFE5',
+    }, {accent:'#D82C47',accentInk:'#FFFFFF',accentSoft:'#3B1D35',accentLine:'#8D3B51'}),
+    claro: armar(false, {
+      bg:'#F2F5FC',surface:'#FFFFFF',surface2:'#EDF2FF',surface3:'#DDE7FC',
+      line:'#CED9EF',lineStrong:'#92A7D0',text:'#112658',text2:'#304779',muted:'#52658B',
+    }, {accent:'#C5243C',accentInk:'#FFFFFF',accentSoft:'#FFF0F2',accentLine:'#E8ACB5'}),
+  },
   {
     id: 'grafito',
     nombre: 'Grafito',
@@ -135,7 +148,7 @@ export const PALETAS: Paleta[] = [
   },
 ];
 
-export const PALETA_DEFECTO: PaletaId = 'grafito';
+export const PALETA_DEFECTO: PaletaId = 'securia';
 
 export function paletaPorId(id?: string): Paleta {
   return PALETAS.find(p => p.id === id) || PALETAS[0];
@@ -152,8 +165,8 @@ export const LIGHT: Theme = PALETAS[0].claro;
 
 /* Familias tipográficas cargadas en el arranque */
 export const FONT = {
-  disp: 'SairaCondensed_600SemiBold',
-  dispBold: 'SairaCondensed_700Bold',
+  disp: 'IBMPlexSans_600SemiBold',
+  dispBold: 'IBMPlexSans_700Bold',
   body: 'IBMPlexSans_400Regular',
   bodyMed: 'IBMPlexSans_500Medium',
   bodySemi: 'IBMPlexSans_600SemiBold',
@@ -162,5 +175,5 @@ export const FONT = {
   monoMed: 'IBMPlexMono_500Medium',
 };
 
-export const R = { sm: 8, md: 12, lg: 18, pill: 99 };
+export const R = { sm: 12, md: 20, lg: 26, pill: 99 };
 export const SP = { xs: 4, sm: 7, md: 9, lg: 14, xl: 20 };

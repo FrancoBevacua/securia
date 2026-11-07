@@ -112,6 +112,16 @@ export const PUESTOS_BASE: PuestoBase[] = [
   },
 ];
 
+/** Se reutilizan horarios del objetivo; no se crean consignas para estas coberturas. */
+export const PUESTOS_COBERTURA: PuestoBase[] = [
+  {n:'Bicicletero',d:'Control del bicicletero y resguardo de bicicletas y motos.',turnos:[
+    {nombre:'Mañana',entrada:'05:00',salida:'14:00',dirs:[]},
+    {nombre:'Tarde',entrada:'14:00',salida:'22:00',dirs:[]},
+  ]},
+  {n:'Franquero',d:'Cobertura de francos y relevos en distintos puestos.',turnos:[...new Map(PUESTOS_BASE.flatMap(p=>p.turnos).map(f=>[f.entrada+'-'+f.salida,{...f,dirs:[]}])).values()]},
+];
+PUESTOS_BASE.push(...PUESTOS_COBERTURA);
+
 export const PLANTILLAS = [
   {
     t: 'Resguardo de vehículo', crit: 'Baja',
@@ -190,7 +200,7 @@ export const RONDA_BASE = {
   puntos: ['Portón ingreso Oroño', 'Portón egreso Oroño', 'Portón Ombú', 'Portón peatonal',
     'Bicicletero de empleados', 'Sector de carga y descarga', 'Pecera 1', 'Pecera 2'],
 };
-export const CATEGORIAS = ['Novedad', 'Ingreso/Egreso', 'Adicional', 'Externos', 'Recorrido', 'Apertura', 'Cierre'];
+export const CATEGORIAS = ['Novedad', 'Ingresos/Egresos', 'Descanso', 'Recorrido', 'Apertura', 'Cierre'];
 
 /* Dotación del objetivo. Se precarga para poder elegir quién hizo cada
    apertura o cierre sin tener que darlos de alta uno por uno. */

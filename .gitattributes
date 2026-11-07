@@ -1,0 +1,2 @@
+# Las migraciones comparan cuerpos SQL; conservar el mismo formato en Windows y CI.
+*.sql text eol=lf

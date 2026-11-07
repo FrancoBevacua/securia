@@ -1,127 +1,42 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text } from 'react-native';
-import { router } from 'expo-router';
-import { useStore } from '../store';
-import { directivasDeHoy, estadoDirectiva, fichajeAbierto, horasDelMes } from '../logic';
-import { DOW, dmy, hhmm, hs, isoDate, toMin, uid } from '../model';
-import { visAdentro } from '../logic';
-import { FONT } from '../theme';
-import {
-  useTheme, Pantalla, Cabecera, Card, Btn, Tag, Tile, Metric, Banner,
-  Stack, Row, Eyebrow, Hint, useToast,
-} from '../ui';
-import { Ring } from '../icons';
-import ServicioActual from './ServicioActual';
-import RegistroDirectiva from './RegistroDirectiva';
+import React,{useEffect,useState} from 'react';
+import {View,Text,Pressable} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {router,useLocalSearchParams} from 'expo-router';
+import {useStore} from '../store';
+import {Novedad,isoDate} from '../model';
+import {categoriaAsiento} from '../reporte';
+import {FONT} from '../theme';
+import {Icon} from '../icons';
+import {Pantalla,Btn,Card,Row,Hint,useTheme,Sheet,Toggle,Banner} from '../ui';
+import {EditorNovedad} from './EditorAsiento';
+import {colorCategoria} from '../categorias';
+import {ACCIONES_RAPIDAS,RAPIDAS_INICIALES,normalizarAccesosRapidos} from '../accionesRapidas';
+import {ElegirResponsable} from './GuardiaACargo';
 
-export default function Inicio() {
-  const st = useStore();
-  const t = useTheme();
-  const toast = useToast();
-  const [, tick] = useState(0);
-  const [registrar, setRegistrar] = useState<any>(null);
-
-  useEffect(() => { const i = setInterval(() => tick(x => x + 1), 30000); return () => clearInterval(i); }, []);
-
-  const me = st.me!;
-  const hoy = isoDate();
-  const ds = useMemo(() => directivasDeHoy(st.S, me, hoy), [st.S, me, hoy]);
-  const hechas = ds.filter(d => ['ok', 'na'].includes(estadoDirectiva(st.S, d))).length;
-  const venc = ds.filter(d => estadoDirectiva(st.S, d) === 'vencida');
-  const prox = ds.find(d => ['ahora', 'pend'].includes(estadoDirectiva(st.S, d)));
-  const pct = ds.length ? Math.round((hechas / ds.length) * 100) : 0;
-  const p = fichajeAbierto(st.S, me.id);
-  const nov = st.list('novedades').filter((n: any) => n.fecha === hoy).length;
-  const acc = st.list('alogs').filter((a: any) => a.fecha === hoy).length;
-  const dentro = st.list('visits').filter(visAdentro).length;
-
-  const ahoraMin = new Date().getHours() * 60 + new Date().getMinutes();
-  let dur = 0;
-  if (p) { dur = ahoraMin - toMin(p.in); if (dur < 0) dur += 1440; }
-  const falta = prox ? toMin(prox.hora) - ahoraMin : 0;
-
-  return (
-    <Pantalla>
-      <Cabecera titulo={me.sexo === 'femenino' ? 'Bienvenida' : 'Bienvenido'} sub={DOW[new Date().getDay()] + ' ' + dmy(hoy)} />
-
-      <Card pad style={{ borderColor: t.accentLine }}>
-        <Stack gap={10}>
-          <Eyebrow>Informe general · 12 / 24 horas</Eyebrow>
-          <Text style={{ fontFamily: FONT.body, fontSize: 13, lineHeight: 19, color: t.text2 }}>
-            Novedades compartidas entre todos los turnos, ordenadas por fecha y horario.
-          </Text>
-          <Btn label="Abrir informe del día" icon="informes" variant="primary" onPress={() => router.push('/informedia')} />
-        </Stack>
-      </Card>
-
-      <ServicioActual />
-
-      {venc.length ? (
-        <Banner kind="warn">
-          <Text style={{ fontFamily: FONT.body, fontSize: 12.5, lineHeight: 18, color: t.warn }}>
-            <Text style={{ fontFamily: FONT.bodyBold }}>
-              {venc.length + ' directiva' + (venc.length > 1 ? 's' : '') + ' sin registrar'}
-            </Text>
-            {'\n' + venc.slice(0, 3).map(d => d.hora + ' ' + d.nombre).join(' · ') + (venc.length > 3 ? ' …' : '')}
-          </Text>
-        </Banner>
-      ) : null}
-
-      {prox ? (
-        <Card>
-          <Row style={{
-            padding: 12, borderBottomWidth: 1, borderBottomColor: t.line, justifyContent: 'space-between',
-          }}>
-            <Text style={{ fontFamily: FONT.disp, fontSize: 19, color: t.text }}>
-              {falta <= 10 ? 'Directiva actual' : 'Próxima directiva'}
-            </Text>
-            <Tag kind={falta <= 10 ? 'acc' : 'mute'}
-              label={falta <= 0 ? 'a horario' : falta >= 60 ? Math.floor(falta / 60) + ' h ' + (falta % 60) + ' min' : 'en ' + falta + ' min'} />
-          </Row>
-          <Row style={{ padding: 14, alignItems: 'flex-start', gap: 12 }}>
-            <Text style={{ fontFamily: FONT.monoMed, fontSize: 26, letterSpacing: -0.8, color: t.text }}>{prox.hora}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: FONT.bodySemi, fontSize: 15.5, lineHeight: 20, color: t.text }}>{prox.nombre}</Text>
-              {prox.novedades ? <Hint>{prox.novedades}</Hint> : null}
-            </View>
-          </Row>
-          <Row style={{ padding: 11, borderTopWidth: 1, borderTopColor: t.line }}>
-            <Btn label="Cumplida" icon="check" variant="primary" size="sm" style={{ flex: 1 }}
-              onPress={() => setRegistrar(prox)} />
-            <Btn label="Ver todas" variant="ghost" size="sm" style={{ flex: 1 }}
-              onPress={() => router.push('/directivas')} />
-          </Row>
-        </Card>
-      ) : null}
-
-      <Card pad>
-        <Row style={{ justifyContent: 'space-between', marginBottom: 10 }}>
-          <View>
-            <Text style={{ fontFamily: FONT.disp, fontSize: 19, color: t.text }}>Consigna del día</Text>
-            <Hint>{hechas + ' de ' + ds.length + ' registradas'}</Hint>
-          </View>
-          <Ring pct={pct} color={t.accent} track={t.surface3} bg={t.surface} label={pct + '%'} font={FONT.monoMed} />
-        </Row>
-        <Btn label="Abrir la consigna" variant="ghost" size="sm" onPress={() => router.push('/directivas')} />
-      </Card>
-
-      <Row gap={9}>
-        <Metric valor={acc} label="Accesos hoy" />
-        <Metric valor={nov} label="Novedades" />
-      </Row>
-
-      <Eyebrow>Carga rápida</Eyebrow>
-      <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="accesos" titulo="Acceso" sub="Apertura o cierre" onPress={() => router.push('/accesos')} />
-      </Row>
-      <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="ronda" titulo="Ronda" sub="Iniciar recorrida" onPress={() => router.push('/rondas')} />
-      </Row>
-
-      <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="ronda" titulo="Locales" sub="Control de apertura y cierre" onPress={() => router.push('/locales')} />
-      </Row>
-      <RegistroDirectiva directiva={registrar} onClose={() => setRegistrar(null)} />
-    </Pantalla>
-  );
+export default function Inicio(){
+ const st=useStore(),t=useTheme();
+ const [editar,setEditar]=useState<Novedad|null|undefined>(undefined),[categoria,setCategoria]=useState('Novedad');
+ const params=useLocalSearchParams<{nueva?:string}>();
+ useEffect(()=>{if(params.nueva){setCategoria(params.nueva);setEditar(null);router.setParams({nueva:undefined});}},[params.nueva]);
+ const hoy=isoDate();
+ const recientes=st.list<Novedad>('novedades').sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora)).slice(0,4);
+ const nuevo=(tipo:string)=>{setCategoria(tipo);setEditar(null);};
+ const [personalizar,setPersonalizar]=useState(false),[cambiarGuardia,setCambiarGuardia]=useState(false),[rapidas,setRapidas]=useState<string[]>(RAPIDAS_INICIALES),[borrador,setBorrador]=useState<string[]>([]),[errorAccesos,setErrorAccesos]=useState('');
+ const claveRapidas='securia.accesos-rapidos/'+st.me?.id;
+ useEffect(()=>{let vivo=true;AsyncStorage.getItem(claveRapidas).then(raw=>{if(vivo&&raw){try{setRapidas(normalizarAccesosRapidos(JSON.parse(raw)));}catch{}}});return()=>{vivo=false;};},[claveRapidas]);
+ const acciones=rapidas.map(id=>ACCIONES_RAPIDAS.find(a=>a.id===id)).filter((a):a is typeof ACCIONES_RAPIDAS[number]=>!!a);
+ const abrirAccesos=()=>{setBorrador([...rapidas]);setErrorAccesos('');setPersonalizar(true);};
+ const guardia=st.responsable||st.me;
+ return <Pantalla gap={18}>
+  <View style={{gap:5}}><Text accessibilityRole="header" style={{fontFamily:FONT.dispBold,color:t.text,fontSize:27,lineHeight:34}}>Hola, {guardia?.nombre?.split(' ')[0]||'guardia'}</Text><Text style={{fontFamily:FONT.body,fontSize:14,color:t.text2}}>Cada novedad, bajo control.</Text></View>
+  <Btn label="Nueva novedad" icon="plus" variant="primary" onPress={()=>nuevo('Novedad')}/>
+  {st.me?.corporativo?<Card pad><Row><View style={{flex:1}}><Hint>Guardia a cargo</Hint><Text style={{color:t.text,fontFamily:FONT.bodySemi,fontSize:16}}>{[guardia?.nombre,guardia?.apellido].filter(Boolean).join(' ')}</Text></View><Btn label="Cambiar" size="sm" onPress={()=>setCambiarGuardia(true)}/></Row></Card>:null}
+  <Row style={{justifyContent:'space-between'}}><Text style={{fontFamily:FONT.bodySemi,fontSize:15,color:t.text}}>Acciones rápidas</Text><Btn icon="edit" accessibilityLabel="Personalizar accesos rápidos" size="xs" variant="ghost" onPress={abrirAccesos}/></Row>
+  <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{[...acciones,{id:'__agregar__',titulo:'Añadir',icono:'plus',ruta:''}].map(a=><Pressable key={a.id} accessibilityRole="button" accessibilityLabel={a.titulo} onPress={()=>a.id==='__agregar__'?abrirAccesos():router.push(a.ruta as any)} style={({pressed})=>({width:'23%',minHeight:76,minWidth:66,backgroundColor:t.surface2,borderColor:t.lineStrong,borderWidth:1,borderRadius:12,padding:8,alignItems:'center',justifyContent:'center',gap:7,opacity:pressed ? .7 : 1})}><Icon name={a.icono} color={t.text2} size={18}/><Text style={{fontFamily:FONT.bodySemi,fontSize:11,color:t.text,textAlign:'center'}}>{a.titulo}</Text></Pressable>)}</View>
+  <Sheet visible={personalizar} title="Acciones rápidas" onClose={()=>setPersonalizar(false)} footer={<Btn label="Guardar accesos" variant="primary" onPress={async()=>{try{const ids=normalizarAccesosRapidos(borrador);await AsyncStorage.setItem(claveRapidas,JSON.stringify(ids));setRapidas(ids);setPersonalizar(false);}catch{setErrorAccesos('No se pudieron guardar los accesos. Vuelva a intentar.');}}}/>}><Hint>Elegí los accesos que querés ver en Inicio.</Hint>{ACCIONES_RAPIDAS.map(a=><Toggle key={a.id} label={a.titulo} value={borrador.includes(a.id)} onChange={on=>setBorrador(v=>on?[...new Set([...v,a.id])]:v.filter(id=>id!==a.id))}/>)}{errorAccesos?<Banner kind="warn">{errorAccesos}</Banner>:null}</Sheet>
+  <Sheet visible={cambiarGuardia} title="¿Quién queda a cargo?" onClose={()=>setCambiarGuardia(false)}><ElegirResponsable onDone={()=>setCambiarGuardia(false)}/></Sheet>
+  <Row style={{justifyContent:'space-between'}}><Text style={{fontFamily:FONT.bodySemi,fontSize:15,color:t.text}}>Últimas novedades</Text><Btn label="Ver todas" size="xs" variant="ghost" onPress={()=>router.push('/informedia')}/></Row>
+  {recientes.length?recientes.map(n=>{const cat=categoriaAsiento(n);return <Pressable key={n.id} accessibilityRole="button" accessibilityLabel={n.hora+' '+n.texto} onPress={()=>setEditar(n)}><Card style={{borderRadius:14,borderLeftWidth:4,borderLeftColor:colorCategoria(cat)}}><Row gap={12} style={{padding:14,alignItems:'flex-start'}}><Icon name={cat==='EXTERNO'?'equipo':cat==='DESCANSO'?'descanso':'libro'} color={t.text2} size={23}/><View style={{flex:1,gap:5}}><Text numberOfLines={2} style={{fontFamily:FONT.bodySemi,fontSize:13.5,color:t.text,lineHeight:20}}>{n.texto}</Text><Text style={{fontFamily:FONT.body,fontSize:11.5,color:t.muted}}>{n.fecha===hoy?'Hoy':n.fecha} {n.hora} · {cat}</Text></View><Icon name="back" size={14} color={t.muted}/></Row></Card></Pressable>;}):<Card pad><Hint>Sin novedades registradas. Puede agregar la primera con el botón superior.</Hint></Card>}
+  <EditorNovedad abierto={editar!==undefined} novedad={editar||null} fecha={hoy} categoriaInicial={categoria} onClose={()=>setEditar(undefined)}/>
+ </Pantalla>;
 }

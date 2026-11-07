@@ -4,7 +4,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-export type Proveedor = 'groq' | 'gemini' | 'openrouter' | 'anthropic' | 'huggingface' | 'compatible';
+export type Proveedor = 'openai' | 'groq' | 'gemini' | 'openrouter' | 'anthropic' | 'huggingface' | 'compatible';
 
 export type ConfigIA = {
   proveedor: Proveedor;
@@ -19,6 +19,7 @@ export type FichaProveedor = {
   vision: boolean; audio: boolean;
 };
 export const PROVEEDORES: FichaProveedor[] = [
+  { v: 'openai', t: 'GPT (OpenAI)', sub: 'Su clave de OpenAI. Texto y fotografías, con facturación de API.', modelo: 'gpt-4.1', gratis: false, vision: true, audio: false },
   { v: 'gemini', t: 'Google Gemini', sub: 'Lee texto, PDF, imágenes y audio.', modelo: 'gemini-3-flash-preview', gratis: true, vision: true, audio: true },
   { v: 'groq', t: 'Groq', sub: 'Gratis y muy rápido. Transcribe audio con Whisper.', modelo: 'llama-3.3-70b-versatile', gratis: true, vision: false, audio: true },
   { v: 'openrouter', t: 'OpenRouter', sub: 'Muchos modelos, algunos gratuitos.', modelo: 'meta-llama/llama-3.3-70b-instruct:free', gratis: true, vision: false, audio: false },
@@ -123,7 +124,7 @@ export async function pedirIA(
   cfg: ConfigIA,
   sistema = SISTEMA,
   imagenes?: ImagenIA[],
-  opciones: { maxTokens?: number; timeoutMs?: number } = {},
+  opciones: { maxTokens?: number; timeoutMs?: number; signal?:AbortSignal } = {},
 ): Promise<string> {
   cfg = normalizarConfigIA(cfg);
   if (!cfg.apiKey && cfg.proveedor !== 'compatible') {
@@ -132,8 +133,8 @@ export async function pedirIA(
   const modelo = cfg.modelo || modeloPorDefecto(cfg.proveedor);
   const imgs = imagenes || [];
   const maxTokens = opciones.maxTokens || 8192;
-  if (imgs.some(i => i.mime === 'application/pdf') && !['gemini', 'anthropic'].includes(cfg.proveedor)) {
-    throw new ErrorIA('sin_pdf', 'Para interpretar un PDF escaneado o una grilla seleccione Gemini o Claude en Ajustes.');
+  if (imgs.some(i => i.mime === 'application/pdf') && !['openai','gemini', 'anthropic'].includes(cfg.proveedor)) {
+    throw new ErrorIA('sin_pdf', 'Para interpretar un PDF escaneado seleccione GPT, Gemini o Claude en Ajustes.');
   }
   let url = '';
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -162,7 +163,8 @@ export async function pedirIA(
     contenido.push({ type: 'text', text: prompt });
     body = { model: modelo, max_tokens: maxTokens, system: sistema, messages: [{ role: 'user', content: contenido }] };
   } else {
-    const base = cfg.proveedor === 'groq' ? 'https://api.groq.com/openai/v1'
+    const base = cfg.proveedor === 'openai' ? 'https://api.openai.com/v1'
+      : cfg.proveedor === 'groq' ? 'https://api.groq.com/openai/v1'
       : cfg.proveedor === 'openrouter' ? 'https://openrouter.ai/api/v1'
         : cfg.proveedor === 'huggingface' ? 'https://router.huggingface.co/v1'
           : (cfg.baseUrl || '').replace(/\/+$/, '');
@@ -171,29 +173,40 @@ export async function pedirIA(
     if (cfg.apiKey) headers['Authorization'] = 'Bearer ' + cfg.apiKey;
     const contenido: any = imgs.length
       ? [{ type: 'text', text: prompt },
-         ...imgs.map(i => ({ type: 'image_url', image_url: { url: 'data:' + i.mime + ';base64,' + i.base64 } }))]
+         ...imgs.map(i => i.mime==='application/pdf'
+          ? {type:'file',file:{filename:'directivas.pdf',file_data:'data:application/pdf;base64,'+i.base64}}
+          : { type: 'image_url', image_url: { url: 'data:' + i.mime + ';base64,' + i.base64 } })]
       : prompt;
     body = {
       model: modelo, temperature: 0.2, max_tokens: maxTokens,
       messages: [{ role: 'system', content: sistema }, { role: 'user', content: contenido }],
     };
+    if (cfg.proveedor === 'openai') {
+      body.max_completion_tokens = maxTokens;
+      delete body.max_tokens;
+      if (/^(gpt-5|gpt-6|o[134])/.test(modelo)) delete body.temperature;
+    }
   }
 
   let r: Response;
   let j: any;
   const ctrl = new AbortController();
+  const cancelar=()=>ctrl.abort();
+  if(opciones.signal?.aborted)throw new ErrorIA('cancelado','Solicitud cancelada.');
+  opciones.signal?.addEventListener('abort',cancelar,{once:true});
   const to = setTimeout(() => ctrl.abort(), Math.min(180000, Math.max(10000, opciones.timeoutMs || 60000)));
   try {
     r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
     j = await r.json().catch(() => null);
   } catch (e: any) {
+    if(opciones.signal?.aborted)throw new ErrorIA('cancelado','Solicitud cancelada.');
     if (e?.name === 'AbortError') throw new ErrorIA('tiempo', 'El modelo tardó demasiado en responder.');
     /* En el navegador un fallo de red casi siempre es la política de origen
        cruzado, no falta de conexión. Decirlo así ahorra media hora de buscar. */
     throw new ErrorIA('sin_red', esWeb()
       ? MSG_NAVEGADOR
       : 'No se pudo conectar con el proveedor de IA. Revise la conexión del teléfono.');
-  } finally { clearTimeout(to); }
+  } finally { clearTimeout(to);opciones.signal?.removeEventListener('abort',cancelar); }
 
   if (r.status === 401 || r.status === 403) {
     throw new ErrorIA('clave', 'La clave no fue aceptada por ' + (fichaProveedor(cfg.proveedor)?.t || cfg.proveedor) +
@@ -317,6 +330,8 @@ export const promptNovedad = (texto: string, categoria: string) =>
     'Qué NO tocar:',
     '- Ningún dato: nombres, horarios, DNI, dominios, empresas, sectores.',
     '- No agregues hechos que no estén escritos.',
+    '- Conservá literalmente los ingresos con el formato "Ingresa Gs Apellido, Nombre al puesto Puesto. Turno: HH:MM-HH:MM.". No los amplíes a "Se registra el ingreso" ni agregues "para cumplir el turno".',
+    '- Conservá literalmente los egresos con el formato "Se retira el Gs Apellido, Nombre.". No los cambies a "Se registra el egreso".',
     '',
     'Devolvé solo el texto corregido, sin encabezados ni comillas.',
     '',
@@ -345,6 +360,8 @@ export function promptInformeDia(borrador: string, c: ContextoDia) {
     '- Conservá las secciones de fecha que comienzan con "Día DD/MM/AAAA" exactamente y en su orden.',
     '- Cada entrada arranca con el horario tal como viene: "HH:MM CATEGORÍA", seguida del texto y la firma Gs Apellido, Nombre. No modifiques categorías ni firmas.',
     '- No agregues ni saques entradas. No inventes datos.',
+    '- Conservá literalmente la frase de cada ingreso: "Ingresa Gs Apellido, Nombre al puesto Puesto. Turno: HH:MM-HH:MM.". No la reescribas ni amplíes.',
+    '- Conservá literalmente la frase de cada egreso: "Se retira el Gs Apellido, Nombre.". No la reescribas ni amplíes.',
     '',
     'REGLAS DE REDACCIÓN:',
     '- Español rioplatense formal, voz impersonal, oraciones completas.',

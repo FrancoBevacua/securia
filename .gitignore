@@ -5,6 +5,8 @@ android/
 ios/
 *.log
 tmp/
+.tmp-securia/
+.tmp-securia*/
 output/
 src/provisionCorporativa.ts
 .vercel/
@@ -15,3 +17,15 @@ src/provisionCorporativa.ts
 *.jks
 *.keystore
 local.properties
+supabase/.temp/
+supabase/.branches/
+coverage/
+*.tsbuildinfo
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.p12
+*.pfx
+*.pem
+.idea/

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { ConfigIA, leerConfigIA, guardarConfigIA, PROVEEDORES, pedirIA, promptNovedad, ErrorIA } from '../ai';
 import { Banner, Btn, Hint, Input, Row, Selector, Sheet, Stack, useTheme } from '../ui';
+import { validarFormatoMovimientos } from '../text';
 
 /** Los errores y el resultado permanecen dentro del formulario visible. */
 export default function RedaccionIA({ texto, categoria = 'Novedad', onTexto, disabled = false, generarPrompt, validar }: {
@@ -24,6 +25,7 @@ export default function RedaccionIA({ texto, categoria = 'Novedad', onTexto, dis
       const c = config || await leerConfigIA(); setCfg(c);
       if (!c.apiKey && c.proveedor !== 'compatible') { setConfigurar(true); throw new ErrorIA('sin_clave', 'Configure la clave del proveedor para usar la IA.'); }
       const salida = await pedirIA(generarPrompt ? generarPrompt(original) : promptNovedad(original, categoria), c);
+      validarFormatoMovimientos(original, salida);
       validar?.(original, salida);
       if (actual.current !== original) { setResultado(salida); setError('El texto cambió mientras se redactaba. Revise la propuesta antes de aplicarla.'); }
       else { onTexto(salida); setResultado(''); }
@@ -36,7 +38,7 @@ export default function RedaccionIA({ texto, categoria = 'Novedad', onTexto, dis
     {error ? <Banner kind="warn">{error}</Banner> : null}
     {error ? <Btn label="Configurar IA" size="xs" variant="ghost" onPress={async () => { setCfg(await leerConfigIA()); setConfigurar(true); }} /> : null}
     {resultado ? <View><Input label="Propuesta" value={resultado} onChangeText={setResultado} multiline rows={5} /><Btn label="Aplicar propuesta" onPress={() => {
-      try { validar?.(actual.current, resultado); onTexto(resultado); setResultado(''); setError(''); }
+      try { validarFormatoMovimientos(actual.current, resultado); validar?.(actual.current, resultado); onTexto(resultado); setResultado(''); setError(''); }
       catch (e: any) { setError(e.message); }
     }} /></View> : null}
     <Sheet visible={configurar && !!cfg} title="Configurar IA" onClose={() => setConfigurar(false)} footer={<Btn label="Guardar y redactar" variant="primary" onPress={async () => {

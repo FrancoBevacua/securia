@@ -5,8 +5,9 @@ import { Platform } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { crearPDF, jpegSize } from './pdfw';
+import {agruparEvidencias} from './evidencias';
 import { construirPDFDia } from './pdfdia';
-import { nombreArchivoReporte, numeroSupervisor, TITULO_REPORTE } from './reporte';
+import { nombreArchivoReporte } from './reporte';
 import { leerBytes, prepararFoto } from './media';
 import { Estado, Informe, Novedad, AccesoLog, isoDate, dmy, hhmm, DOW, parseISO, toMin, addDays } from './model';
 import { gsName, resumenAcceso, LBL, textoReporte, textoInformeAccesos, OpcInforme } from './text';
@@ -20,7 +21,7 @@ export async function bytesDeFoto(uri: string): Promise<Uint8Array | null> {
   }
 }
 
-export async function entregarPDF(nombre: string, bytes: Uint8Array): Promise<'compartido' | 'guardado' | 'no'> {
+export async function entregarPDF(nombre: string, bytes: Uint8Array, dialogTitle=nombre): Promise<'compartido' | 'guardado' | 'no'> {
   if (Platform.OS === 'web') {
     try {
       const blob = new Blob([bytes as any], { type: 'application/pdf' });
@@ -37,7 +38,7 @@ export async function entregarPDF(nombre: string, bytes: Uint8Array): Promise<'c
   f.create();
   f.write(bytes);
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(f.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: nombre });
+    await Sharing.shareAsync(f.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle });
     return 'compartido';
   }
   return 'guardado';
@@ -50,7 +51,7 @@ const GRIS_CLARO = '0.55 0.55 0.55';
 const LINEA = '0.75 0.75 0.75';
 
 const PIE = (S: Estado, quien: string) =>
-  'Generado con VIGELIUM el ' + dmy(isoDate()) + ' a las ' + hhmm() + ' por ' + quien;
+  'Generado con SECURIA el ' + dmy(isoDate()) + ' a las ' + hhmm() + ' por ' + quien;
 
 /* ---------- informe de seguridad ---------- */
 export async function pdfInforme(r: Informe, S: Estado, quien: string) {
@@ -62,10 +63,6 @@ export async function pdfInforme(r: Informe, S: Estado, quien: string) {
     { size: 10, color: GRIS });
   d.band(2, NEGRO);
   const fotos = r.fotos || [];
-  if (fotos.length) {
-    const b = await bytesDeFoto(fotos[0]);
-    if (b) { const sz = jpegSize(b); if (sz) d.image(b, sz.w, sz.h, { maxHeight: 250 }); }
-  }
   for (let i = 1; i <= 16; i++) {
     let v = (((r as any)['f' + i] || '') as string).trim();
     if (i === 3 && r.hora && v) v = v + ' - ' + r.hora + ' hs';
@@ -77,18 +74,11 @@ export async function pdfInforme(r: Informe, S: Estado, quien: string) {
     d.text(v || 'N/A', { size: 10.5, indent: 8 });
     d.space(6);
   }
-  if (fotos.length > 1) {
-    d.newPage();
-    d.text('EVIDENCIA FOTOGRÁFICA', { size: 15, bold: true });
-    d.band(2, NEGRO);
-    for (let i = 1; i < fotos.length; i++) {
-      const b = await bytesDeFoto(fotos[i]);
-      if (!b) continue;
-      const sz = jpegSize(b);
-      if (!sz) continue;
-      d.text('Imagen ' + (i + 1) + ' de ' + fotos.length, { size: 9, bold: true, color: GRIS });
-      d.image(b, sz.w, sz.h, { maxHeight: 300 });
-      d.space(4);
+  if(fotos.length){
+    d.newPage();d.text('EVIDENCIA FOTOGRÁFICA',{size:15,bold:true});
+    const imagenes=[];for(const uri of fotos){const b=await bytesDeFoto(uri);if(!b)continue;const sz=jpegSize(b);if(!sz)throw Error('Imagen inválida');imagenes.push({bytes:b,...sz});}
+    for(let i=0;i<imagenes.length;){const fila=[imagenes[i++]];if(fila[0].w/fila[0].h<1.8&&i<imagenes.length&&imagenes[i].w/imagenes[i].h<1.8)fila.push(imagenes[i++]);
+      d.keepTogether(340);d.text(String((r as any).f4||'Informe de seguridad')+' — '+String((r as any).f6||''),{size:9,bold:true});d.space(6);d.imageRow(fila,'Fecha: '+dmy(r.fecha)+'   Hora: '+(r.hora||'No informada'),'Sector: '+(r.sector||'No informado'));
     }
   }
   d.space(6); d.rule(LINEA);
@@ -151,15 +141,12 @@ export async function pdfInformeDia(
     const bytes = await bytesDeFoto(uri);
     if (bytes) fotos.push(bytes);
   }
-  const nombre=nombreArchivoReporte(r.fecha),bytes=construirPDFDia(r.texto,fotos);
+  const grupos=agruparEvidencias(S,r.fotos).map(g=>({...g,fotos:g.fotos.map(uri=>fotos[r.fotos.indexOf(uri)])}));
+  const nombre=nombreArchivoReporte(r.fecha),bytes=construirPDFDia(r.texto,fotos,grupos);
   if(supervisor!==undefined){
-    const numero=numeroSupervisor(supervisor);
-    if(Platform.OS!=='android')throw new Error('La entrega directa por WhatsApp está disponible en Android. Utilice Exportar PDF en este dispositivo.');
-    const f=new File(Paths.cache,nombre);if(f.exists)f.delete();f.create();f.write(bytes);
-    const {default:Share,Social}=await import('react-native-share');
-    const opciones:import('react-native-share').ShareSingleOptions & {whatsAppNumber:string}={social:Social.Whatsapp,url:f.uri,type:'application/pdf',title:TITULO_REPORTE,whatsAppNumber:numero};
-    try{await Share.shareSingle(opciones);return 'compartido' as const;}
-    catch(e:any){throw new Error('No se completó la entrega a WhatsApp. Verifique que esté instalado o utilice Exportar PDF.');}
+    // ACTION_SEND con permiso de lectura del archivo. Abrir una conversación por
+    // número dispara dos actividades en WhatsApp y puede perder EXTRA_STREAM.
+    return entregarPDF(nombre,bytes,'Enviar PDF · elija WhatsApp y el supervisor'+(supervisor?' ('+supervisor+')':''));
   }
   return entregarPDF(nombre,bytes);
 }

@@ -236,8 +236,8 @@ function EditorTurno({ abierto, franja, puestoId, onClose }: {
       <Input label="Alias (opcional)" value={alias} onChangeText={setAlias} placeholder="Rondín nocturno"
         hint="Si el turno tiene un nombre propio en el objetivo." />
       <Row gap={11} style={{ alignItems: 'flex-start' }}>
-        <View style={{ flex: 1 }}><Input label="Entrada" value={entrada} onChangeText={setEntrada} mono /></View>
-        <View style={{ flex: 1 }}><Input label="Salida" value={salida} onChangeText={setSalida} mono /></View>
+        <View style={{ flex: 1 }}><Input tipo="hora" label="Entrada" value={entrada} onChangeText={setEntrada} mono /></View>
+        <View style={{ flex: 1 }}><Input tipo="hora" label="Salida" value={salida} onChangeText={setSalida} mono /></View>
       </Row>
       <Hint>Si la salida es menor que la entrada, la app entiende que el turno cruza la medianoche.</Hint>
       <Confirmar visible={borrar} mensaje="¿Eliminar este turno? Sus directivas quedan en el puesto, sin turno."
@@ -514,7 +514,7 @@ function RevisarItem({ indice, items, setItems, onClose }: {
           }} />
         </>
       }>
-      <Input label="Hora" value={hora} onChangeText={setHora} mono />
+      <Input tipo="hora" label="Hora" value={hora} onChangeText={setHora} mono />
       <Input label="Nombre" value={nombre} onChangeText={setNombre} />
       <Input label="Novedades" value={nov} onChangeText={setNov} multiline rows={3} />
       <Selector label="Puesto" valor={pid} onChange={v => { setPid(v); setFid(''); }}

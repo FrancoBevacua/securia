@@ -1,0 +1,46 @@
+name: Validar Securia
+
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas-y-web:
+    name: Pruebas y compilación
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: America/Argentina/Buenos_Aires
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            admin/package-lock.json
+      - name: Instalar dependencias del móvil
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Preparar configuración de prueba sin credenciales
+        run: node -e "require('fs').copyFileSync('src/provisionCorporativa.example.ts','src/provisionCorporativa.ts')"
+      - name: Verificar TypeScript
+        run: npm run typecheck
+      - name: Ejecutar pruebas
+        run: npm test
+      - name: Instalar dependencias del panel
+        run: npm ci --prefix admin --no-audit --no-fund
+      - name: Compilar panel web
+        run: npm run build --prefix admin
+      - name: Verificar módulos compartidos actualizados
+        run: git diff --exit-code -- admin/shared
