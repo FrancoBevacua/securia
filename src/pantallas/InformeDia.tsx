@@ -116,7 +116,7 @@ export default function InformeDiaPantalla({integrado=false}:{integrado?:boolean
   return (
     <Pantalla top={!integrado}>
       {integrado?<Cabecera titulo="Libro de novedades" sub="Registro cronológico del servicio."/>:<SubCabecera titulo="Libro de novedades"
-        sub="Registro cronológico del servicio para supervisión."
+        sub="Registro cronológico del servicio."
         onBack={() => router.back()} />}
 
       <ServicioActual />

@@ -30,7 +30,7 @@ export default function Mas() {
             <View style={{ flex: 1 }}>
               <Text style={{ fontFamily: FONT.disp, fontSize: 17, color: t.text }}>Administración</Text>
               <Text style={{ fontFamily: FONT.body, fontSize: 11.5, color: t.muted }}>
-                Puestos, directivas, roles y turnos del equipo
+                Puestos, directivas, roles y catálogos
               </Text>
             </View>
             <Icon name="back" size={17} color={t.accent} />
@@ -45,10 +45,7 @@ export default function Mas() {
       <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="informes" titulo="Informes de seguridad" sub="Registrar un incidente" onPress={ir('/informes')} />
       </Row>
-      <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="turnos" titulo="Turnos y francos" sub="Diagrama del supervisor y horas" onPress={ir('/turnos')} />
-        <Tile icon="directivas" titulo="Directivas" sub="Cargar el documento del puesto" onPress={ir('/importar')} />
-      </Row>
+      <Tile icon="directivas" titulo="Directivas" sub="Cargar el documento del puesto" onPress={ir('/importar')} />
 
       
       <Eyebrow>Puesto</Eyebrow>

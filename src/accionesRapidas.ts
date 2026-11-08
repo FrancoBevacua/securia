@@ -5,7 +5,6 @@ export const ACCIONES_RAPIDAS=[
  {id:'libro',titulo:'Libro',icono:'libro',ruta:'/informedia'},
  {id:'informes',titulo:'Informes',icono:'informes',ruta:'/informes'},
  {id:'directivas',titulo:'Directivas',icono:'directivas',ruta:'/directivas'},
- {id:'turnos',titulo:'Turnos',icono:'turnos',ruta:'/turnos'},
  {id:'recordatorios',titulo:'Recordatorios',icono:'bell',ruta:'/recordatorios'},
 ];
 export const RAPIDAS_INICIALES=['accesos','ingresos','recorridos'];

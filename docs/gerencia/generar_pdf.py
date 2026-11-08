@@ -23,7 +23,7 @@ def main():
         pdfmetrics.registerFont(TTFont(name,str(file)))
     out=Path(args.salida);out.parent.mkdir(parents=True,exist_ok=True)
     c=canvas.Canvas(str(out),pagesize=(W,H),pageCompression=1)
-    c.setTitle('Securia 2.3.4 | Presentación funcional para gerencia');c.setAuthor('Securia | Documento de presentación');c.setSubject('Funcionalidades de la aplicación móvil y del panel administrativo')
+    c.setTitle('Securia 2.3.4 | Presentación funcional');c.setAuthor('Securia | Documento de presentación');c.setSubject('Funcionalidades de la aplicación móvil')
     total=len(data['paginas'])+2
     def text(s,x,y,width,size=11,color=INK,bold=False,leading=None):
         style=ParagraphStyle('p',fontName='PlexBold' if bold else 'Plex',fontSize=size,leading=leading or size*1.42,textColor=HexColor(color),spaceAfter=0)
@@ -35,7 +35,7 @@ def main():
         text('SECURIA',42,H-30,150,11,NAVY,True)
         text('PRESENTACIÓN FUNCIONAL  /  2.3.4',W-277,H-31,235,8,MUTED)
         c.setStrokeColor(HexColor('#D7E0EC'));c.line(42,49,W-42,49)
-        text('Gerencia y supervisión · '+data['fecha'],42,38,420,8,MUTED)
+        text(data['fecha'],42,38,420,8,MUTED)
         text(f'{page:02d} / {total:02d}',W-90,38,50,8,MUTED)
         c.bookmarkPage('p'+str(page));c.addOutlineEntry(section,'p'+str(page),level=0,closed=False)
     # Portada
@@ -47,8 +47,8 @@ def main():
     text('SECURIA',42,570,510,52,'#FFFFFF',True)
     text('Cada novedad, bajo control.',44,498,500,18,'#BCD0EF')
     text('Presentación\nfuncional',42,420,510,36,'#FFFFFF',True,43)
-    text('Aplicación móvil y panel administrativo\nDocumento para gerencia y supervisión',44,310,500,15,'#CEDAF0')
-    for i,(a,b) in enumerate([('OPERACIÓN','Registro del servicio'),('SUPERVISIÓN','Consulta e informes'),('CONTINUIDAD','Historial compartido')]):
+    text('Aplicación móvil para el servicio de vigilancia',44,310,500,15,'#CEDAF0')
+    for i,(a,b) in enumerate([('OPERACIÓN','Registro del servicio'),('INFORMES','Consulta y exportación'),('CONTINUIDAD','Historial compartido')]):
         x=42+i*174;c.setFillColor(HexColor('#152D56'));c.roundRect(x,132,162,78,10,fill=1,stroke=0);text(a,x+13,192,145,9,'#F77791',True);text(b,x+13,168,140,11,'#FFFFFF')
     text('VERSIÓN 2.3.4  ·  '+data['fecha'],42,91,500,11,'#FFFFFF',True)
     text('Producto desarrollado por Franco Daniel Bevacua',42,62,500,9,'#BACBE7')
@@ -63,7 +63,7 @@ def main():
         text(p['titulo'],x+32,y,205,10.2,INK,True,13)
         c.linkRect('', 'p'+str(i+3),(x,y-28,x+238,y+3),relative=0,thickness=0)
     c.setFillColor(HexColor(LIGHT));c.roundRect(42,65,511,40,7,fill=1,stroke=0)
-    text('Las capturas muestran componentes reales con datos ficticios y adaptadores web.',54,94,487,9,MUTED)
+    text('Las capturas muestran pantallas de Securia con datos de demostración.',54,94,487,9,MUTED)
     c.showPage()
     # Catálogo funcional
     overflows=[]
@@ -73,23 +73,18 @@ def main():
         y=text(p['titulo'],42,734,512,25,NAVY,True,30)-10
         y=text(p['bajada'],42,y,510,11.5,MUTED)-24
         imagepath=Path(args.capturas)/(p.get('imagen','')+'.png')
-        has=imagepath.is_file();horizontal=p.get('horizontal',False)
+        has=imagepath.is_file()
         if p.get('imagen') and not has:raise FileNotFoundError(imagepath)
-        bodyw=306 if has and not horizontal else 511
+        bodyw=306 if has else 511
         if has:
-            if horizontal:
-                iw=511;ih=iw*Image.open(imagepath).height/Image.open(imagepath).width
-                c.drawImage(ImageReader(str(imagepath)),42,y-ih,width=iw,height=ih)
-                y=text('Interfaz local del panel · datos ficticios',42,y-ih-9,511,8,MUTED)-18
-            else:
-                x=370;iw=183;ih=iw*Image.open(imagepath).height/Image.open(imagepath).width
-                c.setFillColor(HexColor(LIGHT));c.roundRect(x-6,y-ih-6,iw+12,ih+12,10,fill=1,stroke=0)
-                c.drawImage(ImageReader(str(imagepath)),x,y-ih,width=iw,height=ih)
-                text('Vista de referencia\nDatos ficticios · adaptador web',x,y-ih-18,iw,8,MUTED)
+            x=370;iw=183;ih=iw*Image.open(imagepath).height/Image.open(imagepath).width
+            c.setFillColor(HexColor(LIGHT));c.roundRect(x-6,y-ih-6,iw+12,ih+12,10,fill=1,stroke=0)
+            c.drawImage(ImageReader(str(imagepath)),x,y-ih,width=iw,height=ih)
+            caption='Captura de Securia en Android' if p.get('captura_android') else 'Vista de Securia'
+            text(caption+'\nDatos de demostración',x,y-ih-18,iw,8,MUTED)
         for title,body in p['bloques']:
             y=text(title,42,y,bodyw,11,BLUE,True)-4
-            compact=bodyw<400 or horizontal
-            y=text(body,42,y,bodyw,10.3 if compact else 10.8,INK,False,14.1 if compact else 15.0)-(10 if horizontal else 13)
+            y=text(body,42,y,bodyw,10.3 if has else 10.8,INK,False,14.1 if has else 15.0)-13
         if y<63:overflows.append((num,round(y,1)))
         c.showPage()
     c.save()

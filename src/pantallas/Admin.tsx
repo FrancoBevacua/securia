@@ -42,13 +42,10 @@ export default function Admin() {
         <Tile icon="equipo" titulo="Equipo y roles" sub={n('guards') + ' vigiladores'} onPress={ir('/equipo')} />
       </Row>
       <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="turnos" titulo="Turnos del equipo" sub="Diagramar a cualquiera" onPress={ir('/turnos')} />
         <Tile icon="accesos" titulo="Catálogo de accesos" sub={n('accesses') + ' accesos'} onPress={ir('/accesos')} />
-      </Row>
-      <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="ronda" titulo="Recorridos" sub={n('rtemplates') + ' plantillas'} onPress={ir('/rondas')} />
-        <Tile icon="ajustes" titulo="Datos del site" sub={st.S.site.cliente || 'Sin configurar'} onPress={ir('/ajustes')} />
       </Row>
+      <Tile icon="ajustes" titulo="Datos del site" sub={st.S.site.cliente || 'Sin configurar'} onPress={ir('/ajustes')} />
     </Pantalla>
   );
 }

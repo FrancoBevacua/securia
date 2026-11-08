@@ -14,7 +14,7 @@ export default function ConfigurarNube(){
  const guardando=ocupado||st.nube.guardando;
  const problema=error||st.nube.error;
  useEffect(()=>{if(!st.nube.pendiente&&!st.nube.error)setError('');},[st.nube.pendiente,st.nube.error]);
- return <Card pad><Stack gap={18}><Row><View style={{width:42,height:42,borderRadius:14,backgroundColor:t.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name="share" color={t.accent} size={21}/></View><View style={{flex:1}}><Eyebrow>Sincronización</Eyebrow><Hint>Tu teléfono y el panel web, conectados.</Hint></View></Row>
+ return <Card pad><Stack gap={18}><Row><View style={{width:42,height:42,borderRadius:14,backgroundColor:t.accentSoft,alignItems:'center',justifyContent:'center'}}><Icon name="share" color={t.accent} size={21}/></View><View style={{flex:1}}><Eyebrow>Sincronización</Eyebrow><Hint>Consultá el estado de los datos compartidos.</Hint></View></Row>
   {st.nube.vinculada ? <>
    <Row><Tag kind={problema?'warn':guardando?'info':st.nube.pendiente?'warn':'ok'} label={guardando?'Sincronizando':problema?'Requiere atención':st.nube.pendiente?'Cambios pendientes':st.nube.ultima?'Al día':'Conectado'}/></Row>
    <Hint>{st.nube.pendiente?'Tus cambios están guardados en este teléfono y esperan confirmación de la nube.':st.nube.ultima?'Última sincronización: '+new Date(st.nube.ultima).toLocaleString():'La información se consulta al iniciar sesión.'}</Hint>

@@ -5,14 +5,14 @@ import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
-import { franjasDe, nombrePuesto, puestos, franjaPorId, etiquetaFranja, horasDelMes, fichajeAbierto } from '../logic';
+import { franjasDe, nombrePuesto, puestos, franjaPorId, etiquetaFranja } from '../logic';
 import {
-  Turno, Vigilador, titulo, uid, edadDe, isoDesdeDmy, mascaraDmy, dmy,
+  Vigilador, titulo, uid, edadDe, isoDesdeDmy, mascaraDmy, dmy,
 } from '../model';
 import { FONT } from '../theme';
 import {
   useTheme, Pantalla, SubCabecera, Card, Btn, Tag, Item, Stack, Row, Input, Selector,
-  Sheet, Hint, Metric, Confirmar, useToast, Eyebrow, Banner,
+  Sheet, Hint, Confirmar, useToast, Eyebrow, Banner,
 } from '../ui';
 import { Avatar } from './Gate';
 import Credencial from './Credencial';
@@ -38,7 +38,6 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
   const [error,setError]=useState('');
   const [franjaId, setFranjaId] = useState('');
   const [rol, setRol] = useState<'admin' | 'vigilador'>('vigilador');
-  const [francos, setFrancos] = useState('');
   const [foto, setFoto] = useState('');
   const [borrar, setBorrar] = useState(false);
 
@@ -59,7 +58,6 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
     setPuestoIds(idsPuestosGuardia(base||{puestoId:''}));
     setFranjaId(base?.franjaId || '');
     setRol(vigilador?.rol || 'vigilador');
-    setFrancos(vigilador?.francos || '');
     setFoto(vigilador?.foto || '');
   }, [abierto, vigilador?.id]);
 
@@ -84,7 +82,7 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
       rol: puedeRol ? rol : (vigilador?.rol || 'vigilador'),
       horaIn: fr?.entrada || vigilador?.horaIn || '06:00',
       horaOut: fr?.salida || vigilador?.horaOut || '14:00',
-      francos, foto,
+      francos: vigilador?.francos || '', foto,
     });
     if (!st.list<Vigilador>('guards').some(x => x.rol === 'admin')) {
       st.put('guards', { ...g, rol: 'admin' });
@@ -143,13 +141,11 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
         ]} />
       {puedeRol ? (
         <Selector label="Rol" valor={rol} onChange={v => setRol(v as any)}
-          hint="El administrador puede crear puestos, turnos, directivas y diagramar a todo el equipo."
+          hint="El administrador puede configurar puestos, horarios de referencia y directivas."
           opciones={[{ v: 'vigilador', t: 'Vigilador' }, { v: 'admin', t: 'Administrador' }]} />
       ) : null}
       <Input label="Celular" value={tel} onChangeText={setTel} keyboardType="phone-pad" placeholder="341 555 5555" />
       <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <Input label="Francos" value={francos} onChangeText={setFrancos} placeholder="Miércoles y jueves"
-        hint="Referencia. El diagrama real se arma en Turnos." />
 
       <Confirmar visible={borrar} mensaje="¿Eliminar a este vigilador del equipo? Sus registros quedan en el sistema."
         onCancel={() => setBorrar(false)}
@@ -208,7 +204,6 @@ export function Perfil() {
   const [pinAnterior, setPinAnterior] = useState('');
   const me = st.me!;
   const perfil=st.S.guards.find(g=>g.id===me.id)||me;
-  const enTurno = fichajeAbierto(st.S, me.id);
 
   if(me.corporativo)return <CuentaCorporativo/>;
 
@@ -243,13 +238,6 @@ export function Perfil() {
             opciones={franjasDe(st.S, perfil.puestoId).map(f => ({
               v: f.id, t: f.alias ? f.nombre + ' — ' + f.alias : f.nombre, sub: f.entrada + ' a ' + f.salida,
             }))} />
-          <Row gap={9}>
-            <Metric valor={Math.floor(horasDelMes(st.S, me.id) / 60)} label="Horas mes" />
-            <Metric valor={st.list<Turno>('shifts').filter(s =>
-              s.guardId === me.id && s.tipo === 'franco' && s.fecha.slice(0, 7) === new Date().toISOString().slice(0, 7)
-            ).length} label="Francos" />
-            <Metric valor={enTurno ? 'SÍ' : 'NO'} label="En turno" />
-          </Row>
           <Btn label="Editar mis datos" icon="edit" variant="primary" onPress={() => setEditar(true)} />
         </Stack>
       </Card>
@@ -258,8 +246,6 @@ export function Perfil() {
         <Item title="PIN de acceso"
           subs={['PIN personal para iniciar sesión en el teléfono compartido.']}
           onPress={() => { setPin(''); setPinAnterior(''); setPinAbierto(true); }} />
-        <Item title="Mis turnos y francos" subs={['Diagrama del mes y horas acumuladas']}
-          onPress={() => router.push('/turnos')} />
         <Item last title="Cerrar sesión" subs={['Vuelve a la pantalla de acceso de su cuenta']}
           onPress={async () => { try { await st.salir(); } catch (e: any) { toast(e.message); } }} />
       </Card>

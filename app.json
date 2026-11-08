@@ -27,7 +27,7 @@
       }
     },
     "android": {
-      "versionCode": 29,
+      "versionCode": 30,
       "softwareKeyboardLayoutMode": "resize",
       "package": "ar.com.securia.app",
       "adaptiveIcon": {
