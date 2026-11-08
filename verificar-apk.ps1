@@ -3,7 +3,7 @@ $projectDir = $PSScriptRoot
 $config = (Get-Content -LiteralPath (Join-Path $projectDir 'app.json') -Raw | ConvertFrom-Json).expo
 $builtApk = Join-Path $projectDir 'android\app\build\outputs\apk\release\app-release.apk'
 $deliverApk = Join-Path $projectDir 'Securia.apk'
-$previousApk = Join-Path $projectDir 'output\apk\Securia-2.3.1.apk'
+$previousApk = Join-Path $projectDir 'output\apk\Securia-2.3.2.apk'
 $versionedApk = Join-Path $projectDir ('output\apk\Securia-' + $config.version + '.apk')
 $sdkDir = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA 'Android\Sdk' }
 $toolDir = Join-Path $sdkDir 'build-tools\36.0.0'
@@ -14,7 +14,7 @@ if (!$env:JAVA_HOME) {
 $certificate = 'fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c'
 if (!(Test-Path -LiteralPath $builtApk)) { throw 'No se generó la APK.' }
 $javaExe = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME 'bin\java.exe' } else { 'java.exe' }
-if (!(Test-Path -LiteralPath $previousApk)) { throw 'Falta la APK 2.3.1 de referencia para verificar la actualización.' }
+if (!(Test-Path -LiteralPath $previousApk)) { throw 'Falta la APK anterior de referencia para verificar la actualización.' }
 $previousSignature = & $javaExe -jar (Join-Path $toolDir 'lib\apksigner.jar') verify --print-certs $previousApk 2>&1
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo verificar la APK de referencia.' }
 if (($previousSignature -join "`n") -notmatch [regex]::Escape($certificate)) { throw 'La firma de referencia no coincide con la firma de distribución.' }

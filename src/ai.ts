@@ -228,9 +228,9 @@ export async function pedirIA(
   }
   const contenido = j?.choices?.[0]?.message?.content;
   const texto =
-    (Array.isArray(contenido) ? contenido.map((p: any) => p.text || '').join('') : contenido) ??
+    (Array.isArray(contenido) ? contenido.filter((p: any) => !p.type || ['text','output_text'].includes(p.type)).map((p: any) => p.text || '').join('') : contenido) ??
     j?.candidates?.[0]?.content?.parts?.filter((p: any) => !p.thought).map((p: any) => p.text || '').join('') ??
-    (Array.isArray(j?.content) ? j.content.map((c: any) => c.text || '').join('') : '') ??
+    (Array.isArray(j?.content) ? j.content.filter((c: any) => c.type==='text').map((c: any) => c.text || '').join('') : '') ??
     '';
   if (!texto || !String(texto).trim()) {
     const motivo = j?.candidates?.[0]?.finishReason || j?.promptFeedback?.blockReason || '';

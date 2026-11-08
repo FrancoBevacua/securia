@@ -1,6 +1,6 @@
 {
   "name": "securia-app",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",

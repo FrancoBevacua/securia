@@ -11,6 +11,12 @@ const {lineaPrecintos,textoInformeAccesos,textoAlogLibro}=require('../src/text.t
 const {parsearPrecintos}=require('../src/precintos.ts');
 const {pedirIA}=require('../src/ai.ts');
 function base(){const S=estadoVacio();S.guards=[{id:'a',apellido:'Prueba',nombre:'Ana',rol:'vigilador'},{id:'b',apellido:'Prueba',nombre:'Bruno',rol:'vigilador'}];S.posts=[{id:'playa',nombre:'Playa'}];S.punches=[{id:'turno',guardId:'a',fecha:'2026-10-24',in:'19:00',out:'',dispositivoId:'telefono'}];return S;}
+test('el informe de portones identifica cada número como precinto',()=>{
+ const r={hora:'08:00',gs:'Prueba',acceso:'Portón Oroño',tipo:'cierre',tipoAcceso:'porton',puertas:[{id:'p',nombre:'Portón',precintos:['0123456','7654321']}]};
+ for(const salida of [lineaPrecintos(r),textoAlogLibro(r),textoInformeAccesos([r],'2026-11-08',{tipo:'ambos',orden:'carga',encabezado:false},{})]){
+  assert.match(salida,/Precinto N°: 0123456/);assert.match(salida,/Precinto N°: 7654321/);assert.doesNotMatch(salida,/Portón:/);
+ }
+});
 test('DNI argentino y fichas reúnen empleados por documento sin reutilizar permisos',()=>{
  const S=base(),acc={...accVacio(),empresa:' ACME ',tarea:'Control',lugar:'Playa',autoriz:'admin',personas:[{nombre:'Persona Uno',dni:'36010660'}]};
  assert.equal(fmtDNI(acc.personas[0].dni),'36.010.660');const f=fichaExterno(S,acc,'a');S.externals=[f];
@@ -61,6 +67,13 @@ test('GPT envía texto e imágenes al endpoint fijo de OpenAI y oculta la clave 
  assert.equal(await pedirIA('Prueba',cfg,'Sistema',[{mime:'image/jpeg',base64:'YWJj'}]),'Lectura de prueba');
  assert.equal(pedido.url,'https://api.openai.com/v1/chat/completions');assert.equal(pedido.op.headers.Authorization,'Bearer clave-ficticia');assert.equal(pedido.body.messages[1].content[1].image_url.url,'data:image/jpeg;base64,YWJj');assert.ok(pedido.body.max_completion_tokens);assert.equal(pedido.body.max_tokens,undefined);
  t.mock.method(globalThis,'fetch',async()=>({ok:false,status:400,json:async()=>({error:{message:'Error clave-ficticia'}})}));await assert.rejects(pedirIA('Prueba',cfg),e=>!e.message.includes('clave-ficticia'));
+});
+
+test('las respuestas de proveedores omiten sus bloques de razonamiento interno',async t=>{
+ t.mock.method(globalThis,'fetch',async()=>({ok:true,status:200,json:async()=>({content:[{type:'thinking',thinking:'Análisis interno',text:'No mostrar'},{type:'text',text:'Respuesta final'}]})}));
+ assert.equal(await pedirIA('Prueba',{proveedor:'anthropic',apiKey:'ficticia',modelo:'prueba'}),'Respuesta final');
+ t.mock.method(globalThis,'fetch',async()=>({ok:true,status:200,json:async()=>({choices:[{message:{reasoning_content:'Interno',content:[{type:'reasoning',text:'No mostrar'},{type:'text',text:'Respuesta final'}]}}]})}));
+ assert.equal(await pedirIA('Prueba',{proveedor:'compatible',apiKey:'',baseUrl:'https://prueba.invalid',modelo:'prueba'}),'Respuesta final');
 });
 
 

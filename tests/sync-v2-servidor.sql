@@ -9,6 +9,7 @@ declare
 begin
  e:=e||jsonb_build_object('guards',jsonb_build_array(jsonb_build_object('id','sync-test','rol','admin','cuenta',true,'nombre','Prueba')),
  'punches',jsonb_build_array(jsonb_build_object('id','cerrado','guardId','sync-test','out','19:00','closedAt',200)));
+ e:=jsonb_set(e,'{guards}',(e->'guards')||jsonb_build_array(jsonb_build_object('id','firma-historica','nombre','Prueba histórica','deleted',true)));
  e:=jsonb_set(e,'{novedades}',(select jsonb_agg(jsonb_build_object('id','historia-'||i,'texto','Histórico sintético','createdBy','sync-test','guardId','sync-test','turnoId','cerrado','lockedAt',200)) from generate_series(1,500) i));
  insert into guardia_private.documentos(cifrado) values(guardia_private.cifrar(e)) returning id into obj;
  insert into guardia_private.dispositivos(hash,objetivo) values(guardia_private.hash(dispositivo),obj);
@@ -27,6 +28,12 @@ begin
  if r is distinct from repetido then raise exception 'El recibo no es idempotente';end if;
  if (select count(*) from jsonb_array_elements(r->'acuses') x where x->>'estado'='confirmado')<>2 then raise exception 'No incorporó el turno offline: %',r;end if;
  if (select count(*) from jsonb_array_elements(r->'acuses') x where x->>'estado'='resguardado')<>1 then raise exception 'No respaldó el conflicto';end if;
+ -- Una entrega posterior al cierre conserva también la firma de un perfil dado de baja.
+ filas:=jsonb_build_array(
+ jsonb_build_object('col','novedades','id','tardia','valor',jsonb_build_object('id','tardia','guardId','firma-historica','createdBy','sync-test','turnoId','cerrado','texto','Entrega tardía sintética')),
+ jsonb_build_object('col','alogs','id','acceso-tardio','valor',jsonb_build_object('id','acceso-tardio','guardId','firma-historica','createdBy','sync-test','turnoId','cerrado','acceso','Portón de prueba','tipo','cierre','fecha','2026-11-08','hora','08:00','p1','0123456')));
+ r:=public.guardia_sync(jsonb_build_object('accion','guardar','dispositivo',dispositivo,'token',token,'lote','123456789abcdef1','filas',filas));
+ if (select count(*) from jsonb_array_elements(r->'acuses') x where x->>'estado'='confirmado')<>2 then raise exception 'No incorporó entregas tardías con firma histórica: %',r;end if;
  r:=public.guardia_sync(jsonb_build_object('accion','foto','dispositivo',dispositivo,'token',token,'ref',ref));
  if r->>'foto' is distinct from foto then raise exception 'No recuperó exactamente el adjunto';end if;
  r:=public.guardia_sync(jsonb_build_object('accion','consultar','dispositivo',dispositivo,'token','invalido'));

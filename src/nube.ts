@@ -265,7 +265,8 @@ let trabajos=0;
 let preparaciones:Promise<any>=Promise.resolve();
 async function sincronizando(f:()=>Promise<void>,_autorrecuperar=true){
  trabajos++;avisar({guardando:true,error:''});
- try{await f();avisar({pendiente:!!sync?.pendiente,ultima:new Date().toISOString(),error:sync?.resguardados?'Se respaldaron diferencias de turnos cerrados. Puede consultarlas en Historial de recuperación.':''});}
+ const antes=sync?.resguardados||0;
+ try{await f();avisar({pendiente:!!sync?.pendiente,ultima:new Date().toISOString(),error:(sync?.resguardados||0)>antes?'Se respaldaron diferencias entre versiones. Puede consultarlas en Historial de recuperación.':''});}
  catch(e:any){avisar({error:e.message,pendiente:!!sync?.pendiente});throw e;}
  finally{trabajos--;avisar({guardando:trabajos>0});}
 }

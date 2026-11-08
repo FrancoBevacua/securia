@@ -37,6 +37,11 @@ before(async()=>{
  await db.query('insert into guardia_private.documentos(id,cifrado) values($1,guardia_private.cifrar($2::jsonb))',[objetivo,JSON.stringify(e)]);
  await db.exec(sql('supabase/migrations/20261001071312_sincronizacion_registros_adjuntos_v2.sql'));
  await db.exec(sql('supabase/migrations/20261025012906_securia_fichas_externos.sql'));
+ const recuperable={col:'novedades',id:'recuperable',valor:{id:'recuperable',createdBy:'a',guardId:'a',turnoId:'cerrado',texto:'Entrega pendiente de prueba'}};
+ await db.query(`insert into guardia_private.sync_resguardos(objetivo,actor,telefono,col,registro,motivo,cifrado)
+ values($1,'a',guardia_private.hash('telefono'),'novedades','recuperable','El registro debe pertenecer a un turno propio pendiente de sincronización',guardia_private.cifrar($2::jsonb))`,[objetivo,JSON.stringify(recuperable)]);
+ await db.exec(sql('supabase/migrations/20261108052136_sincronizar_turnos_cerrados.sql'));
+ await db.exec(sql('supabase/migrations/20261108052837_sincronizar_firmas_historicas.sql'));
  await db.exec(`insert into guardia_private.dispositivos values(guardia_private.hash('telefono'),'${objetivo}',false);
  insert into guardia_private.sesiones(hash,dispositivo,guardia) values(guardia_private.hash('token'),guardia_private.hash('telefono'),'a');`);
 });
@@ -56,15 +61,40 @@ test('acepta un turno cerrado offline y sus notas con recibo idempotente',async(
  const r=await guardar(filas);assert.deepEqual(r.acuses.map(x=>x.estado),['confirmado','confirmado']);
  assert.deepEqual(await guardar(filas),r);
 });
-test('aísla un turno cerrado sin bloquear un informe nuevo ni elevar el rol',async()=>{
+test('sincroniza ediciones pendientes de un turno cerrado sin elevar el rol',async()=>{
  const pagina=await rpc({accion:'consultar',cursor:0}),guard=pagina.filas.find(x=>x.col==='guards');
  const r=await guardar([
  {col:'novedades',id:'historica-1',base: {id:'historica-1',createdBy:'a',guardId:'a',turnoId:'cerrado',lockedAt:2,texto:'Histórico 1'},valor:{id:'historica-1',createdBy:'a',guardId:'a',turnoId:'cerrado',lockedAt:2,texto:'Otra versión'}},
  {col:'reports',id:'informe-nuevo',valor:{id:'informe-nuevo',texto:'Informe'}},
  {col:'guards',id:'a',baseHash:guard.hash,valor:{...guard.valor,cuenta:false}}
  ],'123456789abcdef1');
- assert.equal(r.acuses.find(x=>x.id==='informe-nuevo').estado,'confirmado');assert.equal(r.acuses.filter(x=>x.estado==='resguardado').length,2);
+ assert.equal(r.acuses.find(x=>x.id==='informe-nuevo').estado,'confirmado');assert.equal(r.acuses.find(x=>x.id==='historica-1').estado,'confirmado');assert.equal(r.acuses.filter(x=>x.estado==='resguardado').length,1);
  assert.equal((await rpc({accion:'resguardos'})).resguardos.length,2);
+});
+
+test('recupera el respaldo antiguo y conserva el historial de recuperación',async()=>{
+ const filas=await db.query("select guardia_private.abrir(cifrado) as valor from guardia_private.sync_filas where objetivo=$1 and col='novedades' and id='recuperable'",[objetivo]);
+ assert.equal(filas.rows[0].valor.texto,'Entrega pendiente de prueba');
+ assert.equal((await db.query("select recuperado is not null as recuperado from guardia_private.sync_resguardos where registro='recuperable'")).rows[0].recuperado,true);
+});
+
+test('acepta notas tardías en varios lotes y rechaza cambiar su autor o teléfono',async()=>{
+ for(let lote=0;lote<2;lote++){
+  const filas=Array.from({length:130},(_,i)=>({col:'novedades',id:'tardia-'+lote+'-'+i,valor:{id:'tardia-'+lote+'-'+i,createdBy:'a',guardId:'a',turnoId:'cerrado',lockedAt:2,texto:'Nota tardía'}}));
+  assert.ok((await guardar(filas,'abcdefabcdefabcd'+lote)).acuses.every(a=>a.estado==='confirmado'));
+ }
+ const fila={id:'autor-ajeno',createdBy:'otro',guardId:'a',turnoId:'cerrado',texto:'Otra cuenta'};
+ assert.equal((await guardar([{col:'novedades',id:fila.id,valor:fila}],'abcdefabcdefabc4')).acuses[0].estado,'resguardado');
+ const otroTelefono=await guardar([{col:'punches',id:'otro-telefono',valor:{id:'otro-telefono',guardId:'a',dispositivoId:'otro',out:''}}],'abcdefabcdefabc5');
+ assert.equal(otroTelefono.acuses[0].estado,'resguardado');
+});
+
+test('la baja del firmante no impide sincronizar su firma histórica',async()=>{
+ const e=(await db.query('select guardia_private.abrir(cifrado) as e from guardia_private.documentos where id=$1',[objetivo])).rows[0].e;
+ e.guards.push({id:'firma-historica',nombre:'Prueba',deleted:true});
+ await db.query('update guardia_private.documentos set cifrado=guardia_private.cifrar($1::jsonb) where id=$2',[JSON.stringify(e),objetivo]);
+ const n={id:'firma-archivada',guardId:'firma-historica',createdBy:'a',turnoId:'cerrado',texto:'Registro histórico'};
+ assert.equal((await guardar([{col:'novedades',id:n.id,valor:n}],'abcdefabcdefabc6')).acuses[0].estado,'confirmado');
 });
 test('un cambio concurrente no sobrescribe y diferencias sólo de updatedAt no bloquean',async()=>{
  const r=await guardar([{col:'reports',id:'informe-nuevo',valor:{id:'informe-nuevo',texto:'Informe',updatedAt:999}}],'123456789abcdef2');

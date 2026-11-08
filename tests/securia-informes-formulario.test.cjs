@@ -19,7 +19,7 @@ Module._load=function(n,...a){
 };
 const Informes=require('../src/pantallas/Informes.tsx').default;
 const boton=(r,label)=>r.root.findAllByType('Btn').find(b=>b.props.label===label);
-test('Generar informe no llama IA, cierra al confirmar disco y permite leer, editar y eliminar',async()=>{
+test('Generar informe no llama IA, muestra el resultado al confirmar disco y permite leer, editar y eliminar',async()=>{
  let r;await act(async()=>{r=create(React.createElement(Informes));});
  await act(async()=>r.root.findByType('Cabecera').props.derecha.props.onPress());
  await act(async()=>r.root.findByType('Firma').props.onChange('a'));
@@ -31,13 +31,28 @@ test('Generar informe no llama IA, cierra al confirmar disco y permite leer, edi
  assert.equal(r.root.findAllByType('Sheet').find(s=>s.props.title==='Informe de seguridad').props.visible,true);
  assert.ok(r.root.findAllByType('Hint').some(h=>String(h.props.children).includes('Disco lleno')));
  fallar=false;await act(async()=>boton(r,'Generar informe').props.onPress());
- assert.equal(r.root.findAllByType('Sheet').find(s=>s.props.title==='Informe de seguridad').props.visible,false);
+ assert.equal(r.root.findAllByType('Sheet').find(s=>s.props.title==='Vista previa').props.visible,true);
  assert.equal(lotes.length,2);assert.equal(lotes[0][0].obj.id,lotes[1][0].obj.id);assert.equal(S.reports.length,1);assert.equal(S.novedades.length,1);assert.equal(S.reports[0].estado,'generado');
+ await act(async()=>r.root.findAllByType('Sheet').find(s=>s.props.title==='Vista previa').props.onClose());
  await act(async()=>r.root.findAllByType('Item')[0].props.onPress());assert.ok(boton(r,'Editar informe'));assert.ok(boton(r,'Compartir PDF'));
  await act(async()=>boton(r,'Editar informe').props.onPress());assert.ok(boton(r,'Siguiente'));
  await act(async()=>r.root.findAllByType('Sheet').find(s=>s.props.title==='Informe de seguridad').props.onClose());
  await act(async()=>r.root.findAllByType('Item')[0].props.onPress());
  await act(async()=>r.root.findAllByType('Btn').find(b=>b.props.icon==='trash').props.onPress());
  await act(async()=>r.root.findByType('Confirmar').props.onOk());assert.equal(S.reports[0].deleted,true);assert.equal(store.list('reports').length,0);
+ await act(async()=>r.unmount());
+});
+
+test('el botón final muestra el error junto a la acción y vuelve al horario pendiente',async()=>{
+ let r;await act(async()=>{r=create(React.createElement(Informes));});
+ await act(async()=>r.root.findByType('Cabecera').props.derecha.props.onPress());
+ for(let i=0;i<4;i++)await act(async()=>boton(r,'Siguiente').props.onPress());
+ await act(async()=>boton(r,'Generar informe').props.onPress());
+ assert.ok(r.root.findAllByType('Input').some(i=>i.props.label.startsWith('6.')));
+ await act(async()=>r.root.findAllByType('Input').find(i=>i.props.label.startsWith('6.')).props.onChangeText('Una novedad de prueba.'));
+ for(let i=0;i<3;i++)await act(async()=>boton(r,'Siguiente').props.onPress());
+ await act(async()=>boton(r,'Generar informe').props.onPress());
+ assert.ok(r.root.findAllByType('Input').some(i=>i.props.label==='Hora del hecho'));
+ assert.ok(r.root.findAllByType('Text').some(i=>i.props.accessibilityRole==='alert'&&/horario/.test(i.props.children)));
  await act(async()=>r.unmount());
 });

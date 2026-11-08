@@ -170,10 +170,14 @@ export function textoInformeAccesos(rows: AccesoLog[], fecha: string, o: OpcInfo
 /** Línea de precintos del bloque de apertura o cierre. */
 export function lineaPrecintos(x: AccesoLog) {
   if(x.sinPrecinto)return 'Sin precinto (no aplica)';
-  if(x.puertas?.length)return x.puertas.filter(p=>p.sinPrecinto||p.precintos.some(Boolean)).map(p=>p.nombre+': '+(p.sinPrecinto?'sin precinto (no aplica)':p.precintos.filter(Boolean).join(' - '))).join('\n');
+  if(x.puertas?.length)return x.puertas.filter(p=>p.sinPrecinto||p.precintos.some(Boolean)).map(p=>{
+    const porton=x.tipoAcceso==='porton'||/^port[oó]n$/i.test(p.nombre.trim());
+    if(porton)return p.sinPrecinto?'Sin precinto (no aplica)':p.precintos.filter(Boolean).map(n=>'Precinto N°: '+n).join('\n');
+    return p.nombre+': '+(p.sinPrecinto?'sin precinto (no aplica)':p.precintos.filter(Boolean).join(' - '));
+  }).join('\n');
   if (!x.p1) return '';
-  if (!x.p2) return 'Precinto N° ' + x.p1;
-  return 'Precintos N° ' + x.p1 + ' - ' + x.p2;
+  if (!x.p2) return 'Precinto N°: ' + x.p1;
+  return 'Precintos N°: ' + x.p1 + ' - ' + x.p2;
 }
 
 export function textoAlogLibro(r: AccesoLog) {

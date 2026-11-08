@@ -33,8 +33,8 @@ export const nuevoInforme = (S: any, me: any, responsable=me): Informe => {
   r.f2 = S.site.region || '';
   r.f3 = dmy(isoDate());
   r.f5 = 'Baja';
-  r.f9 = 'Guardia de seguridad: ' + (responsable.apellido || '') + ' ' + (responsable.nombre || '');
-  r.f14 = 'Guardia de turno - ' + (responsable.apellido || '') + ' ' + (responsable.nombre || '');
+  r.f9 = 'Guardia de seguridad: ' + (responsable?.apellido || '') + ' ' + (responsable?.nombre || '');
+  r.f14 = 'Guardia de turno - ' + (responsable?.apellido || '') + ' ' + (responsable?.nombre || '');
   return r as Informe;
 };
 
@@ -152,8 +152,12 @@ export function Asistente({ visible, informe, paso, setPaso, setInforme, onClose
       setInforme(cambios[0].obj);
       st.putVarios(cambios);
       await st.confirmarGuardado();
-      onClose();toast('Informe generado y resumen agregado al libro de novedades');
-    }catch(e:any){setErrorResumen(e.message||'No se pudo generar el resumen. El informe permanece guardado.');}
+      setPaso(total);toast('Informe generado y resumen agregado al libro de novedades');
+    }catch(e:any){
+      const mensaje=e.message||'No se pudo generar el informe. Revise los datos y vuelva a intentar.';
+      setErrorResumen(mensaje);toast(mensaje);
+      if(Number.isInteger(e.pasoInforme))setPaso(e.pasoInforme);
+    }
     finally{setPensando(false);}
   };
 
@@ -248,7 +252,9 @@ export function Asistente({ visible, informe, paso, setPaso, setInforme, onClose
     return (
       <Sheet visible={visible} title="Vista previa" onClose={onClose} onBack={() => setPaso(total - 1)}
         footer={
-          <>
+          <View style={{flex:1,gap:8}}>
+            {errorResumen?<Text accessibilityRole="alert" style={{color:t.text,fontFamily:FONT.body,fontSize:14}}>{errorResumen}</Text>:null}
+            <Row>
             {BotonBorrar}
             <Btn icon="down" onPress={async () => {
               toast('Armando el PDF…');
@@ -258,7 +264,8 @@ export function Asistente({ visible, informe, paso, setPaso, setInforme, onClose
             }} />
             <Btn label="Copiar" icon="copy" variant="primary" style={{ flex: 1 }}
               onPress={async () => { await Clipboard.setStringAsync(texto); toast('Informe copiado'); }} />
-          </>
+            </Row>
+          </View>
         }>
         <Pasos paso={paso} total={total} />
         <SelectorFirma valor={(informe as any).firmaId||''} onChange={v=>set('firmaId',v)}/>
@@ -291,19 +298,19 @@ export function Asistente({ visible, informe, paso, setPaso, setInforme, onClose
       <Sheet visible={visible && !plantillas} title="Informe de seguridad" onClose={onClose}
         onBack={paso > 0 ? () => setPaso(paso - 1) : undefined}
         footer={
-          <>
+          <View style={{flex:1,gap:8}}>
+            {errorResumen?<Text accessibilityRole="alert" style={{color:t.text,fontFamily:FONT.body,fontSize:14}}>{errorResumen}</Text>:null}
+            <Row>
             {BotonBorrar}
             <Btn label="Guardar borrador" variant="ghost" disabled={pensando} style={{ flex: 1 }}
               onPress={async () => {setPensando(true);try{await guardar(); onClose(); toast('Borrador guardado en el teléfono');}catch(e:any){setErrorResumen(e.message);}finally{setPensando(false);} }} />
             <Btn label={pensando?'Generando…':paso === total - 1 ? 'Generar informe' : 'Siguiente'} disabled={pensando} variant="primary" style={{ flex: 1 }}
               onPress={async () => {
-                if(paso===total-1){void finalizar();return;}
-                if (paso === total - 1 && !String((informe as any).f6 || '').trim()) {
-                  toast('Aviso: el punto 6, resumen del hecho, quedó vacío');
-                }
+                if(paso===total-1){await finalizar();return;}
                 setPensando(true);try{await guardar(); setPaso(paso + 1);}catch(e:any){setErrorResumen(e.message);}finally{setPensando(false);}
               }} />
-          </>
+            </Row>
+          </View>
         }>
         <Pasos paso={paso} total={total} />
         {errorResumen?<Hint>{errorResumen}</Hint>:null}

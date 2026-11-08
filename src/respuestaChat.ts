@@ -1,6 +1,7 @@
 /** Las referencias siguen disponibles para la consulta interna, nunca en el texto entregado. */
 export function limpiarRespuestaChat(texto:string){
- return texto.replace(/\[(?:(?:O+|D|DOC|FUENTE)\s*\d+)(?:\s*[,;–-]\s*(?:(?:O+|D|DOC|FUENTE)\s*)?\d+)*\]/gi,'')
+ return texto.replace(/<(think|thinking|analysis|reasoning)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi,'')
+  .replace(/\[(?:(?:O+|D|DOC|FUENTE)\s*\d+)(?:\s*[,;–-]\s*(?:(?:O+|D|DOC|FUENTE)\s*)?\d+)*\]/gi,'')
   .replace(/[ \t]+([,.;:!?])/g,'$1').replace(/[ \t]+$/gm,'').replace(/^[ \t]*(?:fuentes?|referencias?)(?:\s+(?:consultadas?|utilizadas?))?\s*:\s*$/gim,'')
   .replace(/\n{3,}/g,'\n\n').trim();
 }

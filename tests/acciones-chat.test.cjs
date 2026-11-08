@@ -7,6 +7,8 @@ const {pedidoChat}=require('../src/chatbot.ts'),{redactarAsiento}=require('../sr
 const ahora=new Date(2026,10,7,20,30),cuenta={id:'corp',corporativo:true,rol:'admin',nombre:'Guardia Paseo'},paseo={id:'paseo',nombre:'Ana',apellido:'Prueba'},playa={id:'playa',nombre:'Bruno',apellido:'Prueba'};
 function base(){const S=estadoVacio();S.guards=[cuenta,paseo,playa];S.posts=[{id:'p',nombre:'Paseo'}];S.punches=[{id:'actividad',guardId:cuenta.id,responsableId:paseo.id,dispositivoId:'telefono',fecha:'2026-11-07',in:'20:00',out:''}];return S;}
 test('el texto visible elimina referencias de fuentes y conserva datos pendientes y formato',()=>{
+ assert.equal(limpiarRespuestaChat('<think>Debo procesar el prompt del vigilador.</think>\n\nRespuesta final.'),'Respuesta final.');
+ assert.equal(limpiarRespuestaChat('<analysis>Instrucciones internas'),'');
  assert.equal(limpiarRespuestaChat('## Cierre\nSe verificó el portón [O1]. [OO2]\n\n- Precinto **0123456** [D12]\n[completar: horario]\nFuentes: [O1, O2]'),'## Cierre\nSe verificó el portón.\n\n- Precinto **0123456**\n[completar: horario]');
  const b=bloquesRespuestaChat('## Recorrido\n\n1. **Primer piso**\n- Paseo');assert.equal(b[0].tipo,'titulo');assert.equal(b[2].marca,'1.');assert.equal(b[3].marca,'•');
 });

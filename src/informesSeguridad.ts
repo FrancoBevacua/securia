@@ -47,14 +47,15 @@ export function resumenInforme(r: Informe): string {
 }
 /** Informe y resumen se validan y persisten como una sola operación local. */
 export function generarInformeSeguridad(S: Estado, r: Informe, actor: string, telefonoId?: string): {col:Col;obj:any}[] {
+  const incompleto=(mensaje:string,paso:number):never=>{throw Object.assign(new Error(mensaje),{pasoInforme:paso});};
   const turno = turnoAbierto(S, actor, telefonoId);
-  if (!turno) throw Error('Inicie sesión para generar el informe.');
-  if (!S.guards.some(g=>g.id===r.firmaId&&!g.deleted)) throw Error('Seleccione el vigilador que realizó la novedad.');
-  if (!String(r.f6 || '').trim()) throw Error('Complete el resumen del hecho en el punto 6.');
-  const m = String(r.f3 || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!turno) throw Error('Seleccione el guardia a cargo para iniciar la actividad y generar el informe.');
+  if (!S.guards.some(g=>g.id===r.firmaId&&!g.deleted&&!g.corporativo)) incompleto('Seleccione el vigilador que realizó la novedad.',0);
+  if (!String(r.f6 || '').trim()) incompleto('Complete el resumen del hecho en el punto 6.',1);
+  const m = String(r.f3 || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   const fecha = m ? m[3]+'-'+m[2]+'-'+m[1] : r.fecha;
-  if (!fechaValida(fecha) || !horaValida(r.hora)) throw Error('Indique la fecha y el horario del hecho.');
-  if (r.fotos?.length && !r.sector?.trim()) throw Error('Indique el sector de la evidencia fotográfica.');
+  if ((String(r.f3||'').trim()&&!m) || !fechaValida(fecha) || !horaValida(r.hora)) incompleto('Indique la fecha y el horario del hecho.',0);
+  if (r.fotos?.length && !r.sector?.trim()) incompleto('Indique el sector de la evidencia fotográfica.',4);
   const base = {...r, fecha, id:r.id || uid(), estado:'generado', createdAt:r.createdAt || Date.now(), updatedAt:Date.now()};
   return [
     {col:'reports',obj:base},
