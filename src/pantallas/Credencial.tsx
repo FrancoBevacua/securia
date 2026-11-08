@@ -117,7 +117,6 @@ export default function Credencial({ g }: { g: Vigilador }) {
               <Dato etiqueta="Edad" valor={edadDe(g.fechaNac) || g.edad} color={t.text} muted={t.muted} />
               <Dato etiqueta="Horario" valor={g.horaIn && g.horaOut ? g.horaIn + ' a ' + g.horaOut : ''} color={t.text} muted={t.muted} />
               <Dato etiqueta="Celular" valor={g.tel} color={t.text} muted={t.muted} />
-              <Dato etiqueta="Francos" valor={g.francos} color={t.text} muted={t.muted} />
             </View>
             <Text numberOfLines={1} style={{ fontFamily: FONT.body, fontSize: 11.5, color: t.muted }}>
               {st.S.site.cliente + (st.S.site.region ? ' · Región ' + st.S.site.region : '')}
