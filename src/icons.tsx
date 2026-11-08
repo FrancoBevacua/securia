@@ -3,6 +3,11 @@ import React from 'react';
 import { SvgXml } from 'react-native-svg';
 
 export const IC: Record<string, string> = {
+  guia:'<path d="M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Z"/><path d="M12 5v15M5 8h4M15 8h4M5 12h4M15 12h4"/>',
+  siguiente:'<path d="m9 5 7 7-7 7"/>',
+  play:'<path d="m8 4 13 8-13 8Z"/>',
+  pausa:'<path d="M8 5v14M16 5v14"/>',
+  tocar:'<path d="M8 13V5a2 2 0 0 1 4 0v6l2-1 2 1 2 1 2 1v4a5 5 0 0 1-5 5h-3c-2 0-3-1-4-3l-4-5a2 2 0 0 1 3-2l2 2"/>',
   chat:'<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H8l-5 2 1.5-5A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 10h7M8 14h4"/>',
   descanso:'<path d="M4 7h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path d="M17 8h1a3 3 0 0 1 0 6h-1M3 22h16M8 2v2M13 2v2"/>',
   inicio:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>',
