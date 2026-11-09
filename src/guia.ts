@@ -17,7 +17,7 @@ export const TEMAS_GUIA:TemaGuia[]=[
  ]},
  {id:'accesos',titulo:'Accesos y precintos',descripcion:'Aperturas, cierres e informe para CCTV.',icono:'accesos',pasos:[
   {titulo:'Entrá a Accesos',texto:'Abrí la pestaña «Accesos». En «Registros», presioná + para cargar una apertura o un cierre.',captura:'accesos'},
-  {titulo:'Identificá el acceso',texto:'Elegí el acceso, indicá si es apertura o cierre y revisá la fecha, la hora y el vigilador. Completá el motivo cuando corresponda.',captura:'precintos'},
+  {titulo:'Identificá el acceso',texto:'Elegí el acceso, indicá si es apertura o cierre y revisá la fecha, la hora y el vigilador. Completá el motivo cuando corresponda.',captura:'registroAcceso'},
   {titulo:'Completá los precintos',texto:'Cargá el número completo de cada precinto. Si hay cuatro números recordados, completá los tres restantes. Podés usar «Leer precintos con cámara» y revisar el resultado.',captura:'precintos',consejo:'Si el acceso no lleva precinto, marcá «No aplica precinto».'},
   {titulo:'Generá el informe para CCTV',texto:'Guardá el acceso. En la lista, elegí la fecha que querés informar y presioná «Generar informe para CCTV». Revisá el contenido antes de copiarlo o compartirlo.',captura:'cctv'},
  ]},
@@ -54,7 +54,7 @@ export const TEMAS_GUIA:TemaGuia[]=[
  ]},
  {id:'mas',titulo:'Otras herramientas',descripcion:'Directivas, contactos y avisos.',icono:'mas',pasos:[
   {titulo:'Explorá Más',texto:'La pestaña Más reúne herramientas de operación y del puesto. Allí encontrás Equipo, Contactos, Directivas, Recordatorios y Ajustes.',captura:'mas'},
-  {titulo:'Consultá el puesto y el equipo',texto:'Usá Contactos para consultar los teléfonos cargados y Equipo para ver vigiladores.',captura:'mas'},
+  {titulo:'Consultá el puesto y el equipo',texto:'Usá Contactos para consultar los teléfonos cargados y Equipo para ver vigiladores.',captura:'puesto'},
   {titulo:'Agregá recordatorios',texto:'Abrí Recordatorios y conectá un calendario del teléfono o de Google. Elegí el calendario, tocá «Nuevo recordatorio» y completá título, fecha, hora y aviso.',captura:'recordatorios'},
   {titulo:'Tené a mano las directivas',texto:'Desde Directivas podés cargar el documento del puesto. Para consultarlo con el asistente, usá su biblioteca «Directivas y PDFs» y revisá el texto antes de guardarlo.',captura:'directivas'},
  ]},

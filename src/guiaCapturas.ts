@@ -8,6 +8,7 @@ export const CAPTURAS_GUIA = {
   evidencia: require('../assets/guia/evidencia.png'),
   libro: require('../assets/guia/libro.png'),
   accesos: require('../assets/guia/accesos.png'),
+  registroAcceso: require('../assets/guia/registro-acceso.png'),
   precintos: require('../assets/guia/precintos.png'),
   cctv: require('../assets/guia/cctv.png'),
   ingresos: require('../assets/guia/ingresos.png'),
@@ -21,6 +22,7 @@ export const CAPTURAS_GUIA = {
   documentos: require('../assets/guia/documentos.png'),
   sincronizacion: require('../assets/guia/sincronizacion.png'),
   mas: require('../assets/guia/mas.png'),
+  puesto: require('../assets/guia/puesto.png'),
   recordatorios: require('../assets/guia/recordatorios.png'),
   directivas: require('../assets/guia/directivas.png'),
 } satisfies Record<string, ImageSourcePropType>;

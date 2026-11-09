@@ -42,7 +42,7 @@ export default function Guia(){
    <Btn icon="back" accessibilityLabel={abierto?'Volver a los temas':'Volver a Inicio'} onPress={volver}/>
    <View style={{flex:1,gap:3}}><Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.dispBold,fontSize:25}}>Guía de Securia</Text><Text style={{color:t.muted,fontFamily:FONT.body,fontSize:12}}>Consultala cuando la necesites</Text></View>
   </View>
-  <ScrollView ref={scroll} style={{flex:1}} contentContainerStyle={{padding:16,gap:18,paddingBottom:106+(abierto?0:ins.bottom)}}>
+  <ScrollView ref={scroll} style={{flex:1}} contentContainerStyle={{padding:16,gap:18,paddingBottom:abierto?16:106+ins.bottom}}>
    {error?<><Banner kind="warn">{error}</Banner><Btn label={abierto?'Reintentar guardado':'Reintentar lectura'} onPress={()=>abierto?ir(lugar):setIntento(v=>v+1)}/></>:null}
    {!abierto?<>
     <View style={{gap:14,paddingVertical:8}}><InsigniaGuia size={76}/><Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.dispBold,fontSize:32,lineHeight:38}}>Conocé cada función,{"\n"}paso a paso.</Text><Text style={{color:t.text2,fontFamily:FONT.body,fontSize:15,lineHeight:23}}>Elegí un tema y consultá capturas de Securia a tu ritmo. Todo el contenido está disponible sin conexión.</Text></View>
