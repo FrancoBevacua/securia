@@ -27,12 +27,12 @@
       }
     },
     "android": {
-      "versionCode": 30,
+      "versionCode": 31,
       "softwareKeyboardLayoutMode": "resize",
       "package": "ar.com.securia.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/securia/adaptive-icon.png",
-        "backgroundColor": "#06142D",
+        "backgroundColor": "#10254A",
         "monochromeImage": "./assets/securia/monochrome.png"
       },
       "permissions": [

@@ -6,7 +6,7 @@ import {useStore} from '../store';
 import {Vigilador} from '../model';
 import {FONT} from '../theme';
 import {useTheme,Pantalla,Card,Btn,Hint,Banner} from '../ui';
-import {MarcaVigelium} from '../Marca';
+import {MarcaSecuria} from '../Marca';
 import {Icon} from '../icons';
 import {pinCorporativoValido} from '../corporativo';
 
@@ -19,7 +19,7 @@ export default function Gate(){
  const [pin,setPin]=useState(''),[error,setError]=useState(''),[ocupado,setOcupado]=useState(false);
  const ingresar=async()=>{if(ocupado||!pinCorporativoValido(pin))return;setOcupado(true);setError('');try{await st.ingresarCorporativo(pin);setPin('');}catch(e:any){setError(e.message||'No se pudo ingresar al corporativo.');setPin('');}finally{setOcupado(false);}};
  return <Pantalla gap={18}>
-  <View style={{alignItems:'center',paddingTop:Math.max(16,ins.top),gap:14}}><MarcaVigelium color={t.text}/><Icon name="perfil" size={38} color={t.accentText}/><Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.dispBold,fontSize:36}}>Guardia Paseo</Text><Hint>Cuenta del corporativo</Hint></View>
+  <View style={{alignItems:'center',paddingTop:Math.max(16,ins.top),gap:14}}><MarcaSecuria color={t.text}/><Icon name="perfil" size={38} color={t.accentText}/><Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.dispBold,fontSize:36}}>Guardia Paseo</Text><Hint>Cuenta del corporativo</Hint></View>
   <Card pad style={{gap:18}}>
    <Text style={{color:t.text,fontFamily:FONT.bodySemi,fontSize:19,textAlign:'center'}}>Ingresá el PIN de seis números</Text>
    <View accessibilityLabel={'PIN: '+pin.length+' de 6 números ingresados'} style={{flexDirection:'row',justifyContent:'center',gap:14,paddingVertical:12}}>{Array.from({length:6},(_,i)=><View key={'espacio-'+i} style={{width:15,height:15,borderRadius:8,borderWidth:1,borderColor:t.muted,backgroundColor:i<pin.length?t.text:'transparent'}}/>)}</View>

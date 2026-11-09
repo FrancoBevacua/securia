@@ -8,7 +8,7 @@ import { nombrePuesto, franjaPorId, etiquetaFranja } from '../logic';
 import { Vigilador, edadDe, dmy } from '../model';
 import { FONT, R } from '../theme';
 import { useTheme } from '../ui';
-import { EscudoMarca } from './Presentacion';
+import { LogoSecuria } from '../Marca';
 
 const ALTO = 250;
 
@@ -61,7 +61,7 @@ export default function Credencial({ g }: { g: Vigilador }) {
         {/* ---------- frente ---------- */}
         <Animated.View style={[caja, { opacity: opFrente, transform: [{ perspective: 900 }, { rotateY: frente }] }]}>
           <View style={{ height: 42, backgroundColor: t.accent, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 9 }}>
-            <EscudoMarca size={19} />
+            <LogoSecuria size={19} />
             <Text style={{ fontFamily: FONT.dispBold, fontSize: 17, color: t.accentInk, letterSpacing: 0.6 }}>
               SECUR<Text style={{color: '#FFFFFF'}}>IA</Text>
             </Text>

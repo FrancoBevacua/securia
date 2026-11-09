@@ -7,7 +7,7 @@ const load=Module._load;Module._load=function(n,...a){
  if(n==='react-native')return{View:'View',Text:'Text',Pressable:'Pressable',ActivityIndicator:'ActivityIndicator'};
  if(n==='react-native-safe-area-context')return{useSafeAreaInsets:()=>({top:0,bottom:0})};
  if(n==='../store')return{useStore:()=>st};if(n==='../icons')return{Icon:()=>null};
- if(n==='../Marca')return{MarcaVigelium:()=>null};
+ if(n==='../Marca')return{MarcaSecuria:()=>null};
  if(n==='../ui')return{useTheme:()=>({}),...Object.fromEntries(['Card','Btn','Input','Pantalla','Hint','Banner'].map(x=>[x,p=>React.createElement(x,p,p.children)]))};
  return load.call(this,n,...a);
 };
