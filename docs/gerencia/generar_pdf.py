@@ -63,7 +63,7 @@ def main():
     pages=data['paginas'];n=(len(pages)+1)//2
     for i,p in enumerate(pages):
         col=i//n;row=i%n;x=42+col*266;y=650-row*37
-        text(f'{i+3:02d}',x,y,26,11,RED,True)
+        text(f'{i+1:02d}',x,y,26,11,RED,True)
         text(p['titulo'],x+32,y,205,10.2,INK,True,13)
         c.linkRect('', 'p'+str(i+3),(x,y-28,x+238,y+3),relative=0,thickness=0)
     c.setFillColor(HexColor(LIGHT));c.roundRect(42,65,511,40,7,fill=1,stroke=0)
@@ -79,16 +79,29 @@ def main():
         imagepath=Path(args.capturas)/(p.get('imagen','')+'.png')
         has=imagepath.is_file()
         if p.get('imagen') and not has:raise FileNotFoundError(imagepath)
-        bodyw=306 if has else 511
-        if has:
+        leyenda_informe=p.get('leyenda_informe')
+        captura_lateral=has and not leyenda_informe
+        bodyw=306 if captura_lateral else 511
+        if captura_lateral:
             x=370;iw=183;ih=iw*Image.open(imagepath).height/Image.open(imagepath).width
             c.setFillColor(HexColor(LIGHT));c.roundRect(x-6,y-ih-6,iw+12,ih+12,10,fill=1,stroke=0)
             c.drawImage(ImageReader(str(imagepath)),x,y-ih,width=iw,height=ih)
             caption='Captura de Securia en Android' if p.get('captura_android') else 'Vista de Securia'
             text(caption+'\nDatos de demostración',x,y-ih-18,iw,8,MUTED)
         for title,body in p['bloques']:
-            y=text(title,42,y,bodyw,11,BLUE,True)-4
-            y=text(body,42,y,bodyw,10.3 if has else 10.8,INK,False,14.1 if has else 15.0)-13
+            y=text(title,42,y,bodyw,11,BLUE,True)-(1 if leyenda_informe else 4)
+            leading=14.1 if captura_lateral or leyenda_informe else 15
+            y=text(body,42,y,bodyw,10.3 if captura_lateral else 10.8,INK,False,leading)-(8 if leyenda_informe else 13)
+        if has and leyenda_informe:
+            with Image.open(imagepath) as captura:
+                ancho,alto=captura.size
+            # Deja espacio para la leyenda y el pie, sin recortar el informe.
+            iw=min(420,(y-98)*ancho/alto)
+            ih=iw*alto/ancho
+            x=(W-iw)/2
+            c.setFillColor(HexColor(LIGHT));c.roundRect(x-6,y-ih-6,iw+12,ih+12,10,fill=1,stroke=0)
+            c.drawImage(ImageReader(str(imagepath)),x,y-ih,width=iw,height=ih)
+            y=text(leyenda_informe,x,y-ih-18,iw,8,MUTED)
         if y<63:overflows.append((num,round(y,1)))
         c.showPage()
     c.save()

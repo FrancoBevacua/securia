@@ -3,9 +3,9 @@
   "fecha": "8 de noviembre de 2026",
   "paginas": [
     {"titulo":"Qué es Securia", "bajada":"Una herramienta para registrar, ordenar y supervisar el servicio de vigilancia.", "imagen":"Inicio", "bloques":[
-      ["Propósito", "Securia centraliza la información que el personal de seguridad produce durante su jornada: novedades, movimientos de personas, aperturas y cierres, recorridos, descansos e incidentes. Su lema, «Cada novedad, bajo control», resume el objetivo de mantener un registro claro y consultable del servicio."],
+      ["Propósito", "Securia centraliza la información que el personal de seguridad produce durante su jornada: novedades, movimientos de personas, aperturas y cierres, recorridos, descansos e incidentes."],
       ["Aplicación móvil", "El personal de vigilancia registra los hechos en el puesto. Los teléfonos vinculados comparten los registros del objetivo mediante la sincronización."],
-      ["Valor para la empresa", "Reúne el historial del servicio, identifica quién firma cada registro, facilita el relevo y reduce la transcripción repetida al preparar informes. La evidencia fotográfica aporta contexto y los formularios ayudan a completar datos relevantes."],
+      ["Valor para el servicio", "Reúne el historial del servicio, identifica quién firma cada registro, facilita el relevo y reduce la transcripción repetida al preparar informes. La evidencia fotográfica aporta contexto y los formularios ayudan a completar datos relevantes."],
       ["Criterio de uso", "Securia documenta lo que el personal registra. La calidad del seguimiento depende de completar los movimientos, verificar los datos, sincronizar los teléfonos y revisar los informes antes de entregarlos. La IA es una ayuda opcional."]]},
     {"titulo":"Mapa de funcionalidades", "bajada":"Dónde se encuentra cada herramienta y cómo se relaciona con el libro.", "imagen":"Mas", "bloques":[
       ["Inicio", "Saludo al guardia a cargo, acceso a la guía animada, nueva novedad, cambio de responsable, acciones rápidas personalizables y las cuatro novedades más recientes."],
@@ -38,7 +38,7 @@
       ["Contenido de la entrega", "La exportación incluye todas las entradas del período elegido, aunque la lista visible tenga filtros. Las fechas se separan cuando se cruza medianoche y se conservan las firmas y los datos operativos."],
       ["Preparación del reporte", "Se puede revisar el contenido, usar la vista previa, copiar el texto y exportar PDF. También existe ayuda de redacción con IA, que debe conservar nombres, horarios y hechos. Ante una respuesta inválida se conserva el contenido original."],
       ["Compartir", "El PDF se entrega al selector nativo del teléfono. El usuario elige la aplicación y el destinatario y confirma el envío. Abrir el selector o preparar un archivo no acredita que el supervisor lo haya recibido."]]},
-    {"titulo":"Evidencia e importación del libro", "bajada":"Fotos vinculadas al hecho y lectura asistida de registros en papel.", "imagen":"Novedad", "bloques":[
+    {"titulo":"Evidencia e importación del libro", "bajada":"Fotos vinculadas al hecho y lectura asistida de registros en papel.", "imagen":"EvidenciaInforme", "leyenda_informe":"Informe exportado por Securia · Foto generada para el ejemplo", "bloques":[
       ["Evidencia fotográfica", "Novedad, Externos, Apertura y Cierre permiten adjuntar fotos desde cámara o galería. Se indica el sector y, opcionalmente, una descripción breve de hasta 100 caracteres. Los informes de seguridad también admiten fotos con sector."],
       ["Identificación en el reporte", "Las imágenes se agrupan por novedad. Sus rótulos utilizan fecha, hora, tipo y sector registrados; la descripción breve aporta contexto sin repetir toda la narración. El PDF conserva las imágenes a color y el texto del informe legible."],
       ["Foto del libro físico", "La herramienta de importación permite interpretar una fotografía del libro mediante IA. Antes de incorporar los asientos, el vigilador revisa fechas, horas y texto, corrige la lectura y puede excluir filas ilegibles."],
@@ -63,7 +63,7 @@
       ["Historial consultable", "Los movimientos quedan disponibles por categoría y se integran en el libro. Los nombres y horarios deben revisarse antes de guardar, especialmente cuando una persona cubre un puesto diferente de su asignación habitual."],
       ["Alcance del control", "El registro documenta movimientos informados por el personal. La actividad abierta del teléfono se registra por separado del ingreso y egreso reales."]]},
     {"titulo":"Externos, empresas y vehículos", "bajada":"Control documental del ingreso y seguimiento de la salida.", "imagen":"Externos", "bloques":[
-      ["Tipos de ingreso", "Se distinguen proveedores, contratistas, visitas, empleados y locatarios. Se cargan empresa o razón social, tarea, lugar, personas y DNI argentino. También se admiten patente, credencial y observaciones según el formulario."],
+      ["Tipos de ingreso", "Se distinguen proveedores, contratistas, visitas, empleados y locatarios. Se cargan empresa o razón social, tarea, lugar, personas y DNI. También se admiten patente, credencial y observaciones según el formulario."],
       ["Autorización", "Cada ingreso solicita su situación: confirmación de CCTV, administración, espera o retiro, junto con quién confirmó cuando corresponde. La autorización debe verificarse de nuevo en cada visita."],
       ["Fichas reutilizables", "Las fichas por empresa recuperan tarea, lugar y personas habituales para reducir la carga repetida. Son compartidas entre dispositivos mediante sincronización. No reutilizan autorizaciones ni documentos de visitas anteriores como si siguieran vigentes."],
       ["Vehículos y documentación", "El formulario contempla tipo de vehículo, conductor y DNI, marca, modelo, dominio, póliza y observaciones. Puede asociar imágenes o archivos como seguro, DNI, autorización, cédula del vehículo u otros documentos."],
@@ -150,7 +150,6 @@
       ["Servicios del teléfono", "Cámara, galería, micrófono, calendario y avisos requieren permisos y capacidades del dispositivo. Compartir un PDF utiliza otra aplicación y requiere que el usuario complete el envío."],
       ["Uso de IA", "Las consultas transmiten al proveedor elegido textos y fragmentos pertinentes de documentos y operación. Las proyecciones estructuradas omiten credenciales, DNI y datos privados de perfiles; los textos libres pueden contener datos personales. Las imágenes o documentos se envían cuando se solicita su lectura."],
       ["Límites de interpretación", "La información del asistente depende de los registros disponibles y puede ser parcial. Los cálculos de presencia no equivalen a detección física. La guía no modifica registros reales."],
-      ["Envíos programados", "El repositorio conserva soporte de servidor para reportes por WhatsApp Business Platform, condicionado a la conexión con Meta, plantilla aprobada y configuración habilitada. El componente de programación no está montado en Ajustes de la 2.3.4; no se presenta como una opción activa de esa pantalla."],
       ["Control humano", "Antes de una entrega, revisar período, nombres, horarios, firmas, texto, evidencia y pendientes. Las ayudas automáticas mejoran la preparación, mientras el personal conserva la responsabilidad de validar los datos."]]},
     {"titulo":"Un servicio, de principio a fin", "bajada":"Ejemplo de uso que conecta las funciones explicadas.", "bloques":[
       ["1 · Recepción del puesto", "El vigilador ingresa al corporativo, confirma quién queda a cargo, consulta el libro y las directivas disponibles. Revisa los contactos del servicio."],
@@ -164,6 +163,6 @@
       ["Fuentes principales", "Configuración de la aplicación, rutas, pantallas, reglas de dominio y contenido de la guía. El historial del proyecto aporta contexto para distinguir los flujos vigentes de los anteriores."],
       ["Capturas", "Las imágenes muestran pantallas de Securia con datos de demostración. La guía usa capturas de Android. Otras vistas se obtuvieron de la interfaz de Securia en un entorno de demostración local."],
       ["Información preservada", "No se utilizaron registros operativos reales, documentos privados, credenciales ni claves de acceso en las capturas. No se hicieron consultas a la base corporativa para elaborar el PDF."],
-      ["Autoría del producto", "Securia fue desarrollada por Franco Daniel Bevacua. Repositorio oficial de referencia: github.com/FrancoBevacua/securia."]]}
+      ["Autoría del producto", "Securia fue desarrollada por Franco Daniel Bevacua"]]}
   ]
 }
