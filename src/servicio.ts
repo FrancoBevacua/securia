@@ -10,7 +10,11 @@ export function fechaValida(fecha: string) {
 }
 export const turnoAbierto = (S: Estado, guardId?: string, telefonoId?:string) => S.punches.find(p => !p.deleted && p.guardId === guardId && !p.out && !p.closedAt && (!telefonoId || p.dispositivoId===telefonoId));
 
-export function motivoSoloLectura(S: Estado, n: Novedad, guardId?: string, telefonoId?:string): string {
+export const esAdministrador = (g?: Pick<Vigilador,'rol'|'corporativo'|'deleted'> | null) =>
+  g?.rol==='admin'&&!g.corporativo&&!g.deleted;
+
+export function motivoSoloLectura(S: Estado, n: Novedad, guardId?: string, telefonoId?:string, permitirAdministrador=true): string {
+  if (permitirAdministrador&&esAdministrador(S.guards.find(g=>g.id===guardId))) return '';
   if ((n.createdBy || n.guardId) !== guardId) return 'Novedad de otro guardia. Sólo lectura.';
   if (n.lockedAt || (n.turnoId && S.punches.some(p => p.id === n.turnoId && (p.closedAt || p.out)))) return 'El turno está cerrado. Esta novedad es de sólo lectura.';
   const activo = turnoAbierto(S, guardId, telefonoId);

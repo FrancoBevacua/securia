@@ -219,7 +219,21 @@ async function adoptar(r: Respuesta) {
   avisar({pendiente:nueva.pendiente});
   return {estado:nueva.estado(),guardia:actor,base:estadoNube.pendiente?pendiente?.base:estadoConfirmado()};
 }
-export async function ingresarNube(dni: string, pin: string) {return adoptar(await rpc({accion:'ingresar',dni,pin}));}
+export async function ingresarNube(dni:string,pin:string,administracion=false){
+  if(actor&&token){
+    const cola=await colaActual();
+    const cuenta=cola.estado().guards.find(g=>g.id===actor);
+    if(cuenta?.dni!==dni&&(cola.pendiente||await leerCola())){
+      await reintentarNube();
+      if(verEstadoNube().pendiente||await leerCola())throw Error('Sincronice los cambios de la cuenta anterior antes de ingresar.');
+    }
+  }
+  const r=await rpc({accion:'ingresar',dni,pin,administracion});
+  const cuenta=r.estado?.guards?.find((g:Vigilador)=>g.id===r.guardia&&!g.deleted);
+  if(!cuenta||cuenta.corporativo||(cuenta.rol==='admin')!==administracion)
+    throw Error('La cuenta no corresponde al tipo de acceso seleccionado.');
+  return adoptar(r);
+}
   export async function ingresarCorporativoNube(pin:string){
     if(!/^\d{6}$/.test(pin))throw Error('Ingrese el PIN de seis números del corporativo.');
     // Antes del cambio de cuenta se confirman los pendientes de la sesión anterior.
@@ -343,6 +357,9 @@ export async function cerrarSesionNube(){
 }
 export const listarResguardos=async()=> (await rpc({accion:'resguardos'},'guardia_sync')).resguardos as {id:string;creado:string;motivo:string;col:string;registro:string;dato:any}[];
 export async function cambiarPinNube(actual: string,nuevo: string) {await rpc({accion:'cambiar_pin',actual,nuevo});}
+export async function cambiarPinCorporativoNube(nuevo:string){
+  await rpc({accion:'cambiar_pin_corporativo',nuevo},'guardia_corporativo_rpc');
+}
 export const consultarEnvioProgramado=()=>rpc({accion:'consultar'},'guardia_whatsapp_config');
 export const guardarEnvioProgramado=(config:import('./envioProgramado').ConfigEnvio)=>rpc({accion:'guardar',config},'guardia_whatsapp_config');
 export const borrarTemporalNube = (uri:string) => {if(Platform.OS!=='web' && uri.startsWith('file:'))try{const f=new File(uri);if(f.exists)f.delete();}catch{}};

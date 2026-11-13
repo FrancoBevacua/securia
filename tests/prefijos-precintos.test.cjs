@@ -18,7 +18,7 @@ test('escribe el prefijo real, precarga nuevas filas y recuerda el prefijo de un
  await act(async()=>input(r,'Nombre del acceso').props.onChangeText('Puerta E2'));await act(async()=>r.root.findByType('Firma').props.onChange('a'));
  await act(async()=>btn(r,'Agregar a la lista').props.onPress());assert.equal(cambios.length,0);assert.match(avisos.at(-1),/tres últimos/);
  await act(async()=>input(r,'Precinto 1').props.onChangeText('9876001'));await act(async()=>input(r,'Precinto 2').props.onChangeText('9876002'));
- await act(async()=>btn(r,'Agregar a la lista').props.onPress());assert.equal(S.site.precintoPrefijo,'9876');assert.equal(S.alogs[0].puertas[0].precintos[0],'9876001');
+ await act(async()=>btn(r,'Agregar a la lista').props.onPress());assert.equal(S.site.precintoPrefijo,'1234');assert.equal(S.alogs[0].puertas[0].precintos[0],'9876001');
  await act(async()=>r.root.findByType('Cabecera').props.derecha.props.onPress());assert.equal(input(r,'Precinto 1').props.value,'9876');
  await act(async()=>btn(r,'Agregar puerta').props.onPress());assert.equal(r.root.findAllByType('Input').filter(i=>i.props.label==='Precinto 1')[1].props.value,'9876');await act(async()=>r.unmount());
 });

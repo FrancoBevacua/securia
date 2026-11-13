@@ -45,7 +45,7 @@ export const TEMAS_GUIA:TemaGuia[]=[
  ]},
  {id:'asistente',titulo:'Usar el asistente',descripcion:'Consultar, redactar y revisar respuestas.',icono:'chat',pasos:[
   {titulo:'Abrí el chat',texto:'Tocá el botón flotante del asistente. Escribí una consulta clara sobre el servicio o pedí ayuda para redactar una novedad o un informe.',captura:'chat',toques:[['Escribí tu consulta',35,91],['Enviá la consulta',86,93]]},
-  {titulo:'Consultá las directivas',texto:'El botón del libro en el chat abre «Directivas y PDFs». Allí podés elegir el puesto de consulta y agregar documentos para consultar su contenido.',captura:'documentos',toques:[['Elegí el puesto de consulta',49,34],['Agregá un PDF',50,49]],consejo:'El asistente necesita conexión y un proveedor configurado en Ajustes de IA.'},
+  {titulo:'Consultá las directivas',texto:'El botón del libro en el chat abre «Directivas y PDFs». Allí podés elegir el puesto de consulta. Administración puede agregar documentos y configurar el proveedor de IA.',captura:'documentos',toques:[['Elegí el puesto de consulta',49,34]],consejo:'El asistente necesita conexión y un proveedor configurado.'},
   {titulo:'Revisá lo que responde',texto:'Leé la respuesta antes de usarla. Podés copiarla o abrir las opciones de revisión. Si pedís expresamente agregar una novedad al libro, verificá el aviso de guardado.',captura:'chat',toques:[['Revisá los datos en el chat',50,29]],consejo:'Que la IA redacte una respuesta no significa que haya registrado una novedad.'},
  ]},
  {id:'sincronizacion',titulo:'Sincronizar la información',descripcion:'Pendientes, conexión y turnos cerrados.',icono:'share',pasos:[
@@ -53,11 +53,10 @@ export const TEMAS_GUIA:TemaGuia[]=[
   {titulo:'Consultá el estado',texto:'Con conexión, abrí el estado de sincronización y usá «Reintentar» si es necesario. Securia también vuelve a intentarlo automáticamente en primer plano.',captura:'sincronizacion',toques:[['Revisá el estado',10,27],['Sincronizá ahora',49,55]],consejo:'Cerrar un turno no impide enviar sus registros pendientes.'},
   {titulo:'Comprobá la confirmación',texto:'Esperá a que termine el envío y revisá que no queden pendientes. Si hay un error, leé el mensaje y reintentá cuando se recupere la conexión.',captura:'sincronizacion',toques:[['Revisá el estado',10,27],['Consultá el historial de recuperación',49,77]],consejo:'Si hay pendientes, conservá la aplicación y sus datos en el teléfono.'},
  ]},
- {id:'mas',titulo:'Otras herramientas',descripcion:'Directivas, contactos y avisos.',icono:'mas',pasos:[
-  {titulo:'Explorá Más',texto:'La pestaña Más reúne herramientas de operación y del puesto. Allí encontrás Equipo, Contactos, Directivas, Recordatorios y Ajustes.',captura:'mas',toques:[['Abrí el Libro',48,17],['Encontrá las herramientas de operación',48,43],['Abrí Directivas',48,94]]},
+ {id:'mas',titulo:'Otras herramientas',descripcion:'Directivas y contactos.',icono:'mas',pasos:[
+  {titulo:'Explorá Más',texto:'La pestaña Más reúne herramientas de operación y del puesto. Allí encontrás Equipo y Contactos. Los ajustes y la carga de directivas están disponibles para administración.',captura:'mas',toques:[['Abrí el Libro',48,17],['Encontrá las herramientas de operación',48,43]]},
   {titulo:'Consultá el puesto y el equipo',texto:'Usá Contactos para consultar los teléfonos cargados y Equipo para ver vigiladores.',captura:'puesto',toques:[['Abrí Equipo',26,60],['Abrí Contactos',75,60]]},
-  {titulo:'Agregá recordatorios',texto:'Abrí Recordatorios y conectá un calendario del teléfono o de Google. Elegí el calendario, tocá «Nuevo recordatorio» y completá título, fecha, hora y aviso.',captura:'recordatorios',toques:[['Conectá un calendario',50,56]]},
-  {titulo:'Tené a mano las directivas',texto:'Desde Directivas podés cargar el documento del puesto. Para consultarlo con el asistente, usá su biblioteca «Directivas y PDFs» y revisá el texto antes de guardarlo.',captura:'directivas',toques:[['Consultá las directivas de hoy',25,23],['Cargá el documento',50,65]]},
+  {titulo:'Administrá las directivas',texto:'Con la cuenta de administrador, abrí Directivas para cargar el documento del puesto y revisar su contenido antes de guardarlo.',captura:'directivas',toques:[['Consultá las directivas de hoy',25,23],['Cargá el documento',50,65]]},
  ]},
 ];
 

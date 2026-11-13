@@ -29,7 +29,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 const MINIMO_PRESENTACION = 700;
 
 function Raiz() {
-  const { listo, me, responsable, S, avisos, errorInicio, reintentarInicio } = useStore();
+  const { listo, me, responsable, S, avisos, errorInicio, reintentarInicio, esAdmin } = useStore();
   const t = useTheme();
   const [tiempoCumplido, setTiempoCumplido] = useState(false);
 
@@ -68,8 +68,13 @@ function Raiz() {
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
       <EstadoSincronizacion />
-      {me?.corporativo ? responsable?<Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: t.bg } }}/>:<GuardiaACargo/>:<Gate/>}
-      {me?.corporativo&&responsable?<ChatbotFlotante key={me.id}/>:null}
+      {me ? responsable?<Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: t.bg } }}>
+        <Stack.Protected guard={esAdmin}>
+          <Stack.Screen name="admin"/><Stack.Screen name="ajustes"/><Stack.Screen name="admdirectivas"/>
+          <Stack.Screen name="puestos"/><Stack.Screen name="importar"/><Stack.Screen name="cuenta-corporativo"/>
+        </Stack.Protected>
+      </Stack>:<GuardiaACargo/>:<Gate/>}
+      {me&&responsable?<ChatbotFlotante key={me.id}/>:null}
     </View>
   );
 }

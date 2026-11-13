@@ -18,7 +18,6 @@ import { Avatar } from './Gate';
 import Credencial from './Credencial';
 import SelectorPuestosGuardia from './SelectorPuestosGuardia';
 import {idsPuestosGuardia,nombresPuestosGuardia} from '../puestosGuardia';
-import CuentaCorporativo from './CuentaCorporativo';
 
 /* ================= editor de vigilador ================= */
 export function EditorVigilador({ abierto, vigilador, onClose }: {
@@ -37,11 +36,8 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
   const [puestoIds,setPuestoIds]=useState<string[]>([]);
   const [error,setError]=useState('');
   const [franjaId, setFranjaId] = useState('');
-  const [rol, setRol] = useState<'admin' | 'vigilador'>('vigilador');
   const [foto, setFoto] = useState('');
   const [borrar, setBorrar] = useState(false);
-
-  const puedeRol = !st.me?.corporativo&&(st.esAdmin || !st.list('guards').length);
 
   useEffect(() => {
     if (!abierto) return;
@@ -57,7 +53,6 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
     setPuestoId(base?.puestoId || '');
     setPuestoIds(idsPuestosGuardia(base||{puestoId:''}));
     setFranjaId(base?.franjaId || '');
-    setRol(vigilador?.rol || 'vigilador');
     setFoto(vigilador?.foto || '');
   }, [abierto, vigilador?.id]);
 
@@ -75,18 +70,15 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
     const fr = franjaPorId(st.S, franjaId);
     const fechaNac = isoDesdeDmy(nac);
     if (nac && !fechaNac) { toast('La fecha de nacimiento va como DD/MM/AAAA'); return; }
-    const g = st.put('guards', {
+    st.put('guards', {
       id: vigilador?.id || uid(), apellido: titulo(apellido), nombre: titulo(nombre),
       fechaNac, sexo:sexo as Vigilador['sexo'], edad: edadDe(fechaNac), cuenta: vigilador?.cuenta,
       legajo, dni: vigilador?.dni, tel, email, puestoId, puestoIds, franjaId, puesto: nombrePuesto(st.S, puestoId),
-      rol: puedeRol ? rol : (vigilador?.rol || 'vigilador'),
+      rol: vigilador?.rol || 'vigilador',
       horaIn: fr?.entrada || vigilador?.horaIn || '06:00',
       horaOut: fr?.salida || vigilador?.horaOut || '14:00',
       francos: vigilador?.francos || '', foto,
     });
-    if (!st.list<Vigilador>('guards').some(x => x.rol === 'admin')) {
-      st.put('guards', { ...g, rol: 'admin' });
-    }
     onClose();
     toast('Datos guardados');
     }catch(e:any){setError(e.message||'No se pudieron guardar los datos.');}
@@ -139,11 +131,6 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
             v: f.id, t: f.alias ? f.nombre + ' — ' + f.alias : f.nombre, sub: f.entrada + ' a ' + f.salida,
           })),
         ]} />
-      {puedeRol ? (
-        <Selector label="Rol" valor={rol} onChange={v => setRol(v as any)}
-          hint="El administrador puede configurar puestos, horarios de referencia y directivas."
-          opciones={[{ v: 'vigilador', t: 'Vigilador' }, { v: 'admin', t: 'Administrador' }]} />
-      ) : null}
       <Input label="Celular" value={tel} onChangeText={setTel} keyboardType="phone-pad" placeholder="341 555 5555" />
       <Input label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
@@ -165,7 +152,6 @@ export default function Equipo() {
       <SubCabecera titulo="Equipo del objetivo"
         sub={gs.length + (gs.length === 1 ? ' vigilador registrado' : ' vigiladores registrados')}
         onBack={() => router.back()} />
-      {st.me?.corporativo?<Card pad><Eyebrow>Cuenta del corporativo</Eyebrow><Text style={{fontFamily:FONT.dispBold,fontSize:26,color:t.text}}>Guardia Paseo</Text><Hint>Administrador · Acceso con PIN de seis números</Hint><Btn label="Administrar PIN del corporativo" onPress={()=>router.push('/perfil')}/></Card>:null}
       <Card>
         {gs.map((g, i) => (
           <Item key={g.id} last={i === gs.length - 1}
@@ -174,7 +160,7 @@ export default function Equipo() {
             subs={[
               (nombresPuestosGuardia(st.S, g) || 'Sin puesto') +
               (g.franjaId ? ' · ' + etiquetaFranja(franjaPorId(st.S, g.franjaId)) : ''),
-              [g.tel, g.email].filter(Boolean).join(' · '),
+              st.esAdmin?[g.tel, g.email].filter(Boolean).join(' · '):'',
             ]}
             right={
               <>
@@ -182,11 +168,10 @@ export default function Equipo() {
                 {g.id === st.me?.id ? <Tag label="Vos" kind="mute" /> : null}
               </>
             }
-            onPress={() => setEditar(g)} />
+            onPress={st.esAdmin?()=>setEditar(g):undefined} />
         ))}
       </Card>
-      <Btn label="Registrar vigilador" icon="plus" variant="primary" onPress={() => setEditar(null)} />
-      {!st.esAdmin ? <Hint>Solo el administrador puede cambiar roles y puestos ajenos.</Hint> : null}
+      {st.esAdmin?<Btn label="Registrar vigilador" icon="plus" variant="primary" onPress={() => setEditar(null)} />:null}
 
       <EditorVigilador abierto={editar !== undefined} vigilador={editar || null} onClose={() => setEditar(undefined)} />
     </Pantalla>
@@ -205,7 +190,7 @@ export function Perfil() {
   const me = st.me!;
   const perfil=st.S.guards.find(g=>g.id===me.id)||me;
 
-  if(me.corporativo)return <CuentaCorporativo/>;
+  if(me.corporativo)return null;
 
   return (
     <Pantalla top>
@@ -266,7 +251,7 @@ export function Perfil() {
           </>
         }>
         <Input label="PIN actual (si ya tiene uno)" value={pinAnterior} onChangeText={setPinAnterior} keyboardType="number-pad" maxLength={6} secureTextEntry />
-        <Input label="Nuevo PIN (4 a 6 dígitos)" value={pin} onChangeText={setPin} keyboardType="number-pad" maxLength={6} secureTextEntry />
+        <Input label={st.esAdmin?'Nuevo PIN (6 dígitos)':'Nuevo PIN (4 a 6 dígitos)'} value={pin} onChangeText={setPin} keyboardType="number-pad" maxLength={6} secureTextEntry />
       </Sheet>
     </Pantalla>
   );

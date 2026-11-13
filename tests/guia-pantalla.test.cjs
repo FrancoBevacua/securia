@@ -46,11 +46,11 @@ test('se puede leer toda la guía aunque falle el guardado, sin ejercicios ni es
   assert.ok(boton(r,tema.id===TEMAS_GUIA.at(-1).id?'Volver a los temas':'Siguiente tema'));
  }
  fallar=false;await act(async()=>boton(r,'Reintentar guardado').props.onPress());assert.equal(r.root.findAllByType('Banner').length,0);
- assert.deepEqual(JSON.parse(memoria.get(claveGuia('ana'))),{tema:'mas',paso:3});
+ assert.deepEqual(JSON.parse(memoria.get(claveGuia('ana'))),{tema:'mas',paso:2});
  st.responsable={id:'bruno'};await act(async()=>r.update(React.createElement(Guia)));
  assert.ok(boton(r,'Comenzar guía'));assert.equal(r.root.findAllByType('Item').length,TEMAS_GUIA.length);
  await act(async()=>boton(r,'Comenzar guía').props.onPress());
  assert.equal(r.root.findByType('EjemploGuia').props.paso.titulo,'Confirmá quién está a cargo');
- assert.deepEqual(JSON.parse(memoria.get(claveGuia('ana'))),{tema:'mas',paso:3});
+ assert.deepEqual(JSON.parse(memoria.get(claveGuia('ana'))),{tema:'mas',paso:2});
  await act(async()=>r.unmount());
 });

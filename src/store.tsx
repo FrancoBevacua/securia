@@ -12,7 +12,7 @@ import { PUESTOS_BASE, ACCESOS_BASE, CONTACTOS_BASE, RONDA_BASE, VIGILADORES_BAS
 import { setVocabulario } from './assistant';
 import type { ModoTema } from './ui';
 import { PALETA_DEFECTO, PaletaId } from './theme';
-import { iniciarServicio, cerrarServicio, validarCambioNovedad, turnoAbierto, motivoSoloLectura, horaValida, fechaValida } from './servicio';
+import { iniciarServicio, cerrarServicio, validarCambioNovedad, turnoAbierto, motivoSoloLectura, horaValida, fechaValida, esAdministrador } from './servicio';
 import { guardarPIN, tienePIN, borrarPIN } from './cuentas';
 import { aplicarCambios, restaurarRespaldo } from './mutaciones';
 import * as nube from './nube';
@@ -41,6 +41,7 @@ type Ctx = {
   responsable: Vigilador | null;
   seleccionarResponsable:(id:string)=>Promise<void>;
   ingresarCorporativo:(pin:string)=>Promise<void>;
+  ingresarAdministrador:(dni:string,pin:string)=>Promise<void>;
   tema: ModoTema;
   paleta: PaletaId;
   asistente: boolean;
@@ -283,7 +284,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [aplicar, me]);
 
   const perfilTelefono=(e:Estado,g:Vigilador)=>{const p=turnoAbierto(e,g.id,nube.telefonoId?.());return p?{...g,puestoId:p.puestoId||g.puestoId,franjaId:p.franjaId||g.franjaId}:g;};
-  const abrirActividad = (e: Estado, g: Vigilador) => e.guards.some(c=>c.corporativo&&!c.deleted)||turnoAbierto(e,g.id,nube.telefonoId?.()) ? e
+  const abrirActividad = (e: Estado, g: Vigilador) => g.corporativo||turnoAbierto(e,g.id,nube.telefonoId?.()) ? e
     : aplicarCambios(e,iniciarServicio(e,g,new Date(),true,nube.telefonoId?.()),g,true);
   const entrarLocal = (g: Vigilador) => {
     const e=abrirActividad(ref.current,g);
@@ -324,6 +325,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if(!cuenta||!await verificarPIN(cuenta.id,pin))throw Error('PIN incorrecto.');
       entrarLocal(cuenta);await guardadoLocal.current;
     },
+    ingresarAdministrador:async(dni,pin)=>{await guardadoLocal.current;await aceptarNube(await nube.ingresarNube(dni,pin,true));},
     errorInicio,errorGuardado,confirmarGuardado:()=>guardadoLocal.current,reintentarInicio:()=>setIntentoInicio(v=>v+1),
     nube:estadoNube,
     ingresarNube:async(dni,pin,puestoId)=>{await guardadoLocal.current;await aceptarNube(await nube.ingresarNube(dni,pin),puestoId);},
@@ -352,7 +354,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       baseVista.current=undefined;ref.current=estadoVacio();setS(ref.current);meRef.current=null;setMe(null);setErrorGuardado('');
     },
     cargarCatalogoNube:async()=>{const e=await nube.catalogoNube();if(!meRef.current){ref.current=e;setS(e);}},
-    esAdmin: !!me && me.rol === 'admin',
+    esAdmin: esAdministrador(me),
     setTema: (m) => { setTemaEstado(m); AsyncStorage.setItem(K_TEMA, m).catch(() => {}); },
     setPaleta: (p) => { setPaletaEstado(p); AsyncStorage.setItem(K_PALETA, p).catch(() => {}); },
     setAsistente: (v) => { setAsisEstado(v); AsyncStorage.setItem(K_ASIS, v ? '1' : '0').catch(() => {}); },
@@ -387,7 +389,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       lote(cambios);
     },
     drop: (c, id) => { if ((ref.current[c] as Rec[]).some(r => r.id === id)) lote([{ col: c, obj: { id, deleted: true } }]); },
-    setSite: (s) => aplicar(e => { e.site = { ...e.site, ...s }; }),
+    setSite: (s) => {
+      if(!esAdministrador(meRef.current))throw Error('Esta configuración requiere administración.');
+      aplicar(e => { e.site = { ...e.site, ...s }; });
+    },
     reemplazar: (e) => { if (me) e = restaurarRespaldo(ref.current, e, me); migrar(e); setVocabulario(vocabulario(e)); ref.current = e; setS(e); persistir(e); },
     guardarArchivo: async (uri: string, nombre: string) => {
       try {

@@ -118,7 +118,7 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
               subs={[x.puntos.length + ' puntos · ' + x.puntos.slice(0, 3).join(', ') + (x.puntos.length > 3 ? '…' : '')]}
               right={
                 <>
-                  <Btn icon="edit" variant="ghost" size="xs" onPress={() => setTpl(x)} />
+                  {st.esAdmin?<Btn icon="edit" variant="ghost" size="xs" onPress={() => setTpl(x)} />:null}
                   <Btn label="Iniciar" variant="primary" size="xs" onPress={() => {
                     const momento=new Date();
                     st.put('rounds', {
@@ -138,7 +138,7 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
         </Card>
       )}
 
-      <Btn label="Nuevo recorrido" icon="plus" variant="ghost" onPress={() => setTpl(null)} />
+      {st.esAdmin?<Btn label="Nuevo recorrido" icon="plus" variant="ghost" onPress={() => setTpl(null)} />:null}
 
       {hist.length ? (
         <>

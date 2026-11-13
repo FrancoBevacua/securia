@@ -2,7 +2,7 @@
   "expo": {
     "name": "Securia",
     "slug": "securia",
-    "version": "2.3.5",
+    "version": "2.3.6",
     "orientation": "portrait",
     "icon": "./assets/securia/icon.png",
     "scheme": "securia",
@@ -27,7 +27,7 @@
       }
     },
     "android": {
-      "versionCode": 33,
+      "versionCode": 34,
       "softwareKeyboardLayoutMode": "resize",
       "package": "ar.com.securia.app",
       "adaptiveIcon": {
@@ -76,13 +76,6 @@
         }
       ],
       "expo-secure-store",
-      [
-        "expo-calendar",
-        {
-          "calendarPermission": "SECURIA accede al calendario para guardar y actualizar sus recordatorios del servicio.",
-          "remindersPermission": false
-        }
-      ],
       [
         "expo-audio",
         {

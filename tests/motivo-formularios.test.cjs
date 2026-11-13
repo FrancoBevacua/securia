@@ -4,7 +4,7 @@ const {create,act}=require('react-test-renderer');global.IS_REACT_ACT_ENVIRONMEN
 const {estadoVacio}=require('../src/model.ts'),servicio=require('../src/servicio.ts');
 const guardia={id:'a',nombre:'Ana',apellido:'Prueba'},S=estadoVacio();S.guards=[guardia];S.accesses=[{id:'e',nombre:'Puertas E2 y E2 Bis'}];
 let guardados=[],avisos=[];
-const store={S,me:guardia,put:(col,obj)=>guardados.push({col,obj}),putVarios:c=>guardados.push(...c),confirmarGuardado:async()=>{},
+const store={S,me:guardia,esAdmin:true,put:(col,obj)=>guardados.push({col,obj}),putVarios:c=>guardados.push(...c),confirmarGuardado:async()=>{},
  byId:(col,id)=>S[col].find(x=>x.id===id),list:col=>S[col].filter(x=>!x.deleted),setSite:()=>{}};
 const load=Module._load;
 Module._load=function(n,...a){

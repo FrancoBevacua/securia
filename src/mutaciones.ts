@@ -1,5 +1,5 @@
 import { Estado, Col, Rec, Vigilador, uid, now, merge } from './model';
-import { validarCambioNovedad, turnoAbierto, motivoSoloLectura, horaValida, fechaValida } from './servicio';
+import { validarCambioNovedad, turnoAbierto, motivoSoloLectura, horaValida, fechaValida, esAdministrador } from './servicio';
 import { legajoNormal, dniNormal, dniValido } from './cuentas';
 import { fichaExterno } from './externos';
 import {validarPuestosGuardia} from './puestosGuardia';
@@ -12,6 +12,12 @@ export function aplicarCambios(S: Estado, cambios: { col: Col; obj: any }[], act
     const arr: any[] = e[col] || ((e as any)[col] = []);
     const i = arr.findIndex(r => r.id === obj.id);
     let g = { ...(i >= 0 ? arr[i] : {}), ...obj, id: obj.id || uid(), updatedAt: now() };
+    const anterior=i>=0?arr[i]:undefined;
+    const admin=esAdministrador(actor);
+    if(!servicio&&actor&&!admin&&(
+      ['posts','franjas','directives','rtemplates','shifts','contacts','envios','accesses'].includes(col)||
+      col==='guards'&&(g.id!==actor.id||g.deleted||g.rol!==anterior?.rol||g.cuenta!==anterior?.cuenta||g.dni!==anterior?.dni)
+    ))throw Error('Esta configuración requiere administración.');
     if(col==='guards'&&!servicio&&!!g.corporativo!==(i>=0&&!!arr[i].corporativo))throw Error('La identidad del corporativo se administra en el servidor.');
     if(col==='guards'&&obj.puestoIds!==undefined&&!g.deleted)g={...g,puestoIds:validarPuestosGuardia(e,obj.puestoIds)};
     if (col === 'novedades' && !servicio) {
@@ -19,18 +25,26 @@ export function aplicarCambios(S: Estado, cambios: { col: Col; obj: any }[], act
       if (!horaValida(g.hora) || !fechaValida(g.fecha) || (!g.deleted && !g.texto?.trim())) throw new Error('La novedad necesita fecha, hora y texto válidos.');
       if (g.autoKey && i < 0) { const motivo = motivoSoloLectura(e, g, actor?.id, telefonoId); if (motivo) throw new Error(motivo); }
       if(!g.deleted && !e.guards.some(v=>v.id===g.guardId&&!v.deleted))throw Error('Seleccione el vigilador que realizó la novedad.');
-      g = { ...g, createdBy: i>=0 ? arr[i].createdBy || arr[i].guardId : actor!.id, turnoId: turnoAbierto(e, actor!.id, telefonoId)!.id };
+      g = anterior
+        ? {...g,createdBy:anterior.createdBy||anterior.guardId,turnoId:anterior.turnoId,lockedAt:anterior.lockedAt}
+        : {...g,createdBy:actor!.id,turnoId:turnoAbierto(e,actor!.id,telefonoId)!.id};
     }
     if (col === 'alogs' && !servicio) {
       const activo = turnoAbierto(e, actor?.id, telefonoId);
-      if (!activo) throw new Error('Inicie sesión para registrar accesos.');
+      if (!activo&&(!admin||!anterior)) throw new Error('Inicie sesión para registrar accesos.');
       if (i >= 0) {
         const a = arr[i];
         const motivo = motivoSoloLectura(e, { ...a, guardId: a.createdBy || a.guardId }, actor?.id, telefonoId);
         if (motivo) throw new Error(motivo);
       }
       if (!horaValida(g.hora) || !fechaValida(g.fecha)) throw new Error('El acceso necesita una fecha y hora válidas.');
-      g = { ...g, createdBy: actor!.id, turnoId: activo.id };
+      g = anterior
+        ? {...g,createdBy:anterior.createdBy||anterior.guardId,turnoId:anterior.turnoId,lockedAt:anterior.lockedAt}
+        : {...g,createdBy:actor!.id,turnoId:activo!.id};
+    }
+    if(col==='reports'&&!servicio&&actor){
+      if(anterior&&!admin&&anterior.createdBy!==actor.id)throw Error('El informe pertenece a otro guardia.');
+      g={...g,createdBy:anterior?anterior.createdBy:actor.id};
     }
     if (col === 'guards' && g.cuenta && g.dni && (!dniValido(g.dni) || e.guards.some(r => r.id !== g.id && r.cuenta && !r.deleted && dniNormal(r.dni || '') === dniNormal(g.dni)))) throw new Error('El DNI no es válido o ya tiene una cuenta.');
     if (col === 'guards' && g.cuenta && g.legajo && !g.deleted && e.guards.some(r => r.id !== g.id && r.cuenta && !r.deleted && legajoNormal(r.legajo) === legajoNormal(g.legajo))) throw new Error('Ese legajo ya pertenece a otra cuenta.');
@@ -49,15 +63,15 @@ export function aplicarCambios(S: Estado, cambios: { col: Col; obj: any }[], act
 }
 
 export function restaurarRespaldo(S: Estado, datos: Estado, actor: Vigilador): Estado {
-  if (actor.rol !== 'admin') throw new Error('La restauración está reservada a administración.');
+  if (!esAdministrador(actor)) throw new Error('La restauración está reservada a administración.');
   const e = merge(S, datos);
   // Una restauración no permite reescribir el historial de otro turno ni las cuentas existentes.
   const conservar = (col: Col, registros: Rec[]) => {
     const ids = new Set(registros.map(r => r.id));
     (e as any)[col] = [...(e[col] as Rec[]).filter(r => !ids.has(r.id)), ...registros];
   };
-  conservar('novedades', S.novedades.filter(n => !!motivoSoloLectura(S, n, actor.id)));
-  conservar('alogs', S.alogs.filter(a => !!motivoSoloLectura(S, { ...a, guardId: a.createdBy || a.guardId } as any, actor.id)));
+  conservar('novedades', S.novedades.filter(n => !!motivoSoloLectura(S, n, actor.id,undefined,false)));
+  conservar('alogs', S.alogs.filter(a => !!motivoSoloLectura(S, { ...a, guardId: a.createdBy || a.guardId } as any, actor.id,undefined,false)));
   conservar('punches', S.punches);
   conservar('guards', S.guards.filter(g => g.cuenta));
   return e;

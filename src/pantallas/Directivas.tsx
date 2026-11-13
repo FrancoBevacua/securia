@@ -89,12 +89,12 @@ export default function Directivas() {
             </Banner>
           ) : null}
           <Btn label="Copiar parte de consigna" icon="copy" variant="ghost" onPress={parte} />
-          <Btn label="Cargar documento de directivas" icon="informes" variant="ghost"
+          {st.esAdmin?<><Btn label="Cargar documento de directivas" icon="informes" variant="ghost"
             onPress={() => router.push('/importar')} />
           <Hint>
             Cargás el PDF o una foto de las directivas del puesto y la IA arma el listado,
             ordenado por horario y repartido en el puesto y el turno que corresponda.
-          </Hint>
+          </Hint></>:null}
         </Stack>
       ) : (
         <Stack gap={14}>
@@ -113,8 +113,8 @@ export default function Directivas() {
               onPress={st.esAdmin ? () => setEditar(d) : undefined} />
           )) : <Empty>Sin directivas cargadas.</Empty>}
         </Card>
-        <Btn label="Cargar documento de directivas" icon="informes" variant="primary"
-          onPress={() => router.push('/importar')} />
+        {st.esAdmin?<Btn label="Cargar documento de directivas" icon="informes" variant="primary"
+          onPress={() => router.push('/importar')} />:null}
         </Stack>
       )}
 

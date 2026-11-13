@@ -25,7 +25,6 @@ export const CAPTURAS_GUIA = {
   sincronizacion: require('../assets/guia/sincronizacion.png'),
   mas: require('../assets/guia/mas.png'),
   puesto: require('../assets/guia/puesto.png'),
-  recordatorios: require('../assets/guia/recordatorios.png'),
   directivas: require('../assets/guia/directivas.png'),
 } satisfies Record<string, ImageSourcePropType>;
 

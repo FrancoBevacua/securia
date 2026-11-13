@@ -214,7 +214,11 @@ test('relevo: ambas cuentas comparten el libro, pero sólo el autor edita durant
   assert.equal(JSON.stringify(S),original);
   S = aplicarCambios(S,servicio.cerrarServicio(S,a,'Se entrega el puesto.',momento('15:00')),a,true);
   S = aplicarCambios(S,servicio.iniciarServicio(S,b,momento('15:01')),b,true);
-  assert.match(servicio.motivoSoloLectura(S,S.novedades.find(n=>n.id==='propia'),a.id),/cerrado/);
+  const previa=S.novedades.find(n=>n.id==='propia');
+  assert.match(servicio.motivoSoloLectura(S,previa,a.id,undefined,false),/cerrado/);
+  assert.equal(servicio.motivoSoloLectura(S,previa,a.id),'');
+  const corregida=aplicarCambios(S,[{col:'novedades',obj:{id:previa.id,texto:'Corrección'}}],a).novedades[0];
+  assert.deepEqual([corregida.createdBy,corregida.turnoId,corregida.lockedAt],[previa.createdBy,previa.turnoId,previa.lockedAt]);
   assert.throws(()=>aplicarCambios(S,[{col:'novedades',obj:{id:'propia',deleted:true}}],b),/otro guardia/);
   assert.equal(S.novedades.length,1);
   assert.ok(S.novedades.find(n=>n.id==='propia').lockedAt);
@@ -234,7 +238,9 @@ test('cerrar bloquea cada acceso sin crear novedades adicionales', () => {
   S.accesses.push({id:'nuevo',nombre:'Portón nuevo'});
   assert.equal(dia.entradasDeVentana(S,ventana).length,0);
   S=aplicarCambios(S,servicio.iniciarServicio(S,a,momento('16:00')),a,true);
-  assert.throws(()=>aplicarCambios(S,[{col:'alogs',obj:{id:'a0',hora:'08:00'}}],a),/cerrado/);
+  const original=S.alogs[0];
+  const editado=aplicarCambios(S,[{col:'alogs',obj:{id:'a0',hora:'08:00'}}],a).alogs[0];
+  assert.deepEqual([editado.createdBy,editado.turnoId,editado.lockedAt],[original.createdBy,original.turnoId,original.lockedAt]);
 });
 test('las aperturas y cierres se informan a cualquier hora; las bajas se respetan',()=>{
   const S=estado();S.alogs=[registro('a','Portón A','04:30'),registro('b','Portón A','23:00','cierre')];

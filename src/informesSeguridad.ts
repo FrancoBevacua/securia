@@ -1,5 +1,5 @@
 import { Estado, Informe, Col, uid } from './model';
-import { fechaValida, horaValida, turnoAbierto } from './servicio';
+import { esAdministrador, fechaValida, horaValida, motivoSoloLectura, turnoAbierto } from './servicio';
 
 export const GRUPOS_INFORME = [
   { titulo: 'El hecho', campos: [6, 7, 8] },
@@ -57,8 +57,16 @@ export function generarInformeSeguridad(S: Estado, r: Informe, actor: string, te
   if ((String(r.f3||'').trim()&&!m) || !fechaValida(fecha) || !horaValida(r.hora)) incompleto('Indique la fecha y el horario del hecho.',0);
   if (r.fotos?.length && !r.sector?.trim()) incompleto('Indique el sector de la evidencia fotográfica.',4);
   const base = {...r, fecha, id:r.id || uid(), estado:'generado', createdAt:r.createdAt || Date.now(), updatedAt:Date.now()};
+  const admin=esAdministrador(S.guards.find(g=>g.id===actor));
+  const anterior=S.novedades.find(n=>!n.deleted&&n.origenId===base.id&&n.id.startsWith('informe:')&&(admin||n.turnoId===turno.id));
   return [
     {col:'reports',obj:base},
-    {col:'novedades',obj:{id:'informe:'+base.id+':'+turno.id,fecha,hora:base.hora,guardId:r.firmaId,categoria:'Novedad',trascendente:true,origenId:base.id,texto:resumenInforme(base),sector:base.sector,fotos:[]}},
+    {col:'novedades',obj:{id:anterior?.id||'informe:'+base.id+':'+turno.id,fecha,hora:base.hora,guardId:r.firmaId,categoria:'Novedad',trascendente:true,origenId:base.id,texto:resumenInforme(base),sector:base.sector}},
   ];
+}
+
+export function bajaInformeSeguridad(S:Estado,id:string,actor?:string,telefonoId?:string):{col:Col;obj:any}[]{
+  return [{col:'reports',obj:{id,deleted:true}},
+    ...S.novedades.filter(n=>!n.deleted&&n.origenId===id&&n.id.startsWith('informe:')&&!motivoSoloLectura(S,n,actor,telefonoId))
+      .map(n=>({col:'novedades' as const,obj:{id:n.id,deleted:true}}))];
 }

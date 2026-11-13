@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),Module=re
 const {create,act}=require('react-test-renderer');global.IS_REACT_ACT_ENVIRONMENT=true;
 const {estadoVacio}=require('../src/model.ts'),ai=require('../src/ai.ts');
 const S=estadoVacio();S.posts=[{id:'p',nombre:'Playa'}];S.directives=[{id:'d',nombre:'Controlar precintos',novedades:'Dar aviso de cualquier daño a CCTV.',puestoId:'p',activa:true}];
-const st={S,me:{id:'guardia',puestoId:'p',nombre:'Ana',apellido:'Prueba'},put:()=>{throw Error('El chat no debe guardar asientos automáticamente');}};
+const st={S,esAdmin:true,me:{id:'guardia',puestoId:'p',nombre:'Ana',apellido:'Prueba'},put:()=>{throw Error('El chat no debe guardar asientos automáticamente');}};
 let resolver,rechazar,pedidos=[],guardados=[],documentos=[],altura=800;const eventosTeclado={};const load=Module._load;
 Module._load=function(n,...a){
  if(n==='react-native')return{View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',Modal:'Modal',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',ActivityIndicator:'ActivityIndicator',Platform:{OS:'android'},useWindowDimensions:()=>({width:360,height:altura}),Keyboard:{dismiss:()=>{},addListener:(nombre,fn)=>{eventosTeclado[nombre]=fn;return{remove:()=>{delete eventosTeclado[nombre];}};}}};

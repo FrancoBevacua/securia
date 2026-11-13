@@ -37,7 +37,7 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
  const [fotos,setFotos]=useState<string[]>([]),[sector,setSector]=useState(''),[fotosOcupadas,setFotosOcupadas]=useState(false),[alta,setAlta]=useState('');
  const [descripcionFoto,setDescripcionFoto]=useState('');
  const [guardando,setGuardando]=useState(false);const idNuevo=useRef(uid());
- const motivo=novedad?motivoSoloLectura(st.S,novedad,st.me?.id,st.telefonoId):'';const sinTurno=!turnoAbierto(st.S,st.me?.id,st.telefonoId);
+ const motivo=novedad?motivoSoloLectura(st.S,novedad,st.me?.id,st.telefonoId):'';const sinTurno=!turnoAbierto(st.S,st.me?.id,st.telefonoId)&&!(st.esAdmin&&novedad);
  useEffect(()=>{if(!abierto)return;
   const alogId=novedad?.alogId||(novedad?.autoKey?.startsWith('acceso:')?novedad.autoKey.slice(7):undefined);
   const alog=alogId?st.S.alogs.find(a=>a.id===alogId):undefined;
@@ -81,14 +81,14 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
   if(!permiteEvidencia(categoria)&&fotos.some(f=>!novedad?.fotos?.includes(f)))throw Error('La evidencia se adjunta en Novedad, Externos, Apertura o Cierre. Seleccione una de esas categorías.');
   if(fotos.length&&!sector.trim())throw Error('Indique el sector de la evidencia.');
   const nuevos:any[]=[];
-  if(categoria==='Ingreso/Egreso'&&datos.tipoPersona!=='adicional'&&datos.apellido?.trim()&&datos.nombre?.trim()&&!st.S.guards.some(g=>!g.deleted&&mismoNombre(g.apellido+' '+g.nombre,datos.apellido+' '+datos.nombre)))nuevos.push({col:'guards',obj:nuevoVigilador(datos.apellido,datos.nombre)});
-  if(categoria==='Apertura/Cierre'&&!datos.grupoAccesos&&datos.acceso?.trim()&&!st.S.accesses.some(a=>!a.deleted&&mismoNombre(a.nombre,datos.acceso!)))nuevos.push({col:'accesses',obj:nuevoAcceso(datos.acceso)});
+  if(st.esAdmin&&categoria==='Ingreso/Egreso'&&datos.tipoPersona!=='adicional'&&datos.apellido?.trim()&&datos.nombre?.trim()&&!st.S.guards.some(g=>!g.deleted&&mismoNombre(g.apellido+' '+g.nombre,datos.apellido+' '+datos.nombre)))nuevos.push({col:'guards',obj:nuevoVigilador(datos.apellido,datos.nombre)});
+  if(st.esAdmin&&categoria==='Apertura/Cierre'&&!datos.grupoAccesos&&datos.acceso?.trim()&&!st.S.accesses.some(a=>!a.deleted&&mismoNombre(a.nombre,datos.acceso!)))nuevos.push({col:'accesses',obj:nuevoAcceso(datos.acceso)});
   if(nuevos.length&&agregar===undefined){setAlta(nuevos[0].col==='guards'?'El vigilador no existe. ¿Desea agregarlo al equipo?':'El acceso no existe. ¿Desea agregarlo al catálogo?');return;}
   if(agregar)st.putVarios(nuevos);setAlta('');
   st.put('novedades',{...novedad,id:idNuevo.current,fecha:dia,hora,guardId:firma,fotos,sector:sector.trim(),descripcionEvidencia:descripcionEvidencia(descripcionFoto),
    categoria:categoria==='Ingreso/Egreso'&&datos.tipoPersona==='adicional'?'Adicional':categoria==='Ingreso/Egreso'?(datos.movimiento==='egreso'?'Egreso':'Ingreso'):categoria==='Externos'?'Externo':categoria==='Apertura/Cierre'?(datos.operacionAcceso==='cierre'?'Cierre':'Apertura'):categoria,
    datos:categoria==='Descanso'?datosDescanso(st.S,datos):categoria==='Recorrido'?{...datos,lugar:datos.tipoRecorrido==='playa'?'la playa':datos.lugar}:esAdicional?{...datos,tipoPersona:'adicional',lugar:'Paseo',puestoId:st.S.posts.find(p=>!p.deleted&&p.nombre.trim().toLowerCase()==='paseo')?.id}:datos,texto:cuerpo.trim(),acc:categoria==='Externos'?accRegistro:null,
-   origenTipo:categoria==='Ingreso/Egreso'?(datos.tipoPersona==='adicional'?'policial':'guardia'):categoria==='Adicional'?'policial':categoria==='Recorrido'?'recorrido':novedad?.origenTipo==='libro-foto'?'libro-foto':undefined});
+   origenTipo:categoria==='Ingreso/Egreso'?(datos.tipoPersona==='adicional'?'policial':'guardia'):categoria==='Adicional'?'policial':categoria==='Recorrido'?'recorrido':novedad?.origenTipo});
   await st.confirmarGuardado();
   onGuardado?.(dia,hora);onClose();toast('Registro guardado en el teléfono');
  }catch(e:any){setError(e.message);}finally{setGuardando(false);}};

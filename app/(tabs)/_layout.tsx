@@ -6,6 +6,7 @@ import { useTheme } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { FONT } from '../../src/theme';
 import Topbar from '../../src/pantallas/Topbar';
+import {useStore} from '../../src/store';
 
 const TABS = [
   { name: 'index', icono: 'inicio', label: 'Inicio' },
@@ -49,6 +50,7 @@ function BarraInferior({ state, navigation }: any) {
 }
 
 export default function TabsLayout() {
+  const {esAdmin}=useStore();
   return (
     <>
       <Topbar />
@@ -57,6 +59,7 @@ export default function TabsLayout() {
         tabBar={props => <BarraInferior {...props} />}
       >
         {TABS.map(x => <Tabs.Screen key={x.name} name={x.name} />)}
+        <Tabs.Protected guard={esAdmin}><Tabs.Screen name="directivas"/></Tabs.Protected>
       </Tabs>
     </>
   );

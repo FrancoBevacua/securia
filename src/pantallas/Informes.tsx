@@ -21,7 +21,7 @@ import {
 } from '../ui';
 import { Icon } from '../icons';
 import {turnoAbierto,horaValida,fechaValida} from '../servicio';
-import {generarInformeSeguridad, GRUPOS_INFORME} from '../informesSeguridad';
+import {bajaInformeSeguridad,generarInformeSeguridad, GRUPOS_INFORME} from '../informesSeguridad';
 
 export const nuevoInforme = (S: any, me: any, responsable=me): Informe => {
   const r: any = {
@@ -59,13 +59,14 @@ export default function Informes() {
 
   if (lectura) return <Pantalla>
     <Cabecera titulo={String(lectura.f4||'Informe de seguridad')} sub={dmy(lectura.fecha)+' · '+lectura.hora+' · '+lectura.estado}/>
-    <Btn label="Volver a informes" onPress={()=>setLectura(null)}/><Row><Btn label="Editar informe" style={{flex:1}} onPress={()=>{abrir(lectura);setLectura(null);}}/><Btn icon="trash" variant="danger" onPress={()=>setConfirmarBaja(true)}/></Row>
+    <Btn label="Volver a informes" onPress={()=>setLectura(null)}/>
+    {st.esAdmin||lectura.createdBy===st.me?.id?<Row><Btn label="Editar informe" style={{flex:1}} onPress={()=>{abrir(lectura);setLectura(null);}}/><Btn icon="trash" variant="danger" onPress={()=>setConfirmarBaja(true)}/></Row>:null}
     <Card pad><Eyebrow>Resumen del hecho</Eyebrow><Text selectable style={{color:t.text,fontFamily:FONT.body,fontSize:17,lineHeight:26}}>{String(lectura.f6||'Sin resumen')}</Text></Card>
     <Chipbar>{GRUPOS_INFORME.map((g,i)=><Chip key={g.titulo} label={g.titulo} on={grupo===i} onPress={()=>setGrupo(i)}/>)}</Chipbar>
     {GRUPOS_INFORME[grupo].campos.map(i=><Card pad key={i}><Eyebrow>{i+'. '+LBL[i-1]}</Eyebrow><Text selectable style={{color:t.text,fontFamily:FONT.body,fontSize:15,lineHeight:24}}>{String(lectura['f'+i as `f${number}`]||'Sin completar')}</Text></Card>)}
     {lectura.fotos?.map((uri,i)=><Image key={i} source={{uri}} style={{height:240,width:'100%'}} resizeMode="contain"/>)}
     <Row><Btn label="Copiar informe" onPress={async()=>{await Clipboard.setStringAsync(textoReporte(lectura,st.S.site));toast('Informe copiado');}}/><Btn label="Compartir PDF" onPress={async()=>{try{await pdfInforme(lectura,st.S,gsName(st.me,st.S.site));}catch(e:any){toast(e.message);}}}/></Row>
-    <Confirmar visible={confirmarBaja} mensaje="¿Eliminar este informe? La baja se conservará en el historial." onCancel={()=>setConfirmarBaja(false)} onOk={async()=>{try{st.drop('reports',lectura.id);await st.confirmarGuardado();setConfirmarBaja(false);setLectura(null);toast('Informe eliminado');}catch(e:any){toast(e.message);}}}/>
+    <Confirmar visible={confirmarBaja} mensaje="¿Eliminar este informe? La baja se conservará en el historial." onCancel={()=>setConfirmarBaja(false)} onOk={async()=>{try{st.putVarios(bajaInformeSeguridad(st.S,lectura.id,st.me?.id,st.telefonoId));await st.confirmarGuardado();setConfirmarBaja(false);setLectura(null);toast('Informe eliminado');}catch(e:any){toast(e.message);}}}/>
   </Pantalla>;
 
   return (
@@ -122,11 +123,12 @@ export function Asistente({ visible, informe, paso, setPaso, setInforme, onClose
   const [errorResumen,setErrorResumen]=useState('');
   const total = PASOS.length;
 
-  const eliminar = () => {
-    if (informe.id) st.drop('reports', informe.id);
-    setBorrar(false);
-    onClose();
-    toast('Informe eliminado');
+  const eliminar = async () => {
+    try{
+      if(informe.id)st.putVarios(bajaInformeSeguridad(st.S,informe.id,st.me?.id,st.telefonoId));
+      await st.confirmarGuardado();
+      setBorrar(false);onClose();toast('Informe eliminado');
+    }catch(e:any){toast(e.message);}
   };
   const BotonBorrar = informe.id
     ? <Btn icon="trash" variant="danger" onPress={() => setBorrar(true)} />

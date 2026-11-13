@@ -538,13 +538,13 @@ export function Contactos() {
         <Card>
           {cs.map((c, i) => (
             <Item key={c.id} last={i === cs.length - 1} title={c.nombre} subs={[c.rol, c.tel]}
-              onPress={() => setEditar(c)} />
+              onPress={st.esAdmin?()=>setEditar(c):undefined} />
           ))}
         </Card>
       ) : (
         <Card><Empty>Cargue acá CCTV, supervisor, jefatura, bomberos, policía y emergencias médicas.</Empty></Card>
       )}
-      <Btn label="Agregar contacto" icon="plus" variant="primary" onPress={() => setEditar(null)} />
+      {st.esAdmin?<Btn label="Agregar contacto" icon="plus" variant="primary" onPress={() => setEditar(null)} />:null}
       <EditorContacto abierto={editar !== undefined} contacto={editar || null} onClose={() => setEditar(undefined)} />
     </Pantalla>
   );

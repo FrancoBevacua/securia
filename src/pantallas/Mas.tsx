@@ -41,11 +41,10 @@ export default function Mas() {
       <Eyebrow>Operación</Eyebrow>
       <Tile icon="ronda" titulo="Recorridos" sub="Control de locales, Playa y Ronda Nocturna" onPress={ir('/recorridos')}/>
       <Tile icon="equipo" titulo="Ingresos/Egresos" sub="Vigiladores, adicionales y externos" onPress={ir('/ingresos')}/>
-      <Tile icon="bell" titulo="Recordatorios" sub="Avisos en Google Calendar o el calendario del teléfono" onPress={ir('/recordatorios')} />
       <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="informes" titulo="Informes de seguridad" sub="Registrar un incidente" onPress={ir('/informes')} />
       </Row>
-      <Tile icon="directivas" titulo="Directivas" sub="Cargar el documento del puesto" onPress={ir('/importar')} />
+      {st.esAdmin?<Tile icon="directivas" titulo="Directivas" sub="Administrar y cargar el documento del puesto" onPress={ir('/directivas')} />:null}
 
       
       <Eyebrow>Puesto</Eyebrow>
@@ -53,10 +52,10 @@ export default function Mas() {
         <Tile icon="equipo" titulo="Equipo" sub={gs + (gs === 1 ? ' vigilador' : ' vigiladores')} onPress={ir('/equipo')} />
         <Tile icon="contactos" titulo="Contactos" sub="Teléfonos de emergencia" onPress={ir('/contactos')} />
       </Row>
-      <Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="perfil" titulo="Cuenta del corporativo" sub="Guardia a cargo y PIN" onPress={ir('/perfil')} />
+      {st.esAdmin?<Row gap={10} style={{ alignItems: 'stretch' }}>
+        <Tile icon="perfil" titulo="Cuenta del corporativo" sub="Administrar PIN" onPress={ir('/cuenta-corporativo')} />
         <Tile icon="ajustes" titulo="Ajustes" sub="Site, tema y respaldo" onPress={ir('/ajustes')} />
-      </Row>
+      </Row>:null}
 
       <Btn label="Cerrar sesión" variant="ghost" onPress={async () => {try{await st.salir();}catch(e:any){toast(e.message);}}} />
     </Pantalla>

@@ -84,6 +84,7 @@ export default function ChatbotFlotante(){
   finally{terminar(id);}
  };
  const cargar=async()=>{
+  if(!st.esAdmin)return;
   const id=comenzar();if(!id)return;setEnProceso('Leyendo documento…');
   try{
    const d=await elegirDocumento();if(id!==peticion.current)return;
@@ -101,7 +102,7 @@ export default function ChatbotFlotante(){
   }catch(e:any){if(id===peticion.current)setError(e.message||'No se pudo leer el documento.');}finally{terminar(id);}
  };
  const guardarFuente=async()=>{
-  if(!documento||errorBiblioteca||cargandoBiblioteca)return;const id=comenzar();if(!id)return;setEnProceso('Guardando documento…');
+  if(!st.esAdmin||!documento||errorBiblioteca||cargandoBiblioteca)return;const id=comenzar();if(!id)return;setEnProceso('Guardando documento…');
   try{validarDocumentoChat(documento);const siguientes=[...documentos,documento];await guardarDocumentosChat(guardia,siguientes);if(id===peticion.current){setDocumentos(siguientes);setDocumento(null);}}
   catch(e:any){if(id===peticion.current)setError(e.message);}finally{terminar(id);}
  };
@@ -110,7 +111,7 @@ export default function ChatbotFlotante(){
   else {setCategoriaBorrador(m.registro?.novedad?.categoria||m.registro?.categoria||'Novedad');setNovedad(limpiarRespuestaChat(m.texto));}
  };
  const quitarFuente=async()=>{
-  if(!quitar)return;const id=comenzar();if(!id)return;
+  if(!st.esAdmin||!quitar)return;const id=comenzar();if(!id)return;
   try{const siguientes=documentos.filter(d=>d.id!==quitar.id);await guardarDocumentosChat(guardia,siguientes);if(id===peticion.current){setDocumentos(siguientes);setQuitar(null);}}
   catch(e:any){if(id===peticion.current)setError(e.message);}finally{terminar(id);}
  };
@@ -119,19 +120,19 @@ export default function ChatbotFlotante(){
   <Modal visible={abierto} presentationStyle="fullScreen" animationType="slide" onRequestClose={cerrar} statusBarTranslucent navigationBarTranslucent hardwareAccelerated>
    <SafeAreaProvider><View accessibilityLabel="Chat a pantalla completa" style={{flex:1,minHeight:0,backgroundColor:t.bg}}>
    <KeyboardAvoidingView style={{flex:1,minHeight:0,width:'100%',backgroundColor:t.bg}} behavior="padding" automaticOffset><SafeAreaView edges={teclado?['top','left','right']:['top','bottom','left','right']} style={{flex:1,minHeight:0}}>
-    <Row style={{padding:8,minHeight:60,flexShrink:0,borderBottomWidth:1,borderBottomColor:t.line}}><Text accessibilityRole="header" style={{flex:1,minWidth:0,fontFamily:FONT.bodyBold,fontSize:17,color:t.text}}>Asistente Securia</Text><Btn icon="libro" accessibilityLabel="Directivas y PDFs" disabled={ocupado} onPress={()=>setBiblioteca(v=>!v)}/><Btn icon="ajustes" accessibilityLabel="Ajustes de IA" disabled={registrando} onPress={()=>{cerrar();router.push('/ajustes');}}/><Btn icon="x" accessibilityLabel="Cerrar asistente" disabled={registrando} onPress={cerrar}/></Row>
+    <Row style={{padding:8,minHeight:60,flexShrink:0,borderBottomWidth:1,borderBottomColor:t.line}}><Text accessibilityRole="header" style={{flex:1,minWidth:0,fontFamily:FONT.bodyBold,fontSize:17,color:t.text}}>Asistente Securia</Text><Btn icon="libro" accessibilityLabel="Directivas y PDFs" disabled={ocupado} onPress={()=>setBiblioteca(v=>!v)}/>{st.esAdmin?<Btn icon="ajustes" accessibilityLabel="Ajustes de IA" disabled={registrando} onPress={()=>{cerrar();router.push('/ajustes');}}/>:null}<Btn icon="x" accessibilityLabel="Cerrar asistente" disabled={registrando} onPress={cerrar}/></Row>
     {!compacto||biblioteca?<View style={{padding:12,gap:10,flexShrink:0}}>
-     <Row style={{flexWrap:'wrap'}}><Btn label={biblioteca?'Volver al chat':'Directivas y PDFs'} size="sm" style={{flex:1}} disabled={ocupado} onPress={()=>setBiblioteca(v=>!v)}/><Btn label="Ajustes de IA" size="sm" onPress={()=>{cerrar();router.push('/ajustes');}}/></Row>
+     <Row style={{flexWrap:'wrap'}}><Btn label={biblioteca?'Volver al chat':'Directivas y PDFs'} size="sm" style={{flex:1}} disabled={ocupado} onPress={()=>setBiblioteca(v=>!v)}/>{st.esAdmin?<Btn label="Ajustes de IA" size="sm" onPress={()=>{cerrar();router.push('/ajustes');}}/>:null}</Row>
     </View>:null}
     {biblioteca?<ScrollView style={{flex:1,minHeight:0}} contentContainerStyle={{padding:14,gap:12}} keyboardShouldPersistTaps="handled">
      {error?<Banner kind="warn">{error}</Banner>:null}
      <Hint>Se consultan las directivas activas del puesto y los registros operativos disponibles: novedades, ingresos, egresos, accesos, turnos e informes. Los PDFs adicionales se guardan cifrados para su cuenta en este teléfono.</Hint>
      <Selector label="Puesto de consulta" valor={puesto} onChange={setPuesto} opciones={[{v:'',t:'Sólo directivas generales'},...st.S.posts.filter(p=>!p.deleted).map(p=>({v:p.id,t:p.nombre}))]}/>
-     <Hint>Un PDF con texto se lee localmente. Los documentos escaneados se envían a {proveedor} al elegir el archivo. Revise la transcripción antes de guardarla.</Hint>
-     <Btn label="Agregar PDF de directivas" icon="plus" disabled={ocupado||cargandoBiblioteca||errorBiblioteca||documentos.length>=12} onPress={cargar}/>
+     {st.esAdmin?<Hint>Un PDF con texto se lee localmente. Los documentos escaneados se envían a {proveedor} al elegir el archivo. Revise la transcripción antes de guardarla.</Hint>:null}
+     {st.esAdmin?<Btn label="Agregar PDF de directivas" icon="plus" disabled={ocupado||cargandoBiblioteca||errorBiblioteca||documentos.length>=12} onPress={cargar}/>:null}
      {quitar?<Card pad><Hint>¿Quitar {quitar.nombre} de su biblioteca? Las directivas compartidas se conservan.</Hint><Row><Btn label="Cancelar" onPress={()=>setQuitar(null)}/><Btn label="Quitar documento" variant="danger" disabled={ocupado} onPress={quitarFuente}/></Row></Card>:null}
      {documento?<Card pad><Input label="Nombre del documento" value={documento.nombre} maxLength={180} onChangeText={nombre=>setDocumento(d=>d?{...d,nombre}:d)}/><Selector label="Alcance del documento" valor={documento.puestoId} onChange={puestoId=>setDocumento(d=>d?{...d,puestoId}:d)} opciones={[{v:'',t:'Directivas generales'},...st.S.posts.filter(p=>!p.deleted).map(p=>({v:p.id,t:p.nombre}))]}/><Input label="Texto para revisar" value={documento.texto} multiline rows={8} fixedHeight onChangeText={texto=>setDocumento(d=>d?{...d,texto}:d)}/><Row><Btn label="Guardar fuente revisada" variant="primary" disabled={ocupado} onPress={guardarFuente}/><Btn label="Descartar" disabled={ocupado} onPress={()=>setDocumento(null)}/></Row></Card>:null}
-     {documentos.map(d=><Card pad key={d.id}><Text style={{fontFamily:FONT.bodySemi,fontSize:14,color:t.text}}>{d.nombre}</Text><Hint>{d.puestoId?st.S.posts.find(p=>p.id===d.puestoId)?.nombre||'Puesto no disponible':'Directivas generales'}</Hint><Btn label="Quitar de mi biblioteca" size="sm" disabled={ocupado} onPress={()=>setQuitar(d)}/></Card>)}
+     {documentos.map(d=><Card pad key={d.id}><Text style={{fontFamily:FONT.bodySemi,fontSize:14,color:t.text}}>{d.nombre}</Text><Hint>{d.puestoId?st.S.posts.find(p=>p.id===d.puestoId)?.nombre||'Puesto no disponible':'Directivas generales'}</Hint>{st.esAdmin?<Btn label="Quitar de mi biblioteca" size="sm" disabled={ocupado} onPress={()=>setQuitar(d)}/>:null}</Card>)}
     </ScrollView>:<>
      <ScrollView ref={lista} accessibilityLabel="Conversación con Securia" style={{flex:1,minHeight:0,minWidth:0}} contentContainerStyle={{padding:compacto?10:16,gap:20,paddingBottom:24}} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" onContentSizeChange={()=>{if(desplazar.current){lista.current?.scrollToEnd({animated:true});desplazar.current=false;}}}>
       {!mensajes.length?<Card pad><Text style={{color:t.text,fontFamily:FONT.body,fontSize:15,lineHeight:23}}>Consultá las directivas, qué guardias están en servicio o qué externos tienen ingreso vigente. También podés preparar una novedad o un informe.</Text><Hint>Podés consultar o preparar borradores. Si pedís agregar una novedad al libro, el asistente valida los datos y confirma el guardado.</Hint></Card>:null}

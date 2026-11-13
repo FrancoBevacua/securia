@@ -35,7 +35,7 @@ test('clave incorrecta, corrupción o formato inválido producen un error breve 
 test('acceso, cola por filas cifrada sin red y reingreso conservan pendientes y reintentos idempotentes',async()=>{
  let nube=require('../src/nube.ts');const {estadoVacio}=require('../src/model.ts'),{almacenLocal}=require('../src/almacenLocal.ts');
  const remoto=new Map(),recibos=new Map();let secuencia=1,sinRed=false,perder=false,consultas=0;
- const estado=estadoVacio();estado.guards=[{id:'guardia-prueba',dni:'12345678',nombre:'Ana',apellido:'Prueba',cuenta:true,rol:'admin'}];
+ const estado=estadoVacio();estado.guards=[{id:'guardia-prueba',dni:'12345678',nombre:'Ana',apellido:'Prueba',cuenta:true,rol:'vigilador'}];
  for(const col of ['site','guards']){const valor=col==='site'?estado.site:estado.guards[0],id=col==='site'?'site':valor.id;remoto.set(col+'/'+id,{col,id,valor,hash:'h'+secuencia,secuencia:secuencia++});}
  const snapshot=()=>{const e=estadoVacio();for(const f of remoto.values()){if(f.col==='site')e.site=f.valor;else e[f.col].push(f.valor);}return e;};
  const originalFetch=global.fetch;

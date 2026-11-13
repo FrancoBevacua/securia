@@ -91,10 +91,10 @@ export default function Accesos() {
               <Eyebrow>{titulo}</Eyebrow>
               <Card>{accesos.length?accesos.map((c,i)=><Item key={c.id} last={i===accesos.length-1}
                 title={c.nombre} subs={[(c.sinPrecinto??c.precintos===0)?'Sin precinto':'Con precinto']}
-                onPress={()=>setCat(c)}/>):<Empty>Sin accesos en esta categoría.</Empty>}</Card>
+                onPress={st.esAdmin?()=>setCat(c):undefined}/>):<Empty>Sin accesos en esta categoría.</Empty>}</Card>
             </Stack>;
           })}
-          <Btn label="Agregar acceso al catálogo" icon="plus" variant="ghost" onPress={() => setCat(null)} />
+          {st.esAdmin?<Btn label="Agregar acceso al catálogo" icon="plus" variant="ghost" onPress={() => setCat(null)} />:null}
         </Stack>
       )}
 
@@ -162,21 +162,21 @@ function EditorAlog({ abierto, registro, fecha, onClose }: {
     try{completas=varios?[]:completarPuertas(tipoAcceso==='porton'?precintosPorton(puertas,pref):puertas,pref,sinPrecinto);}catch(e:any){toast(e.message);return;}
     const numeros=completas.flatMap(p=>p.precintos);
     const n1=numeros[0]||'',n2=numeros[1]||'';
-    const nuevoPref = prefijoPrecinto(numeros[numeros.length-1] || '') || pref;
+    const nuevoPref=prefijoPrecinto(numeros.at(-1)||'');
     const id = registro?.id || uid();
     const vinculadas = st.list<any>('novedades').filter(n => n.alogId === id);
     const novId = undefined; // No agregar aperturas ni cierres de la seccion Accesos al libro automáticamente
     const r = {
       id, tipo, hora: hora || hhmm(), guardId: g.id,
       gs: gsName(g, st.S.site), acceso:nombreAcceso, ...seleccion, p1: n1, p2: n2, puertas:completas,
-      nota, fecha, incluirMotivo:false, motivo:undefined, tipoAcceso, configuracionPorton:tipoAcceso==='porton'?undefined:configuracion, sinPrecinto:varios?false:sinPrecinto,
+      nota, fecha, incluirMotivo:registro?.incluirMotivo??false, motivo:registro?.motivo, tipoAcceso, configuracionPorton:tipoAcceso==='porton'?undefined:configuracion, sinPrecinto:varios?false:sinPrecinto,
       orden: registro?.orden ?? Date.now(),
-      novId, p1tipo: '', p2tipo: '',
+      novId:registro?.novId||novId, p1tipo:registro?.p1tipo||'', p2tipo:registro?.p2tipo||'',
     };
     const falta=!varios&&!st.S.accesses.some(c=>!c.deleted&&mismoNombre(c.nombre,acceso));
-    if(falta&&agregar===undefined){setAlta(true);return;}setAlta(false);
+    if(st.esAdmin&&falta&&agregar===undefined){setAlta(true);return;}setAlta(false);
     const cambios: any[] = [{ col: 'alogs', obj: r }];
-    if (falta && agregar) {
+    if (st.esAdmin && falta && agregar) {
       cambios.push({ col: 'accesses', obj: {
         id: uid(), nombre: acceso, tipo: tipoAcceso, configuracionPorton:tipoAcceso==='porton'?undefined:configuracion, sinPrecinto,
         precintos: numeros.length, orden: Date.now(),
@@ -190,14 +190,14 @@ function EditorAlog({ abierto, registro, fecha, onClose }: {
       vinculadas.filter(n => n.id !== novId).forEach(n => cambios.push({ col: 'novedades', obj: { id: n.id, deleted: true } }));
     }
     st.putVarios(cambios);
-    if (nuevoPref) st.setSite({ precintoPrefijo: nuevoPref });
+    if(st.esAdmin&&nuevoPref&&nuevoPref!==pref)st.setSite({precintoPrefijo:nuevoPref});
     onClose();
     toast('Registro guardado');
   };
 
   const motivo = registro ? motivoSoloLectura(st.S, { ...registro, guardId: registro.createdBy || registro.guardId } as any, st.me?.id, st.telefonoId) : '';
   if (motivo) return <Sheet visible={abierto} title="Detalle del acceso" onClose={onClose}><Banner kind="info">{motivo}</Banner><Input label="Registro" value={textoAlogLibro(registro!)} editable={false} multiline rows={8} /></Sheet>;
-  if (!turnoAbierto(st.S, st.me?.id, st.telefonoId)) return <Sheet visible={abierto} title="Registrar acceso" onClose={onClose}><ServicioActual /></Sheet>;
+  if (!turnoAbierto(st.S, st.me?.id, st.telefonoId)&&!(st.esAdmin&&registro)) return <Sheet visible={abierto} title="Registrar acceso" onClose={onClose}><ServicioActual /></Sheet>;
 
   return (
       <><Sheet visible={abierto&&!leerPrecintos} title={registro ? 'Editar registro' : 'Registrar acceso'} onClose={onClose}

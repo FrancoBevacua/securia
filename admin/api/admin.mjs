@@ -18,11 +18,11 @@ export default async function handler(req,res){
   const cookie=(name,value,age)=>`${name}=${value}; HttpOnly;${secure} SameSite=Strict; Path=/; Max-Age=${age}`;
   const cs=cookies(req);
   if(p.accion==='ingresar'){
-   if(!/^[0-9]{6}$/.test(p.pin||''))return res.status(400).json({error:'Ingrese el PIN de seis números del corporativo.'});
+   if(!/^[0-9]{7,8}$/.test(p.dni||'')||!/^[0-9]{6}$/.test(p.pin||''))return res.status(400).json({error:'Ingrese el DNI y el PIN de seis números del administrador.'});
    const dispositivo=/^[a-f0-9]{64}$/.test(cs.vigelium_dispositivo||'')?cs.vigelium_dispositivo:randomBytes(32).toString('hex');
    res.setHeader('Set-Cookie',cookie('vigelium_dispositivo',dispositivo,31536000));
    const vinculacion=await rpc('guardia_rpc',{accion:'conectar',dispositivo,codigo:env.CORPORATE_CODE});if(!vinculacion.ok)return res.status(503).json({error:vinculacion.error});
-   const r=await rpc('guardia_admin_rpc',{accion:'ingresar',dispositivo,pin:p.pin});
+   const r=await rpc('guardia_admin_rpc',{accion:'ingresar',dispositivo,dni:p.dni,pin:p.pin});
    if(!r.ok)return res.status(401).json({error:r.error});
    const sesion=seal({dispositivo,token:r.token,exp:Date.now()+8*3600000},env.SESSION_SECRET);
    res.setHeader('Set-Cookie',[cookie('vigelium_dispositivo',dispositivo,31536000),cookie(SESSION,sesion,8*3600)]);
