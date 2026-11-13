@@ -91,22 +91,49 @@ test('el alta de acceso y vigilador pide Aceptar sin estilo de eliminación',asy
  }
 });
 
-test('Accesos genera y persiste el cierre múltiple sin crear un catálogo con el nombre del grupo',async()=>{
- S.accesses=[{id:'e1',nombre:'Puerta E1'},{id:'e2',nombre:'Puerta E2'}];S.alogs=[];guardados=[];let r;
+test('Accesos filtra el catálogo, empieza con un precinto y conserva los grupos históricos',async()=>{
+ S.accesses=[
+  {id:'p',nombre:'Portón Ombú',tipo:'porton',precintos:2},
+  {id:'e1',nombre:'Puerta E1',tipo:'emergencia',precintos:2},
+  {id:'v',nombre:'Ventanal',tipo:'otro',precintos:0},
+ ];
+ S.alogs=[];guardados=[];let r;
  await act(async()=>{r=create(React.createElement(Accesos));});
  await act(async()=>r.root.findByType('Cabecera').props.derecha.props.onPress());
- await act(async()=>r.root.findAllByType('Seg').find(s=>s.props.valor==='apertura').props.onChange('cierre'));
- await act(async()=>r.root.findAllByType('Seg').find(s=>s.props.valor==='uno').props.onChange('varios'));
- await act(async()=>r.root.findAllByType('Selector').find(s=>s.props.label==='Grupo de accesos').props.onChange('emergencias'));
- for(const label of ['Puerta E1','Puerta E2'])await act(async()=>r.root.findAllByType('Chip').find(c=>c.props.label===label).props.onPress());
- await act(async()=>r.root.findAllByType('Selector').find(s=>s.props.label==='Vigilador').props.onChange(guardia.id));
- assert.equal(input(r,'Mensaje automático').props.value,'Se procede al cierre de las puertas de emergencias:\n- Puerta E1\n- Puerta E2');
+ const selector=label=>r.root.findAllByType('Selector').find(s=>s.props.label===label);
+ assert.ok(!r.root.findAllByType('Seg').some(s=>s.props.opciones.some(o=>o.v==='varios')));
+ assert.deepEqual(selector('Acceso del catálogo').props.opciones.map(o=>o.v),['','Portón Ombú']);
+ await act(async()=>selector('Categoría del catálogo').props.onChange('emergencias'));
+ assert.deepEqual(selector('Acceso del catálogo').props.opciones.map(o=>o.v),['','Puerta E1']);
+ await act(async()=>selector('Acceso del catálogo').props.onChange('Puerta E1'));
+ assert.equal(r.root.findAllByType('Input').filter(i=>/^Precinto/.test(i.props.label||'')).length,1);
+ await act(async()=>input(r,'Precinto 1').props.onChangeText('1234567'));
+ await act(async()=>selector('Vigilador').props.onChange(guardia.id));
  await act(async()=>r.root.findAllByType('Btn').find(b=>b.props.label==='Agregar a la lista').props.onPress());
- assert.deepEqual(guardados.map(x=>x.col),['alogs']);assert.deepEqual(guardados[0].obj.accesos,['Puerta E1','Puerta E2']);
- S.alogs=[guardados[0].obj];await act(async()=>r.update(React.createElement(Accesos)));
+ assert.deepEqual(guardados.map(x=>x.col),['alogs']);
+ const registro=guardados[0].obj;
+ assert.equal(registro.acceso,'Puerta E1');assert.equal(registro.p1,'1234567');assert.equal(registro.p2,'');
+ S.alogs=[{...registro,acceso:'Puertas de emergencias',grupoAccesos:'emergencias',accesos:['Puerta E1','Puerta E2'],p1:'',puertas:[]}];
+ await act(async()=>r.update(React.createElement(Accesos)));
  await act(async()=>r.root.findAllByType('Item').find(i=>i.props.title==='Puertas de emergencias').props.onPress());
  assert.match(input(r,'Mensaje automático').props.value,/- Puerta E1\n- Puerta E2/);
  await act(async()=>r.unmount());S.accesses=[{id:'e',nombre:'Puertas E2 y E2 Bis'}];
+});
+
+test('el egreso externo muestra el bloque breve y guarda la observación como novedad',async()=>{
+ guardados=[];let r;
+ await act(async()=>{r=create(React.createElement(EditorNovedad,{abierto:true,novedad:null,fecha:'2026-11-07',categoriaInicial:'Externos',movimientoInicial:'egreso',onClose:()=>{}}));});
+ const bloque=r.root.findByType('AccesoExterno');
+ assert.equal(bloque.props.egreso,true);
+ assert.equal(input(r,'Descripción del registro'),undefined);
+ assert.ok(!r.root.findAllByType('Selector').some(s=>s.props.label==='Tipo de externo'));
+ await act(async()=>bloque.props.onChange({...bloque.props.valor,empresa:'Empresa de prueba',obs:'Se retira por recepción',tarea:'Limpieza'}));
+ await act(async()=>save(r).props.onPress());
+ const novedad=guardados.at(-1).obj;
+ assert.equal(novedad.datos.movimiento,'egreso');
+ assert.equal(novedad.acc.tarea,'');
+ assert.equal(novedad.texto,'Egresa personal de la firma Empresa de prueba. Se retira por recepción.');
+ await act(async()=>r.unmount());
 });
 
 test('Accesos no pide motivo y permite guardar otro acceso sin números de precinto',async()=>{

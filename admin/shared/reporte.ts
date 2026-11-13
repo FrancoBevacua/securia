@@ -30,7 +30,7 @@ export function redactarAsiento(categoria:string,d:DatosAsiento,acc:Acceso=accNo
  if(['Apertura','Cierre'].includes(categoria)&&(d.grupoAccesos?!d.accesos?.some(a=>a.trim()):!d.acceso?.trim()))return '';
  if(categoria==='Ingreso/Egreso')return ingreso?'Ingresa Gs '+persona+' al puesto '+puesto+'. Turno: '+d.turno+'.':'Se retira el Gs '+persona+'.';
  if(categoria==='Adicional')return (ingreso?'Ingresa adicional policial ':'Se retira adicional policial ')+persona+(ingreso?'. Turno: '+d.turno:'')+'.';
- if(categoria==='Externos')return ingreso?textoIngresoAcceso(acc,d.tipoExterno||'Visita'):textoEgresoAcceso(acc,d.tipoExterno||'Visita',null);
+ if(categoria==='Externos')return ingreso?textoIngresoAcceso(acc,d.tipoExterno||'Visita'):textoEgresoAcceso(acc,d.tipoExterno||'Visita',null,acc.obs);
  if(categoria==='Recorrido'&&d.tipoRecorrido==='locales')return 'Se realiza recorrido para control de locales '+(d.controlLocales||'abiertos')+'. '+(d.observaciones?.trim()||'Sin novedades')+(/[.!?]$/.test(d.observaciones?.trim()||'')?'':'.');
  if(categoria==='Recorrido'){const lugar=d.lugar?.trim()||'el paseo';return 'Se realiza recorrido '+(lugar.startsWith('el ')?'del '+lugar.slice(3):'de '+lugar)+'. '+(d.observaciones?.trim()||'Sin novedades.');}
  if(categoria==='Apertura'||categoria==='Cierre'){

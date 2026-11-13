@@ -17,8 +17,8 @@ export default function Ingresos(){
  return <Pantalla top>
   <SubCabecera titulo="Ingresos/Egresos" sub="Vigiladores, adicionales y externos en un solo lugar." onBack={()=>router.back()}/>
   <Seg valor={tipo} onChange={setTipo} opciones={[{v:'vigilador',t:'Vigiladores'},{v:'adicional',t:'Adicionales'},{v:'externo',t:'Externos'}]}/>
-  {tipo==='externo'?<Visitas integrado/>:<Btn label="Registrar ingreso o egreso" icon="plus" variant="primary" onPress={()=>setEditar(null)}/>}
+  {tipo==='externo'?<><Visitas integrado/><Btn label="Registrar egreso" icon="plus" variant="ghost" onPress={()=>setEditar(null)}/></>:<Btn label="Registrar ingreso o egreso" icon="plus" variant="primary" onPress={()=>setEditar(null)}/>}
   {registros.length?<><Eyebrow>Registros del libro</Eyebrow><Card>{registros.map((n,i)=><Item key={n.id} last={i===registros.length-1} lead={n.hora} title={n.texto} tituloLineas={2} subs={[dmy(n.fecha)]} onPress={()=>setEditar(n)}/>)}</Card></>:tipo!=='externo'?<Card><Empty>Sin movimientos de esta categoría.</Empty></Card>:null}
-  <EditorNovedad abierto={editar!==undefined} novedad={editar||null} fecha={editar?.fecha||isoDate()} categoriaInicial={tipo==='adicional'?'Adicional':tipo==='externo'?'Externos':'Ingresos/Egresos'} onClose={()=>setEditar(undefined)}/>
+  <EditorNovedad abierto={editar!==undefined} novedad={editar||null} fecha={editar?.fecha||isoDate()} categoriaInicial={tipo==='adicional'?'Adicional':tipo==='externo'?'Externos':'Ingresos/Egresos'} movimientoInicial={tipo==='externo'&&!editar?'egreso':'ingreso'} onClose={()=>setEditar(undefined)}/>
  </Pantalla>;
 }

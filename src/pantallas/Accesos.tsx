@@ -4,7 +4,8 @@ import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store';
 import { motivoSoloLectura, turnoAbierto } from '../servicio';
 import SelectorFirma from './SelectorFirma';
-import {nuevoAcceso,mismoNombre} from '../altasCatalogo';
+import {mismoNombre} from '../altasCatalogo';
+import {GRUPOS_CATALOGO,grupoDeAcceso} from '../gruposAccesos';
 import ServicioActual from './ServicioActual';
 import TipoAcceso from './TipoAcceso';
 import SeleccionAccesos from './SeleccionAccesos';
@@ -16,13 +17,13 @@ import { alogsDe, catalogoAccesos, ultimoPrecinto } from '../logic';
 import {
   AccesoLog, AccesoCat, PuertaPrecintos, TipoAccesoFisico, ConfiguracionPorton, SeleccionAccesos as DatosSeleccion, DOW,
   addDays, dmy, hhmm, isoDate, parseISO, uid,
-  prefijoPrecinto, sufijoPrecinto, armarPrecinto, soloDigitos,
+  prefijoPrecinto, soloDigitos,
 } from '../model';
 import { gsName, textoInformeAccesos, textoAlogLibro, lineaPrecintos, motivoDeAcceso, nombreGrupoAccesos, listaAccesos, OpcInforme } from '../text';
 import { FONT } from '../theme';
 import {
   useTheme, Pantalla, Cabecera, Card, Btn, Tag, Seg, Item, Empty, Stack, Row, Chip, Chipbar,
-  Input, Selector, Sheet, Toggle, Confirmar, Field, Eyebrow, useToast, Hint, Banner,
+  Input, Sheet, Toggle, Confirmar, Field, Eyebrow, useToast, Hint, Banner,
 } from '../ui';
 
 export default function Accesos() {
@@ -84,19 +85,15 @@ export default function Accesos() {
         </Stack>
       ) : (
         <Stack gap={14}>
-          {catalogo.length ? (
-            <Card>
-              {catalogo.map((c, i) => (
-                <Item key={c.id} last={i === catalogo.length - 1} lead={String(i + 1)}
-                  title={c.nombre}
-                  subs={[c.tipo.charAt(0).toUpperCase() + c.tipo.slice(1) + ' · ' +
-                    (c.precintos ? c.precintos + ' precinto' + (c.precintos > 1 ? 's' : '') : 'sin precinto')]}
-                  onPress={() => setCat(c)} />
-              ))}
-            </Card>
-          ) : (
-            <Card><Empty>Cargue acá las puertas, portones y accesos de su puesto. Después los seleccionás de una lista.</Empty></Card>
-          )}
+          {GRUPOS_CATALOGO.map(({v,t:titulo})=>{
+            const accesos=catalogo.filter(c=>grupoDeAcceso(c)===v);
+            return <Stack key={v} gap={8}>
+              <Eyebrow>{titulo}</Eyebrow>
+              <Card>{accesos.length?accesos.map((c,i)=><Item key={c.id} last={i===accesos.length-1}
+                title={c.nombre} subs={[(c.sinPrecinto??c.precintos===0)?'Sin precinto':'Con precinto']}
+                onPress={()=>setCat(c)}/>):<Empty>Sin accesos en esta categoría.</Empty>}</Card>
+            </Stack>;
+          })}
           <Btn label="Agregar acceso al catálogo" icon="plus" variant="ghost" onPress={() => setCat(null)} />
         </Stack>
       )}
@@ -217,15 +214,14 @@ function EditorAlog({ abierto, registro, fecha, onClose }: {
       }>
       <Seg acento valor={tipo} onChange={v => setTipo(v as any)}
         opciones={[{ v: 'apertura', t: 'Apertura' }, { v: 'cierre', t: 'Cierre' }]} />
-      <SeleccionAccesos datos={{acceso,...seleccion}} catalogo={catalogo} onChange={cambio=>{
+      <SeleccionAccesos key={abierto?(registro?.id||'nuevo'):'cerrado'} soloUno datos={{acceso,...seleccion}} catalogo={catalogo} onChange={cambio=>{
         if(cambio.acceso!==undefined)setAcceso(cambio.acceso);
         if('grupoAccesos' in cambio || 'accesos' in cambio)setSeleccion(s=>({...s,...cambio}));
       }} onElegirCatalogo={c=>{
-        const tp:TipoAccesoFisico=c.tipo==='porton'?'porton':['pecera','ventanal','otro','acceso'].includes(c.tipo)?'otro':'emergencia';
+        const grupo=grupoDeAcceso(c);
+        const tp:TipoAccesoFisico=grupo==='portones'?'porton':grupo==='emergencias'?'emergencia':'otro';
         setTipoAcceso(tp);setConfiguracion(c.configuracionPorton||'ingreso');setSinPrecinto(c.sinPrecinto??(c.precintos===0||tp==='otro'));
-        const ps=nuevasPuertas(tp,c.configuracionPorton,pref);
-        if(tp==='emergencia'&&c.precintos>0)ps[0].precintos=Array(Math.min(c.precintos,20)).fill(inicioPrecinto(pref));
-        setPuertas(ps);
+        setPuertas(nuevasPuertas(tp==='otro'?'emergencia':tp,c.configuracionPorton,pref));
       }}/>
       {alta?<Confirmar visible etiqueta="Aceptar" variante="primary" mensaje="El acceso no existe. ¿Desea agregarlo al catálogo? Si cancela, se guarda sólo el registro." onOk={()=>guardar(true)} onCancel={()=>guardar(false)}/>:null}
 
@@ -257,16 +253,15 @@ function EditorCatalogo({ abierto, item, onClose }: { abierto: boolean; item: Ac
   const toast = useToast();
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('porton');
-  const [precintos, setPrecintos] = useState('1');
   const [configuracion,setConfiguracion]=useState<ConfiguracionPorton>('ingreso');
   const [sinPrecinto,setSinPrecinto]=useState(false);
 
   useEffect(() => {
     if (!abierto) return;
     setNombre(item?.nombre || '');
-    setTipo(item?.tipo==='porton'?'porton':!item||['puerta','emergencia'].includes(item.tipo)?'emergencia':'otro');
+    const grupo=item?grupoDeAcceso(item):'emergencias';
+    setTipo(grupo==='portones'?'porton':grupo==='emergencias'?'emergencia':'otro');
     setConfiguracion(item?.configuracionPorton||'ingreso');setSinPrecinto(item?.sinPrecinto??item?.precintos===0);
-    setPrecintos(String(item?.precintos ?? 1));
   }, [abierto, item?.id]);
 
   return (
@@ -276,9 +271,8 @@ function EditorCatalogo({ abierto, item, onClose }: { abierto: boolean; item: Ac
           {item ? <Btn icon="trash" variant="danger" onPress={() => { st.drop('accesses', item.id); onClose(); toast('Acceso quitado'); }} /> : null}
           <Btn label="Guardar" variant="primary" style={{ flex: 1 }} onPress={() => {
             if (!nombre.trim()) { toast('Ingrese un nombre'); return; }
-            if(!sinPrecinto&&(!/^\d{1,3}$/.test(precintos)||+precintos<1)){toast('Indique una cantidad válida de precintos.');return;}
             st.put('accesses', {
-              id: item?.id || uid(), nombre, tipo, configuracionPorton:configuracion,sinPrecinto, precintos:sinPrecinto?0:+precintos,
+              id: item?.id || uid(), nombre, tipo, configuracionPorton:configuracion,sinPrecinto, precintos:sinPrecinto?0:Math.max(1,item?.precintos||0),
               orden: item?.orden ?? Date.now(),
             });
             onClose(); toast('Acceso guardado');
@@ -287,7 +281,6 @@ function EditorCatalogo({ abierto, item, onClose }: { abierto: boolean; item: Ac
       }>
       <Input label="Nombre" value={nombre} onChangeText={setNombre} placeholder="Portón ingreso Oroño" />
       <TipoAcceso tipo={tipo as TipoAccesoFisico} configuracion={configuracion} sinPrecinto={sinPrecinto} onChange={(tp,cf,sp)=>{setTipo(tp);setConfiguracion(cf);setSinPrecinto(sp);}}/>
-      {!sinPrecinto&&tipo!=='porton'?<Input label="Cantidad de precintos" value={precintos} onChangeText={v=>setPrecintos(soloDigitos(v).slice(0,3))} keyboardType="number-pad" hint="Cantidad habitual; puede agregar puertas al registrar."/>:null}
     </Sheet>
   );
 }

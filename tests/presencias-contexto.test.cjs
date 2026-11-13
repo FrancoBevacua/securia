@@ -4,7 +4,7 @@ const {estadoVacio,accVacio}=require('../src/model.ts');
 const {externosEnPredio,guardiasEnServicio,colorSector}=require('../src/presencias.ts');
 const {contextoOperativo}=require('../src/contextoOperativo.ts');
 const {pedidoChat,fuentesChat}=require('../src/chatbot.ts');
-const {filtrarLibro}=require('../src/filtrosLibro.ts');
+const {filtrarLibro,agruparLibro,opcionesGsLibro}=require('../src/filtrosLibro.ts');
 const {sugerenciasTexto}=require('../src/autocompletado.ts');
 const {nuevasPuertas,completarPuertas}=require('../src/precintos.ts');
 const ahora=new Date(2026,9,27,10,0);
@@ -54,6 +54,13 @@ test('recupera datos del final de informes y directivas extensos sin recortar el
 test('filtros combinan categorías y términos con acentos sin modificar las entradas originales',()=>{
  const entradas=[{clave:'1',categoria:'INGRESO',texto:'Ingresa Gs Pérez',firma:'Ana',fecha:'2026-10-27',hora:'08:00'},{clave:'2',categoria:'EXTERNO',texto:'Limpieza Pérez',fecha:'2026-10-27',hora:'08:30'},{clave:'3',categoria:'FIN DE RONDA',texto:'Playa',fecha:'2026-10-27',hora:'09:00'}],copia=JSON.stringify(entradas);
  assert.deepEqual(filtrarLibro(entradas,['INGRESO','EXTERNO'],'perez').map(e=>e.clave),['1','2']);assert.equal(filtrarLibro(entradas,['RECORRIDO'],'').length,1);assert.equal(filtrarLibro(entradas,[],'ana 08:00').length,1);assert.equal(JSON.stringify(entradas),copia);
+});
+test('el Libro marca los relevos por día en orden y filtra Gs por identidad',()=>{
+ const entrada=(clave,guardId,fecha='2026-10-26')=>({clave,fecha,guardId,firma:'Gs Pérez, Ana',categoria:'NOVEDAD',texto:'Revisión'});
+ const entradas=[entrada('1','a'),entrada('2','a'),entrada('3','b'),entrada('4','a'),entrada('5','a','2026-10-27')];
+ assert.deepEqual(agruparLibro(entradas).map(d=>d.bloques.map(b=>b.entradas.map(e=>e.clave))),[[['1','2'],['3'],['4']],[['5']]]);
+ assert.equal(opcionesGsLibro(entradas).length,2);
+ assert.deepEqual(filtrarLibro(entradas,['NOVEDAD'],'revision','guardia:b').map(e=>e.clave),['3']);
 });
 test('autocompletado aprende sólo del historial válido, ordena por frecuencia y no propone el valor actual',()=>{
  const ns=[{id:'1',categoria:'Apertura',fecha:'2026-10-25',hora:'08:00',datos:{incluirMotivo:true,motivo:'Para el ingreso del personal de limpieza'}},{id:'2',categoria:'Cierre',fecha:'2026-10-26',hora:'09:00',datos:{motivo:'Para el ingreso del personal de limpieza'}},{id:'3',categoria:'Apertura',fecha:'2026-10-27',hora:'09:00',deleted:true,datos:{motivo:'Para algo borrado'}},{id:'4',categoria:'Novedad',fecha:'2026-10-27',hora:'09:00',datos:{motivo:'Para algo ajeno'}}];

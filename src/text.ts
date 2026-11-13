@@ -65,12 +65,14 @@ export function textoIngresoAcceso(a: Acceso, tipo?: string) {
   if (a.obs) partes.push(a.obs.replace(/\.?$/, '.'));
   return partes.filter(Boolean).join(' ') + listaEmpleados(a);
 }
-export function textoEgresoAcceso(a: Acceso, tipo?: string, min?: number | null) {
+export function textoEgresoAcceso(a: Acceso, tipo?: string, min?: number | null, observaciones='') {
   const partes = ['Egresa ' + sujetoAcceso(a, tipo) + '.'];
   if (min != null) partes.push('Permanencia: ' + hs(min) + '.');
   if (a.vehiculo?.activo && a.vehiculo.dominio) {
     partes.push('Egresa el ' + (a.vehiculo.tipo || 'vehículo').toLowerCase() + ' dominio ' + a.vehiculo.dominio + '.');
   }
+  const obs=observaciones.trim();
+  if(obs)partes.push(/[.!?]$/.test(obs)?obs:obs+'.');
   return partes.join(' ');
 }
 export function textoConfirmAcceso(a: Acceso, tipo?: string) {

@@ -27,7 +27,7 @@ import SugerenciasTexto from './SugerenciasTexto';
 import {sugerenciasTexto} from '../autocompletado';
 import Rondas from './Rondas';
 
-export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoriaInicial='Novedad',textoInicial,onClose,onGuardado}:{abierto:boolean;novedad:Novedad|null;fecha:string;corte?:string;duracion?:12|24;categoriaInicial?:string;textoInicial?:string;onClose:()=>void;onGuardado?:(fecha:string,hora:string)=>void}){
+export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoriaInicial='Novedad',movimientoInicial='ingreso',textoInicial,onClose,onGuardado}:{abierto:boolean;novedad:Novedad|null;fecha:string;corte?:string;duracion?:12|24;categoriaInicial?:string;movimientoInicial?:DatosAsiento['movimiento'];textoInicial?:string;onClose:()=>void;onGuardado?:(fecha:string,hora:string)=>void}){
  const st=useStore(),t=useTheme(),toast=useToast();
  const [categoria,setCategoria]=useState('Novedad'),[datos,setDatos]=useState<DatosAsiento>({}),[texto,setTexto]=useState<string|null>(null);
  const [dia,setDia]=useState(fecha),[hora,setHora]=useState(hhmm()),[acc,setAcc]=useState<Acceso>(accNormal());
@@ -44,11 +44,13 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
   const cat=novedad?(novedad.categoria==='Acceso'&&alog?alog.tipo.toUpperCase():categoriaAsiento(novedad)):categoriaInicial==='Externos'?'EXTERNO':categoriaInicial.toUpperCase();
   setCategoria(['ADICIONAL','INGRESO','EGRESO','INGRESO/EGRESO','INGRESOS/EGRESOS'].includes(cat)?'Ingreso/Egreso':cat==='EXTERNO'?'Externos':['APERTURA','CIERRE','APERTURA/CIERRE'].includes(cat)?'Apertura/Cierre':cat.charAt(0)+cat.slice(1).toLowerCase());
   setDatos({...novedad?.datos|| (alog?{acceso:alog.acceso,grupoAccesos:alog.grupoAccesos,accesos:alog.accesos,motivo:alog.motivo,incluirMotivo:alog.incluirMotivo,
-   observaciones:[lineaPrecintos(alog),alog.nota].filter(Boolean).join('. ')}:{movimiento:cat==='EGRESO'||novedad?.mov==='out'?'egreso':'ingreso',puestoId:st.me?.puestoId,lugar:'el paseo'}),
+   observaciones:[lineaPrecintos(alog),alog.nota].filter(Boolean).join('. ')}:{movimiento:cat==='EGRESO'||novedad?.mov==='out'?'egreso':movimientoInicial,puestoId:st.me?.puestoId,lugar:'el paseo'}),
    operacionAcceso:cat==='CIERRE'?'cierre':novedad?.datos?.operacionAcceso||'apertura',
    realizadoPorId:novedad?.datos?.realizadoPorId,realizadoPor:novedad?.datos?.realizadoPor,
    tipoRecorrido:novedad?.datos?.tipoRecorrido||'locales',controlLocales:novedad?.datos?.controlLocales||'abiertos',
-   ...(cat==='ADICIONAL'?{tipoPersona:'adicional' as const,turno:novedad?.datos?.turno||'09:00-16:00'}:cat==='EXTERNO'?{tipoPersona:'externo' as const}:{})});
+   ...(cat==='ADICIONAL'?{tipoPersona:'adicional' as const,turno:novedad?.datos?.turno||'09:00-16:00'}:cat==='EXTERNO'?{
+    tipoPersona:'externo' as const,movimiento:novedad?.datos?.movimiento||(novedad?.mov==='out'?'egreso':novedad?.mov?'ingreso':novedad&&/^(?:egresa\b|se retira\b)/i.test(novedad.texto.trim())?'egreso':movimientoInicial)
+   }:{})});
   setFotos(novedad?.fotos||[]);setSector(novedad?.sector||st.S.posts.find(p=>p.id===st.me?.puestoId)?.nombre||'');setAlta('');setVerAdicionales(false);setBusquedaAdicional('');setFirma(novedad?.guardId||st.responsable?.id||'');setTexto(novedad?textoMovimientoBreve(novedad.texto):textoInicial??null);setAcc(accNormal(novedad?.acc));const h=novedad?.hora||hhmm();setHora(h);
   setDescripcionFoto(novedad?.descripcionEvidencia||'');
   setDia(novedad?.fecha||isoDate());
@@ -56,9 +58,12 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
  },[abierto,novedad?.id]);
  const cambiar=(v:Partial<DatosAsiento>)=>{setDatos(d=>({...d,...v}));setTexto(null);};
  const esAdicional=categoria==='Adicional'||(categoria==='Ingreso/Egreso'&&datos.tipoPersona==='adicional');
+ const egresoExterno=categoria==='Externos'&&datos.movimiento==='egreso';
+ const accRegistro=egresoExterno&&(!novedad||novedad.datos?.movimiento==='ingreso')
+  ? {...accNormal(),empresa:acc.empresa.trim(),obs:acc.obs.trim()} : acc;
  const puesto=esAdicional?'Paseo':st.S.posts.find(p=>p.id===datos.puestoId)?.nombre||'';
  const adicionales=historialAdicionales(st.S.novedades).filter(a=>(a.apellido+' '+a.nombre).toLocaleLowerCase('es').includes(busquedaAdicional.toLocaleLowerCase('es')));
- const cuerpo=texto??redactarAsiento(categoria,datosDescanso(st.S,{...datos,...(categoria==='Recorrido'&&datos.tipoRecorrido==='playa'?{lugar:'la playa'}:{})}),acc,puesto);
+ const cuerpo=texto??redactarAsiento(categoria,datosDescanso(st.S,{...datos,...(categoria==='Recorrido'&&datos.tipoRecorrido==='playa'?{lugar:'la playa'}:{})}),accRegistro,puesto);
  const guardar=async(agregar?:boolean)=>{if(guardando)return;setGuardando(true);try{
   if(!fechaValida(dia)||!horaValida(hora))throw Error('Revise la fecha (AAAA-MM-DD) y la hora (HH:MM).');
   if(categoria==='Descanso')validarDescanso(st.S,datos,dia,hora);
@@ -67,7 +72,8 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
     if(!datos.apellido?.trim()||!datos.nombre?.trim())throw Error('Complete apellido y nombre en sus campos correspondientes.');
     if(datos.movimiento!=='egreso'&&(!datos.turno?.trim()||(categoria==='Ingreso/Egreso'&&datos.tipoPersona!=='adicional'&&!puesto)))throw Error('Complete el puesto y el turno del ingreso.');
    }
-   if(categoria==='Externos'&&!acc.empresa&&!personasReales(acc).length)throw Error('Ingrese la firma o los datos de la persona externa.');
+   if(egresoExterno&&!acc.empresa.trim()&&!personasReales(accRegistro).length)throw Error('Ingrese la razón social.');
+   if(categoria==='Externos'&&!egresoExterno&&!acc.empresa.trim()&&!personasReales(acc).length)throw Error('Ingrese la firma o los datos de la persona externa.');
    if(categoria==='Apertura/Cierre'&&(datos.grupoAccesos?!datos.accesos?.length:!datos.acceso?.trim()))throw Error('Seleccione o indique el acceso.');
   }
   if(!cuerpo.trim())throw Error('Ingrese la descripción de la novedad.');
@@ -81,7 +87,7 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
   if(agregar)st.putVarios(nuevos);setAlta('');
   st.put('novedades',{...novedad,id:idNuevo.current,fecha:dia,hora,guardId:firma,fotos,sector:sector.trim(),descripcionEvidencia:descripcionEvidencia(descripcionFoto),
    categoria:categoria==='Ingreso/Egreso'&&datos.tipoPersona==='adicional'?'Adicional':categoria==='Ingreso/Egreso'?(datos.movimiento==='egreso'?'Egreso':'Ingreso'):categoria==='Externos'?'Externo':categoria==='Apertura/Cierre'?(datos.operacionAcceso==='cierre'?'Cierre':'Apertura'):categoria,
-   datos:categoria==='Descanso'?datosDescanso(st.S,datos):categoria==='Recorrido'?{...datos,lugar:datos.tipoRecorrido==='playa'?'la playa':datos.lugar}:esAdicional?{...datos,tipoPersona:'adicional',lugar:'Paseo',puestoId:st.S.posts.find(p=>!p.deleted&&p.nombre.trim().toLowerCase()==='paseo')?.id}:datos,texto:cuerpo.trim(),acc:categoria==='Externos'?acc:null,
+   datos:categoria==='Descanso'?datosDescanso(st.S,datos):categoria==='Recorrido'?{...datos,lugar:datos.tipoRecorrido==='playa'?'la playa':datos.lugar}:esAdicional?{...datos,tipoPersona:'adicional',lugar:'Paseo',puestoId:st.S.posts.find(p=>!p.deleted&&p.nombre.trim().toLowerCase()==='paseo')?.id}:datos,texto:cuerpo.trim(),acc:categoria==='Externos'?accRegistro:null,
    origenTipo:categoria==='Ingreso/Egreso'?(datos.tipoPersona==='adicional'?'policial':'guardia'):categoria==='Adicional'?'policial':categoria==='Recorrido'?'recorrido':novedad?.origenTipo==='libro-foto'?'libro-foto':undefined});
   await st.confirmarGuardado();
   onGuardado?.(dia,hora);onClose();toast('Registro guardado en el teléfono');
@@ -107,7 +113,7 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
    <Input label="Apellido" value={datos.apellido||''} onChangeText={apellido=>cambiar({apellido})}/><Input label="Nombre" value={datos.nombre||''} onChangeText={nombre=>cambiar({nombre})}/>
    {datos.movimiento!=='egreso'?<>{!esAdicional?<Selector label="Puesto" valor={datos.puestoId||''} onChange={puestoId=>cambiar({puestoId})} opciones={st.S.posts.filter(p=>!p.deleted).map(p=>({v:p.id,t:p.nombre}))}/>:null}<Selector label="Horarios predefinidos" valor={datos.turno||''} onChange={turno=>cambiar({turno})} opciones={[{v:'',t:'Seleccionar horario'},...horariosPuesto(puesto,datos.tipoPersona==='adicional'||categoria==='Adicional')]}/><Input label="Turno" value={datos.turno||''} onChangeText={turno=>cambiar({turno})} placeholder="09:00-16:00"/></>:null}
   </>:null}
-  {categoria==='Externos'?<><Selector label="Tipo de externo" valor={datos.tipoExterno||'Visita'} onChange={tipoExterno=>cambiar({tipoExterno})} opciones={['Proveedor','Contratista','Visita','Empleado','Locatario'].map(v=>({v,t:v}))}/><BloqueAcceso valor={acc} onChange={a=>{setAcc(a);setTexto(null);}}/></>:null}
+  {categoria==='Externos'?<>{!egresoExterno?<Selector label="Tipo de externo" valor={datos.tipoExterno||'Visita'} onChange={tipoExterno=>cambiar({tipoExterno})} opciones={['Proveedor','Contratista','Visita','Empleado','Locatario'].map(v=>({v,t:v}))}/>:null}<BloqueAcceso egreso={egresoExterno} valor={acc} onChange={a=>{setAcc(a);setTexto(null);}}/></>:null}
   {categoria==='Descanso'?<>
     <SelectorFirma label="Guardia que toma el descanso" valor={datos.guardiaDescansoId||''} onChange={guardiaDescansoId=>cambiar({guardiaDescansoId})}/>
     <Selector label="Puesto del descanso" valor={datos.puestoId||''} onChange={puestoId=>cambiar({puestoId})} opciones={[{v:'',t:'Seleccione un puesto'},...st.S.posts.filter(p=>!p.deleted).map(p=>({v:p.id,t:p.nombre}))]}/>
@@ -129,13 +135,13 @@ export function EditorNovedad({abierto,novedad,fecha,corte,duracion=24,categoria
    <SeleccionAccesos datos={datos} catalogo={st.S.accesses} onChange={cambiar}/>
    <MotivoAcceso activo={!!datos.incluirMotivo} valor={datos.motivo||''} tipo={datos.operacionAcceso||'apertura'} onToggle={incluirMotivo=>cambiar({incluirMotivo})} onChange={motivo=>cambiar({motivo})} sugerencias={sugerenciasTexto(st.S.novedades,datos.motivo||'','motivo',novedad?.id)}/>
   </>:null}
-  {categoria==='Recorrido'?(datos.tipoRecorrido==='nocturna'&&!novedad?null:<Field label="Vista previa del recorrido"><Text selectable style={{color:t.text,fontSize:15,lineHeight:24}}>{cuerpo}</Text></Field>):<>
+  {categoria==='Recorrido'?(datos.tipoRecorrido==='nocturna'&&!novedad?null:<Field label="Vista previa del recorrido"><Text selectable style={{color:t.text,fontSize:15,lineHeight:24}}>{cuerpo}</Text></Field>):egresoExterno?null:<>
   <Input label="Descripción del registro" value={cuerpo} onChangeText={setTexto} multiline rows={6} fixedHeight placeholder="Describa el hecho, el lugar y las medidas adoptadas."/>
   {categoria==='Novedad'?<SugerenciasTexto opciones={sugerenciasTexto(st.S.novedades,cuerpo,'texto',novedad?.id)} onElegir={setTexto}/>:null}
   <Dictado enabled={abierto&&!sinTurno} onTexto={v=>setTexto((cuerpo.trim()?cuerpo.trim()+' ':'')+v)}/>
   <RedaccionIA texto={cuerpo} categoria={categoria} onTexto={setTexto} disabled={sinTurno}/>
   </>}
-  {permiteEvidencia(categoria)?<>
+  {permiteEvidencia(categoria)&&!egresoExterno?<>
    <Input label="Sector" value={sector} onChangeText={setSector} placeholder="Puesto, portón o sector"/>
    <Input label="Descripción breve de las fotos (opcional)" value={descripcionFoto} onChangeText={setDescripcionFoto} maxLength={LIMITE_DESCRIPCION_EVIDENCIA} placeholder="Ej.: Precinto dañado en portón"/>
    <Hint>Podés agregar una descripción de hasta 100 caracteres para la evidencia. Se mostrará junto a la hora y el tipo de novedad.</Hint>

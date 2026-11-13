@@ -17,8 +17,8 @@ import { Icon } from '../icons';
 import { historialExternos, accesoDesdeFicha } from '../externos';
 
 /* Editor compartido por el Informe general y por visitas y proveedores. */
-export default function BloqueAcceso({ valor, onChange }: {
-  valor: Acceso; onChange: (a: Acceso) => void;
+export default function BloqueAcceso({ valor, onChange, egreso=false }: {
+  valor: Acceso; onChange: (a: Acceso) => void; egreso?: boolean;
 }) {
   const t = useTheme();
   const st = useStore();
@@ -35,14 +35,17 @@ export default function BloqueAcceso({ valor, onChange }: {
 
   return (
     <Stack gap={14}>
+      {egreso?<Input label="Razón social" value={valor.empresa} maxLength={120}
+        onChangeText={v=>set('empresa',v)} placeholder="Distribuidora Sur"/>:null}
       <Btn label="Elegir externo del historial" variant="ghost" onPress={()=>setHistorial(true)}/>
       <Sheet visible={historial} title="Historial de externos" onClose={()=>setHistorial(false)}>
         <Input label="Buscar empresa, empleado o DNI" value={busqueda} onChangeText={setBusqueda}/>
-        <Hint>Se recuperan los empleados y datos habituales. Revise la autorización y documentación de este ingreso.</Hint>
-        {fichas.slice(0,30).map(f=><Item key={f.id} title={f.empresa} subs={[f.personas.map(p=>p.nombre+' · '+fmtDNI(p.dni)).join(' / '),f.tarea+' · '+f.lugar]} onPress={()=>{onChange(accesoDesdeFicha(f));setHistorial(false);}}/>)}
+        {!egreso?<Hint>Se recuperan los empleados y datos habituales. Revise la autorización y documentación de este ingreso.</Hint>:null}
+        {fichas.slice(0,30).map(f=><Item key={f.id} title={f.empresa} subs={[f.personas.map(p=>p.nombre+' · '+fmtDNI(p.dni)).join(' / '),f.tarea+' · '+f.lugar]} onPress={()=>{onChange(egreso?{...valor,empresa:f.empresa}:accesoDesdeFicha(f));setHistorial(false);}}/>)}
         {!fichas.length?<Hint>Las empresas se guardan al registrar un ingreso o una novedad de Externos.</Hint>:null}
         {fichas.length>30?<Hint>Afine la búsqueda para encontrar más empresas.</Hint>:null}
       </Sheet>
+      {egreso?<Input label="Observaciones" value={valor.obs} onChangeText={v=>set('obs',v)} multiline rows={3}/>:<>
       <Card pad style={{ backgroundColor: t.surface2 }}>
         <Stack gap={11}>
           <Eyebrow>Quién ingresa</Eyebrow>
@@ -134,6 +137,7 @@ export default function BloqueAcceso({ valor, onChange }: {
           ) : null}
         </Stack>
       </Card>
+      </>}
     </Stack>
   );
 }

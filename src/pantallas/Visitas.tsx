@@ -27,6 +27,7 @@ export default function Visitas({integrado=false}:{integrado?:boolean}={}) {
   const [modo, setModo] = useState('dentro');
   const [editar, setEditar] = useState<Visita | null | undefined>(undefined);
   const [confirmar, setConfirmar] = useState<Visita | null>(null);
+  const [salida,setSalida]=useState<Visita|null>(null);
 
 
   const todas = st.list<Visita>('visits').sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -36,14 +37,6 @@ export default function Visitas({integrado=false}:{integrado?:boolean}={}) {
   const dentro = todas.filter(v=>vigentes.has(v.id)&&visAdentro(v));
   const espera = dentro.filter(visEspera);
   const rows = modo === 'dentro' ? dentro : todas;
-
-  const egreso = async (v: Visita) => {
-    try{
-      st.putVarios(cambiosVisita({...v,horaOut:hhmm()},['out'],st.me!.id,new Date(),st.S.novedades,st.responsable?.id||st.me!.id));
-      await st.confirmarGuardado();
-      toast('Egreso asentado en el libro');
-    }catch(e:any){toast(e.message);}
-  };
 
   const copiarPresentes = async () => {
     let x = '*PERSONAS EN EL PREDIO — ' + dmy(isoDate()) + ' ' + hhmm() + '*\n\n';
@@ -99,7 +92,7 @@ export default function Visitas({integrado=false}:{integrado?:boolean}={}) {
                   v.horaOut ? <Tag label="Egresó" kind="mute" />
                     : a.autoriz === 'espera' ? <Btn label="Confirmar" variant="primary" size="xs" onPress={() => setConfirmar(v)} />
                       : a.autoriz === 'retiro' ? <Tag label="Se retiró" kind="crit" />
-                        : <Btn label="Egreso" variant="primary" size="xs" onPress={() => egreso(v)} />
+                        : <Btn label="Egreso" variant="primary" size="xs" onPress={() => setSalida(v)} />
                 }
                 onPress={() => setEditar(v)} />
             );
@@ -118,9 +111,39 @@ export default function Visitas({integrado=false}:{integrado?:boolean}={}) {
       <EditorVisita abierto={editar !== undefined} visita={editar || null}
         onClose={() => setEditar(undefined)} />
       <HojaConfirmar visita={confirmar} onClose={() => setConfirmar(null)} />
+      {salida?<EditorEgreso key={salida.id} visita={salida} onClose={()=>setSalida(null)}/>:null}
     </>
   );
   return integrado?contenido:<Pantalla top>{contenido}</Pantalla>;
+}
+
+function EditorEgreso({visita,onClose}:{visita:Visita;onClose:()=>void}){
+  const st=useStore(),toast=useToast();
+  const [acc,setAcc]=useState(()=>({...accNormal(visita.acc,visita),obs:''}));
+  const [guardando,setGuardando]=useState(false),[error,setError]=useState('');
+  const intento=useRef<Date|null>(null);
+
+  const guardar=async()=>{
+    if(guardando)return;
+    setGuardando(true);setError('');
+    try{
+      if(!acc.empresa.trim()&&!personasReales(acc).length)throw Error('Ingrese la razón social.');
+      const actual=st.byId<Visita>('visits',visita.id);
+      if(!actual||actual.deleted)throw Error('El ingreso ya no está disponible.');
+      if(actual.horaOut&&!intento.current)throw Error('El egreso ya está registrado.');
+      const momento=intento.current??new Date();
+      st.putVarios(cambiosVisita({...actual,horaOut:hhmm(momento)},['out'],st.me!.id,momento,st.S.novedades,st.responsable?.id||st.me!.id,acc));
+      intento.current=momento;
+      await st.confirmarGuardado();
+      onClose();toast('Egreso asentado en el libro');
+    }catch(e:any){setError(e.message);}finally{setGuardando(false);}
+  };
+  return <Sheet visible title="Registrar egreso" onClose={()=>{if(!guardando)onClose();}} footer={
+    <Btn label={guardando?'Guardando…':'Guardar egreso'} variant="primary" style={{flex:1}} disabled={guardando} onPress={guardar}/>
+  }>
+    <BloqueAcceso egreso valor={acc} onChange={setAcc}/>
+    {error?<Banner kind="warn">{error}</Banner>:null}
+  </Sheet>;
 }
 
 /* ================= alta y edición ================= */

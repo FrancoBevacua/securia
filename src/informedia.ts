@@ -14,6 +14,7 @@ export type EntradaDia = {
   clave: string;
   categoria?: string;
   firma?: string;
+  guardId?: string;
   hora: string;
   fecha: string;
   texto: string;
@@ -118,7 +119,7 @@ export function entradasDeVentana(S: Estado, v: Ventana): EntradaDia[] {
     .forEach(n => {
       const res = resumenAcceso(n);
       out.push({
-        clave: 'n:' + n.id, hora: n.hora, fecha: n.fecha,
+        clave: 'n:' + n.id, hora: n.hora, fecha: n.fecha, guardId:n.guardId,
         texto: textoMovimientoBreve(n.texto || res), categoria:(n.alogId?S.alogs.find(a=>a.id===n.alogId)?.tipo.toUpperCase():undefined)||categoriaAsiento(n), firma:gsName(S.guards.find(g=>g.id===n.guardId),S.site), origen: 'novedad', ids: [n.id],
       });
     });
@@ -126,7 +127,7 @@ export function entradasDeVentana(S: Estado, v: Ventana): EntradaDia[] {
   // Respaldos anteriores pueden tener visitas sin asiento vinculado.
   vivos(S.visits).filter(a => dentro(v, a.fecha, a.horaIn)).forEach(a => {
     const asentada = S.novedades.some(n => n.id === a.novIn || (n.visitId === a.id && n.mov === 'in'));
-    if (!asentada) out.push({ clave: 'v:' + a.id, hora: a.horaIn, fecha: a.fecha,
+    if (!asentada) out.push({ clave: 'v:' + a.id, hora: a.horaIn, fecha: a.fecha, guardId:a.guardId,
       texto: textoIngresoAcceso(accNormal(a.acc, a), a.tipo), categoria:'EXTERNO', firma:gsName(S.guards.find(g=>g.id===a.guardId),S.site), origen: 'visita', ids: [a.id] });
   });
 

@@ -1,9 +1,9 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {AccessibilityInfo,Animated,AppState,Image,Text,useWindowDimensions,View} from 'react-native';
+import {AccessibilityInfo,Animated,AppState,Image,Pressable,Text,useWindowDimensions,View} from 'react-native';
 import {useFocusEffect} from 'expo-router';
 import {Icon} from '../icons';
 import {FONT} from '../theme';
-import {useTheme} from '../ui';
+import {Btn,Row,useTheme} from '../ui';
 import {PasoGuia} from '../guia';
 import {CAPTURAS_GUIA} from '../guiaCapturas';
 
@@ -44,6 +44,9 @@ export function EjemploGuia({paso,pausa}:{paso:PasoGuia;pausa:boolean}){
   const ventana=useWindowDimensions();
   const [anchoDisponible,setAnchoDisponible]=useState(0);
   const [error,setError]=useState(false);
+  const [indice,setIndice]=useState(0);
+  const terminado=indice===paso.toques.length;
+  const [accion,x,y]=paso.toques[Math.min(indice,paso.toques.length-1)];
   const source=CAPTURAS_GUIA[paso.captura];
   const dimensiones=Image.resolveAssetSource?.(source) ?? source;
   const proporcion=dimensiones?.width && dimensiones.height ? dimensiones.width/dimensiones.height : 0.6;
@@ -52,17 +55,36 @@ export function EjemploGuia({paso,pausa}:{paso:PasoGuia;pausa:boolean}){
   // Android aplica las medidas originales del PNG si falta una dimensión explícita.
   const ancho=Math.max(1,Math.min(anchoMaximo,altoMaximo*proporcion));
   const alto=ancho/proporcion;
-  return <View pointerEvents="none" style={{borderRadius:18,borderWidth:1,borderColor:t.lineStrong,backgroundColor:t.surface2,padding:8,gap:8}}>
+  const pulsar=()=>setIndice(i=>Math.min(i+1,paso.toques.length));
+  const tam=36;
+  return <View style={{borderRadius:18,borderWidth:1,borderColor:t.lineStrong,backgroundColor:t.surface2,padding:8,gap:10}}>
     <View onLayout={e=>setAnchoDisponible(e.nativeEvent.layout.width)} style={{alignItems:'center',gap:6}}>
       {error?<Text accessibilityLiveRegion="polite" style={{color:t.text2,fontFamily:FONT.body,textAlign:'center'}}>
         No se pudo mostrar esta captura.
-      </Text>:<>
-        <Animated.View accessible={false} style={{width:ancho,height:3,borderRadius:2,
-          backgroundColor:t.accent,opacity:valor.interpolate({inputRange:[0,1],outputRange:[.3,1]})}}/>
+      </Text>:<View style={{width:ancho,height:alto,overflow:'hidden',borderRadius:10}}>
         <Image source={source} accessible accessibilityLabel={'Captura de Securia. '+paso.titulo}
           resizeMode="contain" onError={()=>setError(true)} style={{width:ancho,height:alto}}/>
-      </>}
+        {terminado?null:<Pressable key={indice} accessibilityRole="button" accessibilityLabel={accion}
+          onPress={pulsar} hitSlop={8} style={{position:'absolute',left:ancho*x/100-tam/2,top:alto*y/100-tam/2,
+            width:tam,height:tam,alignItems:'center',justifyContent:'center'}}>
+          <Animated.View pointerEvents="none" style={{position:'absolute',width:tam,height:tam,borderRadius:tam/2,
+            borderWidth:2,borderColor:'#fff',backgroundColor:'#F43F5E',
+            opacity:valor.interpolate({inputRange:[0,1],outputRange:[.85,.32]}),
+            transform:[{scale:valor.interpolate({inputRange:[0,1],outputRange:[.62,1.48]})}]}}/>
+          <View pointerEvents="none" style={{width:17,height:17,borderRadius:9,borderWidth:2,borderColor:'#fff',backgroundColor:'#BE123C'}}/>
+        </Pressable>}
+      </View>}
     </View>
-    {!error?<Text style={{color:t.muted,fontFamily:FONT.body,fontSize:12,textAlign:'center'}}>Captura de Securia · datos de demostración</Text>:null}
+    {!error?<Row>
+      <View style={{flex:1,gap:3}}>
+        <Text style={{color:t.muted,fontFamily:FONT.body,fontSize:12}}>{terminado?'Demostración completada':`Toque ${indice+1} de ${paso.toques.length}`}</Text>
+        <Text accessibilityLiveRegion="polite" style={{color:t.text,fontFamily:FONT.bodySemi,fontSize:15}}>
+          {terminado?paso.titulo:accion}
+        </Text>
+      </View>
+      <Btn label={terminado?'Repetir':'Practicar'} size="sm" variant="ghost"
+        accessibilityLabel={terminado?'Repetir demostración':accion}
+        onPress={terminado?()=>setIndice(0):pulsar}/>
+    </Row>:null}
   </View>;
 }

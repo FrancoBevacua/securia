@@ -36,7 +36,7 @@ export function aplicarCambios(S: Estado, cambios: { col: Col; obj: any }[], act
     if (col === 'guards' && g.cuenta && g.legajo && !g.deleted && e.guards.some(r => r.id !== g.id && r.cuenta && !r.deleted && legajoNormal(r.legajo) === legajoNormal(g.legajo))) throw new Error('Ese legajo ya pertenece a otra cuenta.');
     if (col === 'punches' && i >= 0 && (arr[i].closedAt || arr[i].out)) throw new Error('Un turno cerrado no se puede modificar.');
     if (i >= 0) arr[i] = g; else arr.push(g);
-    if (!g.deleted && g.acc && (col === 'visits' || col === 'novedades')) {
+    if (!g.deleted && g.acc && (col === 'visits' || col === 'novedades' && g.mov!=='out' && g.datos?.movimiento!=='egreso')) {
       const ficha = fichaExterno(e, g.acc, actor?.id || g.guardId);
       if (ficha) {
         e.externals = (e.externals || []).slice();

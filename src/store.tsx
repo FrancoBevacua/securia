@@ -108,7 +108,7 @@ export function sembrarCatalogo(S: Estado) {
   ACCESOS_BASE.forEach((n: string, i: number) => S.accesses.push({
     id: uid(), nombre: n,
     tipo: /Pecera/.test(n) ? 'pecera' : /Puerta/.test(n) ? 'puerta' : 'porton',
-    precintos: /Pecera|Bar Cup/.test(n) ? 0 : /Puerta E/.test(n) ? 2 : 1,
+    precintos: /Pecera|Bar Cup/.test(n) ? 0 : 1,
     orden: i, updatedAt: now(),
   }));
   S.rtemplates.push({ id: uid(), nombre: RONDA_BASE.nombre, puntos: RONDA_BASE.puntos.slice(), updatedAt: now() });

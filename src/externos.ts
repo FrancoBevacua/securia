@@ -30,7 +30,7 @@ export function fichaExterno(S: Estado, acc: Acceso, actor: string): Externo | n
 export function historialExternos(S: Estado): Externo[] {
   const copia = { ...S, externals: [] as Externo[] };
   const visitas = S.visits.filter(x => !x.deleted).map(v => ({ acc: v.acc, createdBy: v.guardId, updatedAt: v.updatedAt }));
-  const novedades = S.novedades.filter(n => !n.deleted && n.acc).map(n => ({ acc: n.acc!, createdBy: n.createdBy || n.guardId, updatedAt: n.updatedAt }));
+  const novedades = S.novedades.filter(n => !n.deleted && n.acc && n.mov!=='out' && n.datos?.movimiento!=='egreso').map(n => ({ acc: n.acc!, createdBy: n.createdBy || n.guardId, updatedAt: n.updatedAt }));
   for (const x of [...visitas, ...novedades].sort((a,b) => a.updatedAt-b.updatedAt)) {
     try {
       const ficha = fichaExterno(copia, accNormal(x.acc), x.createdBy);

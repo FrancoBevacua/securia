@@ -29,7 +29,7 @@ import ImportarLibro from './ImportarLibro';
 import ServicioActual from './ServicioActual';
 import RedaccionIA from './RedaccionIA';
 import { turnoAbierto, fechaValida } from '../servicio';
-import {FILTROS_LIBRO,filtrarLibro} from '../filtrosLibro';
+import {FILTROS_LIBRO,agruparLibro,filtrarLibro,opcionesGsLibro} from '../filtrosLibro';
 
 export default function InformeDiaPantalla({integrado=false}:{integrado?:boolean}={}) {
   const st = useStore();
@@ -59,12 +59,17 @@ export default function InformeDiaPantalla({integrado=false}:{integrado?:boolean
   const [fuente, setFuente] = useState('');
   const [detalle, setDetalle] = useState<EntradaDia | null>(null);
   const [filtros,setFiltros]=useState<string[]>([]),[busqueda,setBusqueda]=useState('');
+  const [gs,setGs]=useState('');
 
   const fechaCorrecta=fechaValida(fechaEntrega);
   const ventana = ventanaParaEntrega(fechaCorrecta?fechaEntrega:isoDate(),corte,duracion);
   const {fecha}=ventana,fin=horaFin(ventana),hasta=limites(ventana).hasta.fecha;
   const entradas = useMemo(() => fechaCorrecta?entradasDeVentana(st.S, ventana):[], [st.S, fecha, corte,duracion,fechaCorrecta]);
-  const visibles=useMemo(()=>filtrarLibro(entradas,filtros,busqueda),[entradas,filtros,busqueda]);
+  const opcionesGs=useMemo(()=>opcionesGsLibro(entradas),[entradas]);
+  const gsVigente=opcionesGs.some(o=>o.v===gs)?gs:'';
+  useEffect(()=>{if(gs&&!gsVigente)setGs('');},[gs,gsVigente]);
+  const visibles=useMemo(()=>filtrarLibro(entradas,filtros,busqueda,gsVigente),[entradas,filtros,busqueda,gsVigente]);
+  const dias=useMemo(()=>agruparLibro(visibles),[visibles]);
 
   /* El informe guardado de esta ventana, si ya se hizo uno. */
   const guardado = st.list<InformeDia>('infdias').find(x => x.fecha === fecha && x.desde === corte && (x.duracion??24)===duracion);
@@ -166,12 +171,15 @@ export default function InformeDiaPantalla({integrado=false}:{integrado?:boolean
         <Input label="Texto, persona, empresa o sector" value={busqueda} onChangeText={setBusqueda} placeholder="Ej.: limpieza, Oroño, apellido…"/>
         <Chipbar><Chip label="Todos" on={!filtros.length} onPress={()=>setFiltros([])}/>{FILTROS_LIBRO.map(f=><Chip key={f.v} label={f.t} on={filtros.includes(f.v)} onPress={()=>setFiltros(actual=>actual.includes(f.v)?actual.filter(v=>v!==f.v):[...actual,f.v])}/>)}</Chipbar>
         <Hint>{visibles.length+' de '+entradas.length+' registros del período. Puede combinar categorías. El informe para compartir incluye el período completo.'}</Hint>
-        {filtros.length||busqueda?<Btn label="Limpiar filtros" size="sm" onPress={()=>{setFiltros([]);setBusqueda('');}}/>:null}
+        <Selector label="Filtrar por Gs" valor={gsVigente} onChange={setGs} opciones={[{v:'',t:'Todos los Gs'},...opcionesGs]}/>
+        {filtros.length||busqueda||gsVigente?<Btn label="Limpiar filtros" size="sm" onPress={()=>{setFiltros([]);setBusqueda('');setGs('');}}/>:null}
       </Stack></Card>
-      {visibles.length ? [...new Set(visibles.map(e => e.fecha))].map(dia => (
-        <Stack key={dia} gap={8}>
-          <Eyebrow>{'Día ' + dmy(dia)}</Eyebrow>
-          <Card>{visibles.filter(e => e.fecha === dia).map((e, i, lista) => (
+      {dias.length ? dias.map(dia => (
+        <Stack key={dia.fecha} gap={8}>
+          <Eyebrow>{'Día ' + dmy(dia.fecha)}</Eyebrow>
+          {dia.bloques.map(bloque=><Stack key={bloque.clave} gap={6}>
+          <Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.bodySemi,fontSize:15}}>{bloque.firma}</Text>
+          <Card>{bloque.entradas.map((e, i, lista) => (
             <FilaEntrada key={e.clave} e={e} last={i === lista.length - 1} onPress={() => {
               if (e.origen === 'novedad') { setEditar(st.byId<Novedad>('novedades', e.ids[0]) || null); return; }
               if (e.origen === 'acceso') {
@@ -182,6 +190,7 @@ export default function InformeDiaPantalla({integrado=false}:{integrado?:boolean
               } else setDetalle(e);
             }} />
           ))}</Card>
+          </Stack>)}
         </Stack>
       )) : <Card><Empty>{entradas.length?'No hay coincidencias. Pruebe otro texto o quite los filtros.':'No hay novedades en este período. Revise las fechas y el horario antes de generar el informe.'}</Empty></Card>}
       <Row gap={9}>

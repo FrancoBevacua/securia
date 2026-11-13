@@ -1,4 +1,9 @@
 import {AccesoCat,GrupoAccesos} from './model';
+export const GRUPOS_CATALOGO: {v:GrupoAccesos;t:string}[] = [
+ {v:'portones',t:'Portones'},
+ {v:'emergencias',t:'Puertas de Emergencias'},
+ {v:'otros',t:'Otros accesos'},
+];
 const normal=(s:string)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 export function grupoDeAcceso(a:Pick<AccesoCat,'nombre'|'tipo'>):GrupoAccesos{
  const n=normal(a.nombre);

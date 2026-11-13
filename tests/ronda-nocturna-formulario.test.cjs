@@ -25,9 +25,16 @@ test('una ronda integrada registra puntos y genera un solo asiento de Recorrido 
  await act(async()=>button(r,'Iniciar').props.onPress());await act(async()=>r.update(React.createElement(Rondas,{integrado:true})));
  assert.equal(S.rounds[0].guardId,g.id);assert.equal(S.rounds[0].createdBy,me.id);assert.ok(S.rounds[0].inicioAt);
  await act(async()=>r.root.findAllByType('Item').find(i=>i.props.title==='Primer piso').props.onPress());
+ await act(async()=>r.root.findAllByType('Seg').find(s=>s.props.valor==='ok').props.onChange('nov'));
+ await act(async()=>button(r,'Marcar punto').props.onPress());
+ assert.equal(S.rounds[0].puntos[0].hora,'');
+ await act(async()=>r.root.findAllByType('Input').find(i=>i.props.label==='Detalle de la novedad').props.onChangeText('Luz apagada.\nSe informó a CCTV.'));
  await act(async()=>button(r,'Marcar punto').props.onPress());await act(async()=>r.update(React.createElement(Rondas,{integrado:true})));
  assert.ok(S.rounds[0].puntos[0].hora);assert.ok(S.rounds[0].puntos[0].fecha);
  await act(async()=>button(r,'Cerrar ronda').props.onPress());await act(async()=>r.update(React.createElement(Rondas,{integrado:true})));
  assert.ok(S.rounds[0].fin);assert.equal(S.novedades.length,1);assert.equal(S.novedades[0].categoria,'Recorrido');assert.equal(S.novedades[0].datos.tipoRecorrido,'nocturna');assert.equal(S.novedades[0].guardId,g.id);assert.equal(S.novedades[0].createdBy,me.id);assert.match(S.novedades[0].texto,/Primer piso/);
+ assert.match(S.novedades[0].texto,/Primer piso · Con novedad\n  Novedad: Luz apagada\.\n  Se informó a CCTV\./);
+ assert.doesNotMatch(S.novedades[0].texto,/· Paseo ·/);
+ assert.match(S.novedades[0].texto,/Inicio de la recorrida: \d\d:\d\d\nFin de la recorrida: \d\d:\d\d$/);
  assert.equal(guardados.filter(x=>x.col==='novedades').length,1);await act(async()=>r.unmount());
 });

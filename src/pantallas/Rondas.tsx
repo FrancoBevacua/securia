@@ -15,7 +15,8 @@ import {
 import { Ring } from '../icons';
 import SelectorFirma from './SelectorFirma';
 import FotosRegistro from './FotosRegistro';
-import {segundosRonda,formatoCronometro} from '../rondaNocturna';
+import {segundosRonda,formatoCronometro,textoRondaNocturna} from '../rondaNocturna';
+import {horaValida} from '../servicio';
 function ContenidoRonda({integrado,children}:{integrado:boolean;children:React.ReactNode}){return integrado?<View style={{gap:14}}>{children}</View>:<Pantalla top>{children}</Pantalla>;}
 
 export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
@@ -35,19 +36,10 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
 
   const activa = rondaActiva(st.S, st.me!.id, st.telefonoId,'puntos');
   const tpls = st.list<RondaTpl>('rtemplates');
-  const hist = st.list<Ronda>('rounds').filter(r => r.fin)
+  const hist = st.list<Ronda>('rounds').filter(r => r.fin&&r.tipoRecorrido!=='general')
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 25);
 
-  const texto = (r: Ronda) => {
-    const g = st.byId<Vigilador>('guards', r.guardId);
-    let x = '*RONDA — ' + r.nombre.toUpperCase() + '*\n' + dmy(r.fecha) + ' · ' +
-      r.inicio + ' a ' + (r.fin || '—') + '\n' + gsName(g, st.S.site) + '\n\n';
-    r.puntos.forEach(p => {
-      x += (p.hora || '--:--') + ' ' + p.n + (p.estado === 'nov' ? ' — CON NOVEDAD' : ' — sin novedad') + '\n' +
-        (p.obs ? p.obs + '\n' : '');
-    });
-    return x.trim();
-  };
+  const texto = (r:Ronda)=>textoRondaNocturna(r,gsName(st.byId<Vigilador>('guards',r.guardId),st.S.site));
 
   /* ---------- ronda en curso ---------- */
   if (activa) {
@@ -90,8 +82,9 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
               setGuardando(true);
               try {
                 if(!st.S.guards.some(g=>g.id===activa.guardId&&!g.deleted))throw Error('Seleccione el guardia que hizo el recorrido.');
-                const r = { ...activa, fin: hhmm(),fechaFin:isoDate(),alLibro:true };
-                st.putVarios([{col:'rounds',obj:r},...(r.alLibro?[{col:'novedades' as const,obj:{id:'ronda:'+r.id,fecha:isoDate(),hora:r.fin,guardId:r.guardId,categoria:'Recorrido',datos:{tipoRecorrido:'nocturna'},texto:texto(r),fotos:r.fotos||[],origenTipo:'recorrido',origenId:r.id}}]:[])]);
+                const momento=new Date();
+                const r = { ...activa, fin: hhmm(momento),fechaFin:isoDate(momento),alLibro:true };
+                st.putVarios([{col:'rounds',obj:r},{col:'novedades',obj:{id:'ronda:'+r.id,fecha:r.fechaFin,hora:r.fin,guardId:r.guardId,categoria:'Recorrido',datos:{tipoRecorrido:'nocturna'},texto:texto(r),fotos:r.fotos||[],origenTipo:'recorrido',origenId:r.id}}]);
                 await st.confirmarGuardado();setVer(r);
               }catch(e:any){toast(e.message||'No se pudo guardar el recorrido.');}
               finally{setGuardando(false);}
@@ -127,9 +120,10 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
                 <>
                   <Btn icon="edit" variant="ghost" size="xs" onPress={() => setTpl(x)} />
                   <Btn label="Iniciar" variant="primary" size="xs" onPress={() => {
+                    const momento=new Date();
                     st.put('rounds', {
-                      id: uid(), dispositivoId:st.telefonoId, tipoRecorrido:'puntos', tplId: x.id, nombre: x.nombre, guardId: st.responsable?.id||st.me!.id, createdBy: st.me!.id,alLibro:true,inicioAt:Date.now(),
-                      fecha: isoDate(), inicio: hhmm(), fin: '', createdAt: Date.now(),
+                      id: uid(), dispositivoId:st.telefonoId, tipoRecorrido:'puntos', tplId: x.id, nombre: x.nombre, guardId: st.responsable?.id||st.me!.id, createdBy: st.me!.id,alLibro:true,inicioAt:momento.getTime(),
+                      fecha: isoDate(momento), inicio: hhmm(momento), fin: '', createdAt: momento.getTime(),
                       puntos: x.puntos.map(p => ({ n: p, hora: '', estado: '', obs: '' })),
                     });
                     toast('Ronda iniciada');
@@ -195,8 +189,10 @@ function MarcarPunto({ ronda, indice, onClose }: { ronda: Ronda; indice: number 
         <>
           <Btn label="Cancelar" variant="ghost" style={{ flex: 1 }} onPress={onClose} />
           <Btn label="Marcar punto" variant="primary" style={{ flex: 1 }} onPress={() => {
+            if(!horaValida(hora)){toast('Ingrese una hora válida (HH:MM).');return;}
+            if(estado==='nov'&&!obs.trim()){toast('Describí la novedad del punto.');return;}
             const puntos = ronda.puntos.map((x, i) =>
-              i === indice ? { ...x, hora: hora || hhmm(), fecha:x.fecha||isoDate(), estado, obs } : x);
+              i === indice ? { ...x, hora, fecha:x.fecha||isoDate(), estado, obs:obs.trim() } : x);
             st.put('rounds', { ...ronda, puntos });
             onClose();
             toast('Punto marcado');
@@ -206,8 +202,8 @@ function MarcarPunto({ ronda, indice, onClose }: { ronda: Ronda; indice: number 
       <Seg valor={estado} onChange={setEstado}
         opciones={[{ v: 'ok', t: 'Sin novedad' }, { v: 'nov', t: 'Con novedad' }]} />
       <Input tipo="hora" label="Hora de paso" value={hora} onChangeText={setHora} mono keyboardType="numbers-and-punctuation" />
-      <Input label="Observación" value={obs} onChangeText={setObs} multiline rows={3}
-        placeholder="Portón cerrado, precinto sin violar…" />
+      <Input label={estado==='nov'?'Detalle de la novedad':'Observación (opcional)'} value={obs} onChangeText={setObs} multiline rows={3}
+        placeholder={estado==='nov'?'Qué encontraste y qué hiciste…':'Portón cerrado, precinto sin violar…'} />
     </Sheet>
   );
 }

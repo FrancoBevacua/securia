@@ -1,23 +1,28 @@
-import React from 'react';
+import React,{useState} from 'react';
 import { AccesoCat, SeleccionAccesos as DatosSeleccion } from '../model';
 import { listaAccesos } from '../text';
-import {accesosDelGrupo} from '../gruposAccesos';
+import {accesosDelGrupo,GRUPOS_CATALOGO,grupoDeAcceso} from '../gruposAccesos';
 import { Chip, Chipbar, Field, Hint, Input, Seg, Selector } from '../ui';
 
-export default function SeleccionAccesos({ datos, catalogo, onChange, onElegirCatalogo }: {
+export default function SeleccionAccesos({ datos, catalogo, onChange, onElegirCatalogo, soloUno=false }: {
   datos: DatosSeleccion & {acceso?: string}; catalogo: AccesoCat[];
   onChange: (cambio: DatosSeleccion & {acceso?: string}) => void;
   onElegirCatalogo?: (acceso:AccesoCat) => void;
+  soloUno?: boolean;
 }) {
   const varios = !!datos.grupoAccesos;
+  const [grupoCatalogo,setGrupoCatalogo]=useState('');
+  const actual=catalogo.find(a=>!a.deleted&&a.nombre===datos.acceso);
+  const grupo=grupoCatalogo||(actual?grupoDeAcceso(actual):'portones');
+  const disponibles=catalogo.filter(a=>!a.deleted&&(!soloUno||grupoDeAcceso(a)===grupo));
   const elegidos = listaAccesos(datos);
   // Los nombres guardados se conservan aunque cambie o se retire el catálogo.
   const opciones = accesosDelGrupo(catalogo,datos.grupoAccesos||'portones',elegidos);
   return <>
-    <Field label="Registrar accesos"><Seg valor={varios?'varios':'uno'} onChange={v=>onChange(v==='varios'
+    {!soloUno?<Field label="Registrar accesos"><Seg valor={varios?'varios':'uno'} onChange={v=>onChange(v==='varios'
       ? {grupoAccesos:'portones',accesos:[]}
       : {grupoAccesos:undefined,accesos:undefined})}
-      opciones={[{v:'uno',t:'Un acceso'},{v:'varios',t:'Varios accesos'}]}/></Field>
+      opciones={[{v:'uno',t:'Un acceso'},{v:'varios',t:'Varios accesos'}]}/></Field>:null}
     {varios ? <>
       <Selector label="Grupo de accesos" valor={datos.grupoAccesos!}
         onChange={v=>onChange({grupoAccesos:v as DatosSeleccion['grupoAccesos'],accesos:[]})}
@@ -28,9 +33,10 @@ export default function SeleccionAccesos({ datos, catalogo, onChange, onElegirCa
       <Hint>{opciones.length ? 'Elegí los accesos del grupo. Podés tocar uno seleccionado para quitarlo.' : 'Agregá los accesos al catálogo para poder seleccionarlos.'}</Hint>
       <Hint>{elegidos.length+' seleccionado'+(elegidos.length===1?'':'s')}</Hint>
     </> : <>
-      <Selector label="Acceso del catálogo" valor={datos.acceso||''} onChange={acceso=>{onChange({acceso});const c=catalogo.find(c=>c.nombre===acceso);if(c)onElegirCatalogo?.(c);}}
-        opciones={[{v:'',t:'Seleccionar acceso'},...catalogo.filter(a=>!a.deleted).map(a=>({v:a.nombre,t:a.nombre}))]}/>
-      <Input label="Nombre del acceso" value={datos.acceso||''} onChangeText={acceso=>onChange({acceso})} placeholder="Puertas E2 y E2 Bis"/>
+      {soloUno?<Selector label="Categoría del catálogo" valor={grupo} onChange={setGrupoCatalogo} opciones={GRUPOS_CATALOGO}/>:null}
+      <Selector label="Acceso del catálogo" valor={disponibles.some(a=>a.nombre===datos.acceso)?datos.acceso||'':''} onChange={acceso=>{onChange({acceso});const c=disponibles.find(c=>c.nombre===acceso);if(c)onElegirCatalogo?.(c);}}
+        opciones={[{v:'',t:'Seleccionar acceso'},...disponibles.map(a=>({v:a.nombre,t:a.nombre}))]}/>
+      <Input label="Nombre del acceso" value={datos.acceso||''} onChangeText={acceso=>onChange({acceso})} placeholder={soloUno?'Puerta E2':'Puertas E2 y E2 Bis'}/>
     </>}
   </>;
 }
