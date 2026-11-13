@@ -93,3 +93,22 @@ test('el servidor acepta las bajas administrativas de registros ajenos sin permi
  assert.deepEqual(r.acuses.map(a=>a.estado),['confirmado','confirmado','confirmado']);
  assert.ok(r.acuses.every(a=>a.valor.createdBy==='guardia'&&a.valor.deleted));
 });
+
+test('un solo ingreso distingue la cuenta Administrador de Guardia de Paseo y el panel rechaza el PIN operativo',async()=>{
+ await db.query(`update guardia_private.documentos set cifrado=guardia_private.cifrar(jsonb_set(guardia_private.abrir(cifrado),'{guards}',(
+  select jsonb_agg(case when x->>'id'='corp' then x||'{"corporativoOrigenId":"personal"}'::jsonb else x end)
+  from jsonb_array_elements(guardia_private.abrir(cifrado)->'guards') x))) where id=$1`,[objetivo]);
+ await db.exec(migracion('administrador_pin_independiente'));
+ await assert.rejects(db.query('select guardia_private.crear_administrador_pin($1,$2)',[objetivo,'883642']),/distinto/);
+ await db.query('select guardia_private.crear_administrador_pin($1,$2)',[objetivo,pinAdmin]);
+ const login=(pin)=>rpc('guardia_corporativo_rpc',{accion:'ingresar',dispositivo,pin});
+ const corp=await login('883642');
+ assert.equal(corp.guardia,'corp');
+ const admin=await login(pinAdmin);
+ assert.equal(admin.guardia,'administrador-pin');
+ assert.equal(admin.estado.guards.find(g=>g.id==='personal').rol,'vigilador');
+ assert.equal(admin.estado.guards.find(g=>g.id===admin.guardia).dni,undefined);
+ const panel=(pin)=>rpc('guardia_admin_rpc',{accion:'ingresar',dispositivo:dispositivoGuardia,pin});
+ assert.equal((await panel('883642')).ok,false);
+ assert.equal((await panel(pinAdmin)).ok,true);
+});

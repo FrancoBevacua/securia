@@ -41,7 +41,6 @@ type Ctx = {
   responsable: Vigilador | null;
   seleccionarResponsable:(id:string)=>Promise<void>;
   ingresarCorporativo:(pin:string)=>Promise<void>;
-  ingresarAdministrador:(dni:string,pin:string)=>Promise<void>;
   tema: ModoTema;
   paleta: PaletaId;
   asistente: boolean;
@@ -325,7 +324,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if(!cuenta||!await verificarPIN(cuenta.id,pin))throw Error('PIN incorrecto.');
       entrarLocal(cuenta);await guardadoLocal.current;
     },
-    ingresarAdministrador:async(dni,pin)=>{await guardadoLocal.current;await aceptarNube(await nube.ingresarNube(dni,pin,true));},
     errorInicio,errorGuardado,confirmarGuardado:()=>guardadoLocal.current,reintentarInicio:()=>setIntentoInicio(v=>v+1),
     nube:estadoNube,
     ingresarNube:async(dni,pin,puestoId)=>{await guardadoLocal.current;await aceptarNube(await nube.ingresarNube(dni,pin),puestoId);},

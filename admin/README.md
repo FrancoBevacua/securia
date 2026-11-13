@@ -6,7 +6,7 @@ Instalar con `npm ci`. Configurar en Vercel las variables de `.env.example`: `SU
 
 `npm run build` sincroniza los módulos compartidos y genera `dist/`. Las copias de `shared/` permiten compilar también cuando se despliega únicamente esta carpeta. Usar `admin/` como raíz del proyecto Vercel. `npm run dev` sirve la interfaz; `vercel dev` ejecuta además la API.
 
-Se ingresa con el DNI y el PIN de seis números de una cuenta personal de administrador. La base verifica el rol en cada operación. La sesión utiliza una cookie HttpOnly protegida, con vencimiento de ocho horas. Los intentos incorrectos se limitan también por identidad. La [activación inicial](../nube/ADMINISTRACION.md) requiere acceso autorizado a la base.
+Se ingresa con el PIN de seis números de la cuenta Administrador. La base verifica el rol en cada operación. La sesión utiliza una cookie HttpOnly protegida, con vencimiento de ocho horas. La [activación inicial](../nube/ADMINISTRACION.md) requiere acceso autorizado a la base.
 
 El panel permite ver, crear, editar y eliminar novedades del libro compartido, descargar PDF con la plantilla móvil, administrar cuentas y consultar informes de seguridad. Las listas omiten imágenes; las evidencias se solicitan al abrirlas o preparar el PDF. Las altas y modificaciones requieren una revisión vigente y tienen auditoría cifrada. Crear novedad solicita fecha, horario, categoría, guardia firmante y descripción. Los reintentos conservan el identificador para evitar duplicados. La carga web no abre ni cierra actividades de los teléfonos. La cuenta administradora no puede eliminarse a sí misma ni dejar al objetivo sin administradores.
 
