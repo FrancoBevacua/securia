@@ -18,14 +18,14 @@ export const TEMAS_GUIA:TemaGuia[]=[
  ]},
  {id:'accesos',titulo:'Accesos y precintos',descripcion:'Aperturas, cierres e informe para CCTV.',icono:'accesos',pasos:[
   {titulo:'Entrá a Accesos',texto:'Abrí la pestaña «Accesos». En «Registros», presioná + para cargar una apertura o un cierre.',captura:'accesos',toques:[['Abrí Registros',26,31],['Tocá el botón +',91,10]]},
-  {titulo:'Identificá el acceso',texto:'Indicá si es apertura o cierre, elegí la categoría del catálogo y seleccioná un acceso. Revisá la hora y el vigilador.',captura:'registroAcceso',toques:[['Elegí Apertura o Cierre',30,19],['Seleccioná un acceso',48,50],['Revisá la hora y el vigilador',50,80]]},
+  {titulo:'Identificá el acceso',texto:'Indicá si es apertura o cierre, elegí la categoría del catálogo y seleccioná un acceso. Revisá la hora y el vigilador.',captura:'registroAcceso',toques:[['Elegí Apertura o Cierre',30,25],['Elegí la categoría del catálogo',48,43],['Seleccioná un acceso',48,60],['Revisá la hora y el vigilador',50,93]]},
   {titulo:'Completá los precintos',texto:'El formulario empieza con un precinto. Cargá su número completo y agregá más si hace falta. Si hay cuatro números recordados, completá los tres restantes. Podés usar «Leer precintos con cámara» y revisar el resultado.',captura:'precintos',toques:[['Completá el número del precinto',38,56],['Leé con la cámara',49,93]],consejo:'Si el acceso no lleva precinto, marcá «No aplica precinto».'},
   {titulo:'Generá el informe para CCTV',texto:'Guardá el acceso. En la lista, elegí la fecha que querés informar y presioná «Generar informe para CCTV». Revisá el contenido antes de copiarlo o compartirlo.',captura:'cctv',toques:[['Elegí qué incluir',49,36],['Revisá la vista previa',52,76],['Copiá el informe',50,94]]},
  ]},
  {id:'ingresos',titulo:'Ingresos y egresos',descripcion:'Movimientos de personal y externos.',icono:'equipo',pasos:[
   {titulo:'Elegí el tipo de movimiento',texto:'Desde las acciones rápidas o Más, abrí «Ingresos/Egresos». Elegí Vigiladores, Adicionales o Externos.',captura:'ingresos',toques:[['Elegí el tipo de personal',49,33],['Registrá el movimiento',49,51]]},
   {titulo:'Registrá los datos',texto:'Para un ingreso de Externos, completá la razón social, la tarea, el lugar y la autorización. Revisá el horario antes de guardar.',captura:'externos',toques:[['Abrí Externos',81,26],['Registrá el ingreso',51,55]]},
-  {titulo:'Confirmá también la salida',texto:'En Externos, presioná «Egreso» en un ingreso vigente. Para cargar una salida por razón social, usá «Registrar egreso» y completá las observaciones si corresponde.',captura:'externos',toques:[['Consultá el historial',73,41]]},
+  {titulo:'Confirmá también la salida',texto:'En Externos, presioná «Egreso» en un ingreso vigente. Para cargar una salida por razón social, usá «Registrar egreso» y completá las observaciones si corresponde.',captura:'egresoExterno',toques:[['Revisá la razón social',49,33],['Elegí un externo del historial',50,47],['Escribí las observaciones',49,69],['Guardá el egreso',50,91]]},
  ]},
  {id:'recorridos',titulo:'Registrar recorridos',descripcion:'Sector, controles y observaciones.',icono:'ronda',pasos:[
   {titulo:'Abrí Recorridos',texto:'Usá el acceso «Recorridos» desde Inicio o Más. Se abrirá el formulario de novedades con la categoría Recorrido.',captura:'inicio',toques:[['Recorridos',62,91]]},
@@ -33,7 +33,7 @@ export const TEMAS_GUIA:TemaGuia[]=[
   {titulo:'Guardá y consultá el registro',texto:'Revisá firma, fecha, hora y evidencia antes de guardar. Al cerrar una ronda nocturna, el Libro muestra las novedades junto a sus puntos y los horarios de inicio y fin al pie.',captura:'recorrido',toques:[['Escribí las observaciones',48,73],['Guardá el recorrido',51,96]]},
  ]},
  {id:'libro',titulo:'Libro e informe general',descripcion:'Buscar registros y preparar una entrega.',icono:'libro',pasos:[
-  {titulo:'Abrí el libro',texto:'Entrá desde la pestaña Libro o desde «Ver todas» en Inicio. Las novedades se separan por día y por Gs. Usá «Filtrar por Gs» para ver las de un vigilador.',captura:'libro',toques:[['Buscá en el Libro',49,44],['Elegí una categoría',36,49]]},
+  {titulo:'Abrí el libro',texto:'Entrá desde la pestaña Libro o desde «Ver todas» en Inicio. Las novedades se separan por día y por Gs. Usá «Filtrar por Gs» para ver las de un vigilador.',captura:'libroGs',toques:[['Buscá en el Libro',49,16],['Filtrá por Gs',50,65],['Identificá quién firma el bloque',27,80]]},
   {titulo:'Revisá el período',texto:'Antes de preparar el informe general, verificá la fecha de entrega, el horario de corte y la duración de 12 o 24 horas. Los filtros y la búsqueda ayudan a encontrar un registro.',captura:'periodo',toques:[['Elegí 12 o 24 horas',32,47],['Revisá la fecha de entrega',49,55],['Elegí la hora de corte',49,82]],consejo:'Un registro puede quedar en otro período si el servicio cruza la medianoche.'},
   {titulo:'Prepará la entrega',texto:'Revisá los registros incluidos y completá lo que falte. Usá la vista previa y las opciones de copiar o exportar PDF para preparar la entrega al supervisor.',captura:'libro',toques:[['Ver informe',75,88]]},
  ]},
