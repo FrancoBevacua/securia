@@ -1,0 +1,842 @@
+{
+  "version": "2.3.7",
+  "fecha": "14 de noviembre de 2026",
+  "paginas": [
+    {
+      "titulo": "Qué es Securia",
+      "bajada": "Una herramienta para registrar, ordenar y supervisar el servicio de vigilancia.",
+      "imagen": "Inicio237",
+      "bloques": [
+        [
+          "Propósito",
+          "Securia centraliza la información que el personal de seguridad produce durante su jornada: novedades, movimientos de personas, aperturas y cierres, recorridos, descansos e incidentes."
+        ],
+        [
+          "Aplicación móvil",
+          "El personal de vigilancia registra los hechos en el puesto. Los teléfonos vinculados comparten los registros del objetivo mediante la sincronización."
+        ],
+        [
+          "Valor para el servicio",
+          "Reúne el historial del servicio, identifica quién firma cada registro, facilita el relevo y reduce la transcripción repetida al preparar informes. La evidencia fotográfica aporta contexto y los formularios ayudan a completar datos relevantes."
+        ],
+        [
+          "Criterio de uso",
+          "Securia documenta lo que el personal registra. La calidad del seguimiento depende de completar los movimientos, verificar los datos, sincronizar los teléfonos y revisar los informes antes de entregarlos. La IA es una ayuda opcional."
+        ]
+      ]
+    },
+    {
+      "titulo": "Mapa de funcionalidades",
+      "bajada": "Dónde se encuentra cada herramienta y cómo se relaciona con el libro.",
+      "imagen": "MasGuardia237",
+      "bloques": [
+        [
+          "Inicio",
+          "Saludo al guardia a cargo, acceso a la guía animada, nueva novedad, cambio de responsable, acciones rápidas personalizables y las cuatro novedades más recientes."
+        ],
+        [
+          "Libro",
+          "Consulta por día y por bloques de Gs firmantes, con búsqueda, filtro por Gs y filtros de categoría. Desde el Libro se prepara el informe general de 12 o 24 horas."
+        ],
+        [
+          "Accesos",
+          "Un acceso por registro, catálogo por categoría, precintos e informe para CCTV. Las aperturas y cierres de varios accesos se cargan en Nueva novedad → Apertura/Cierre."
+        ],
+        [
+          "Más",
+          "En Guardia de Paseo reúne Libro de novedades, Recorridos, Ingresos/Egresos, Informes de seguridad, Equipo y Contactos. En Administrador también aparecen Administración, Directivas, Cuenta del corporativo y Ajustes."
+        ],
+        [
+          "Asistente",
+          "El chat ofrece consultas sobre documentos y operación, y ayuda de redacción."
+        ],
+        [
+          "Recorridos",
+          "Control de locales, Playa y Ronda Nocturna se reúnen en la categoría Recorrido."
+        ]
+      ]
+    },
+    {
+      "titulo": "Ingreso con PIN y relevo",
+      "bajada": "Un teclado de seis dígitos identifica la cuenta y abre su espacio de trabajo.",
+      "imagen": "Gate237",
+      "bloques": [
+        [
+          "Una pantalla de ingreso",
+          "El ingreso requiere conexión. El PIN de Guardia de Paseo abre el acceso operativo y el PIN de Administrador abre la cuenta independiente. La pantalla pide únicamente el PIN."
+        ],
+        [
+          "Guardia de Paseo",
+          "Al ingresar, el equipo confirma quién queda a cargo. En Inicio, Cambiar permite registrar el relevo. Las actividades anteriores quedan en el historial."
+        ],
+        [
+          "Firma y autoría",
+          "Cada registro permite identificar al vigilador que firma. La cuenta que realizó la carga se conserva por separado. En Apertura/Cierre también puede indicarse quién ejecutó la operación, aunque sea otro guardia."
+        ],
+        [
+          "Actividad por teléfono",
+          "Cada dispositivo mantiene su actividad y su cola de sincronización. Dos teléfonos pueden trabajar sin que el cierre de sesión de uno cierre la actividad del otro."
+        ],
+        [
+          "Historial y permisos",
+          "Los guardias consultan los registros compartidos y editan según su autoría y actividad. El Administrador puede corregir o dar de baja novedades, accesos e informes de cualquier guardia, incluidos los de turnos cerrados."
+        ]
+      ]
+    },
+    {
+      "titulo": "Inicio y accesos rápidos",
+      "bajada": "Las tareas frecuentes a pocos pasos del vigilador.",
+      "imagen": "Inicio237",
+      "bloques": [
+        [
+          "Vista del servicio",
+          "Inicio muestra un saludo al guardia seleccionado y la tarjeta Guardia a cargo. Desde allí se puede cambiar el responsable y comenzar una nueva novedad."
+        ],
+        [
+          "Acciones rápidas",
+          "Los accesos permiten abrir funciones habituales, como Accesos, Ingresos/Egresos y Recorridos. El lápiz o Añadir abren la personalización. La elección se conserva para la cuenta en ese teléfono."
+        ],
+        [
+          "Registros recientes",
+          "Las cuatro últimas novedades muestran texto, fecha, hora y categoría. Al tocar una se abre su detalle, con edición o sólo lectura según los permisos y el turno. Ver todas lleva al libro."
+        ],
+        [
+          "Nueva novedad",
+          "El botón principal abre un formulario por categoría. Así se aprovecha una misma carga para describir hechos, movimientos, descansos, recorridos y operaciones de accesos."
+        ],
+        [
+          "Práctica guiada",
+          "Aprendé a usar Securia abre capturas con puntos animados sobre los controles. Tocarlos permite practicar la secuencia dentro de la guía."
+        ]
+      ]
+    },
+    {
+      "titulo": "Registro de novedades",
+      "bajada": "Un asiento completo, con fecha del hecho, firma y evidencia cuando corresponde.",
+      "imagen": "Novedad",
+      "bloques": [
+        [
+          "Datos básicos",
+          "Se selecciona categoría, vigilador firmante, fecha y hora. La fecha y la hora describen cuándo ocurrió el hecho, aunque se cargue después. La descripción debe indicar lo ocurrido, el lugar y las medidas adoptadas."
+        ],
+        [
+          "Categorías",
+          "El editor ofrece Novedad, Ingresos/Egresos, Descanso, Recorrido y Apertura/Cierre. Dentro de movimientos se distinguen vigiladores, adicionales policiales y externos; en accesos se distingue apertura de cierre."
+        ],
+        [
+          "Ayuda para escribir",
+          "Hay sugerencias tomadas del historial que el usuario puede elegir, dictado de voz y redacción con IA. El dictado convierte la voz en texto revisable; necesita el servicio de voz y los permisos correspondientes. La IA requiere proveedor configurado y conexión."
+        ],
+        [
+          "Guardar y corregir",
+          "El guardado confirma la escritura en el teléfono. El guardia puede modificar los registros autorizados de su actividad. El Administrador puede intervenir registros ajenos o de turnos cerrados y se conserva la autoría original."
+        ],
+        [
+          "Altas de catálogo",
+          "Cuando falta un vigilador o un acceso, el Administrador puede incorporarlo al catálogo desde los formularios correspondientes."
+        ]
+      ]
+    },
+    {
+      "titulo": "Libro e informe general",
+      "bajada": "El registro cronológico que reúne la operación y prepara la entrega al supervisor.",
+      "imagen": "LibroGs237",
+      "bloques": [
+        [
+          "Día y Gs firmante",
+          "El Libro agrupa las novedades por fecha. Dentro de cada día, abre un bloque cuando cambia el Gs que firma, siguiendo el orden cronológico. Filtrar por Gs se combina con la búsqueda y las categorías."
+        ],
+        [
+          "Períodos de trabajo",
+          "El usuario revisa la fecha de entrega, el horario de corte y la duración de 12 o 24 horas. El sistema calcula los límites del período, incluso si abarca dos fechas. La hora de corte del servicio se configura en Ajustes."
+        ],
+        [
+          "Contenido de la entrega",
+          "El informe para compartir incluye todo el período elegido. Los filtros de búsqueda se aplican a la lista en pantalla. Las fechas se separan cuando se cruza medianoche y se conservan las firmas."
+        ],
+        [
+          "Preparación del reporte",
+          "Se puede revisar el contenido, usar la vista previa, copiar el texto y exportar PDF. También existe ayuda de redacción con IA, que debe conservar nombres, horarios y hechos. Ante una respuesta inválida se conserva el contenido original."
+        ],
+        [
+          "Compartir",
+          "El PDF se entrega al selector nativo del teléfono. El usuario elige la aplicación y el destinatario y confirma el envío. Abrir el selector o preparar un archivo no acredita que el supervisor lo haya recibido."
+        ]
+      ]
+    },
+    {
+      "titulo": "Evidencia e importación del libro",
+      "bajada": "Fotos vinculadas al hecho y lectura asistida de registros en papel.",
+      "imagen": "EvidenciaInforme",
+      "leyenda_informe": "Informe exportado por Securia · Foto generada para el ejemplo",
+      "bloques": [
+        [
+          "Evidencia fotográfica",
+          "Novedad, ingreso de Externos, Apertura y Cierre admiten fotos con indicación del sector y una descripción opcional de hasta 100 caracteres. Los informes de seguridad también admiten fotos con sector."
+        ],
+        [
+          "Identificación en el reporte",
+          "Las imágenes se agrupan por novedad. Sus rótulos utilizan fecha, hora, tipo y sector registrados; la descripción breve aporta contexto sin repetir toda la narración. El PDF conserva las imágenes a color y el texto del informe legible."
+        ],
+        [
+          "Foto del libro físico",
+          "La herramienta de importación permite interpretar una fotografía del libro mediante IA. Antes de incorporar los asientos, el vigilador revisa fechas, horas y texto, corrige la lectura y puede excluir filas ilegibles."
+        ],
+        [
+          "Control de la carga",
+          "La lectura automática no constituye una validación del hecho. Debe compararse con el original, especialmente en números, nombres y horarios. La foto puede conservarse como evidencia de la importación."
+        ],
+        [
+          "Disponibilidad",
+          "La captura depende de los permisos del teléfono. Las lecturas con visión necesitan un proveedor de IA compatible y conexión. Las evidencias pendientes de transferir se conservan asociadas al registro para su sincronización."
+        ]
+      ]
+    },
+    {
+      "titulo": "Accesos y precintos",
+      "bajada": "Aperturas, cierres y comunicación de las operaciones al CCTV.",
+      "imagen": "Catalogo237",
+      "bloques": [
+        [
+          "Catálogo por categoría",
+          "Portones, Puertas de Emergencias y Otros accesos se muestran por separado. El Administrador mantiene el catálogo. Los guardias pueden consultarlo y seleccionar un acceso para registrar la operación."
+        ],
+        [
+          "Un acceso por registro",
+          "Se carga una apertura o cierre por acceso, con fecha, hora y vigilador. Las operaciones sobre varios accesos se registran desde Nueva novedad → Apertura/Cierre."
+        ],
+        [
+          "Un precinto por defecto",
+          "El formulario comienza con un precinto cuando corresponde. Se pueden agregar más, cargar sus siete dígitos o indicar «No aplica precinto». Los cuatro dígitos recordados agilizan la carga."
+        ],
+        [
+          "Lectura asistida",
+          "Leer precintos con cámara o galería interpreta la imagen con IA. El usuario debe revisar el acceso y cada número antes de incorporarlos. La lectura requiere un proveedor compatible."
+        ],
+        [
+          "Informe para CCTV",
+          "Se genera un texto de aperturas y cierres de la fecha seleccionada, con guardias, horarios, precintos y observaciones. Se revisa antes de copiarlo o compartirlo. Los controles contrastan los datos del servicio del firmante con los registros disponibles."
+        ]
+      ]
+    },
+    {
+      "titulo": "Apertura y cierre desde el libro",
+      "bajada": "Registrar el hecho conservando la diferencia entre quien carga y quien ejecuta.",
+      "imagen": "Apertura",
+      "bloques": [
+        [
+          "Formulario de Apertura/Cierre",
+          "Desde Nueva novedad se elige la operación, el acceso o varios accesos de un grupo, y la fecha y hora. La descripción incorpora la selección y admite observaciones."
+        ],
+        [
+          "Dos responsabilidades",
+          "El vigilador que firma la carga se selecciona como en el resto de las novedades. Un campo adicional identifica al guardia que realizó la apertura o el cierre; su nombre queda conservado en la descripción."
+        ],
+        [
+          "Motivo opcional",
+          "Agregar motivo habilita una explicación de la operación. Las sugerencias del historial ayudan a reutilizar expresiones, pero su incorporación depende de la selección del usuario. Si se habilita el motivo, debe completarse."
+        ],
+        [
+          "Evidencia del estado",
+          "Se pueden adjuntar fotografías, sector y descripción breve. Esto permite documentar, por ejemplo, una condición detectada al abrir o cerrar."
+        ],
+        [
+          "Relación con Accesos",
+          "El libro reúne las operaciones del servicio y la sección Accesos prepara la comunicación específica para CCTV. El informe general y el mensaje de CCTV tienen propósitos distintos; antes de compartirlos se revisan su período y su contenido."
+        ]
+      ]
+    },
+    {
+      "titulo": "Ingresos y egresos del personal",
+      "bajada": "Vigiladores y adicionales policiales en una misma sección.",
+      "imagen": "Ingresos",
+      "bloques": [
+        [
+          "Vigiladores",
+          "Se registra ingreso o egreso, apellido, nombre, fecha y hora. En el ingreso se indican el puesto cubierto y el turno. Hay horarios predefinidos según puesto y también se admite un horario personalizado."
+        ],
+        [
+          "Asiento del libro",
+          "El ingreso utiliza una redacción breve, por ejemplo: «Ingresa Gs Ejemplo, Ana al puesto Paseo. Turno: 06:00-14:00.». El egreso registra que el vigilador se retira. Esto mantiene una lectura uniforme del reporte."
+        ],
+        [
+          "Adicionales policiales",
+          "La pestaña Adicionales permite registrar sus ingresos y egresos. Se conserva un historial para elegir personas ya cargadas. El puesto de referencia es Paseo y se ofrece el horario 09:00-16:00, con posibilidad de ajustarlo."
+        ],
+        [
+          "Historial consultable",
+          "Los movimientos quedan disponibles por categoría y se integran en el libro. Los nombres y horarios deben revisarse antes de guardar, especialmente cuando una persona cubre un puesto diferente de su asignación habitual."
+        ],
+        [
+          "Alcance del control",
+          "El registro documenta movimientos informados por el personal. La actividad abierta del teléfono se registra por separado del ingreso y egreso reales."
+        ]
+      ]
+    },
+    {
+      "titulo": "Externos, empresas y vehículos",
+      "bajada": "Control documental del ingreso y seguimiento de la salida.",
+      "imagen": "Egreso237",
+      "bloques": [
+        [
+          "Tipos de ingreso",
+          "Se distinguen proveedores, contratistas, visitas, empleados y locatarios. Se cargan empresa o razón social, tarea, lugar, personas y DNI. También se admiten patente, credencial y observaciones según el formulario."
+        ],
+        [
+          "Autorización",
+          "Cada ingreso solicita su situación: confirmación de CCTV, administración, espera o retiro, junto con quién confirmó cuando corresponde. La autorización debe verificarse de nuevo en cada visita."
+        ],
+        [
+          "Fichas reutilizables",
+          "Las fichas por empresa recuperan tarea, lugar y personas habituales para reducir la carga repetida. Son compartidas entre dispositivos mediante sincronización. No reutilizan autorizaciones ni documentos de visitas anteriores como si siguieran vigentes."
+        ],
+        [
+          "Vehículos y documentación",
+          "El formulario contempla tipo de vehículo, conductor y DNI, marca, modelo, dominio, póliza y observaciones. Puede asociar imágenes o archivos como seguro, DNI, autorización, cédula del vehículo u otros documentos."
+        ],
+        [
+          "Egreso simplificado",
+          "El formulario de salida reúne razón social, el botón Elegir externo del historial y Observaciones. Al abrirlo desde un ingreso vigente, la salida queda vinculada a ese movimiento."
+        ]
+      ]
+    },
+    {
+      "titulo": "Descansos y cobertura",
+      "bajada": "Identificar quién descansa, en qué puesto y quién lo cubre.",
+      "imagen": "Descanso",
+      "bloques": [
+        [
+          "Inicio del descanso",
+          "La categoría Descanso solicita guardia, puesto y fecha y hora de inicio. El vigilador que registra y firma el asiento se conserva como en las demás novedades."
+        ],
+        [
+          "Cobertura del puesto",
+          "El interruptor El puesto requiere cobertura permite indicar quién reemplaza al guardia mientras descansa. Si no se necesita cobertura, el registro lo expresa."
+        ],
+        [
+          "Finalización",
+          "Se puede guardar el descanso en curso y completar el fin después, abriendo el mismo asiento. La fecha de fin permite documentar descansos que cruzan la medianoche."
+        ],
+        [
+          "Consulta",
+          "El descanso queda en el libro y puede localizarse con el filtro correspondiente. Su texto reúne persona, puesto, cobertura y estado o finalización para facilitar el relevo y la revisión del servicio."
+        ],
+        [
+          "Uso recomendado",
+          "Al terminar el descanso, completar el horario de fin evita dejar un registro en curso. La cobertura indicada refleja la información declarada por quien carga el asiento."
+        ]
+      ]
+    },
+    {
+      "titulo": "Recorridos de locales y playa",
+      "bajada": "Un formulario común para dejar constancia de los controles.",
+      "imagen": "Recorrido",
+      "bloques": [
+        [
+          "Acceso unificado",
+          "Recorridos, desde Inicio o Más, abre Nueva novedad en la categoría Recorrido. El usuario elige Control de locales, Playa o Ronda Nocturna."
+        ],
+        [
+          "Control de locales",
+          "Permite diferenciar el control de locales abiertos del de locales cerrados y agregar observaciones. La descripción preparada deja constancia del tipo de control realizado."
+        ],
+        [
+          "Playa",
+          "Registra el recorrido de playa con la fecha, hora, firma y observaciones. Se conserva como un asiento del libro para integrarlo en la entrega del período."
+        ],
+        [
+          "Sin novedades",
+          "Si no se escriben observaciones, el formulario prepara la expresión Sin novedades. Esta opción debe utilizarse después de realizar el control correspondiente."
+        ],
+        [
+          "Vista previa y guardado",
+          "Antes de guardar se muestra el texto del recorrido. La carga queda disponible en Libro. La opción Ronda Nocturna incorpora un procedimiento con puntos y cronómetro, explicado en la página siguiente."
+        ],
+        [
+          "Navegación",
+          "El acceso de Inicio y Más lleva al formulario común para cargar recorridos."
+        ]
+      ]
+    },
+    {
+      "titulo": "Ronda Nocturna",
+      "bajada": "Recorridas con puntos de control, horario de paso y duración.",
+      "imagen": "Rondas237",
+      "bloques": [
+        [
+          "Preparación",
+          "La ronda se inicia a partir de una plantilla de recorrido. La plantilla define su nombre y los puntos que deben controlarse. Los permisos del perfil determinan las opciones de configuración."
+        ],
+        [
+          "Durante la recorrida",
+          "La ronda activa muestra un cronómetro. En cada punto se indica la hora de paso y si hubo una novedad. Cuando se marca «Con novedad», se completa el detalle."
+        ],
+        [
+          "Asiento de cierre en el Libro",
+          "Al cerrar la ronda se genera un asiento de Recorrido con los puntos marcados y sus horarios de paso. Las novedades se muestran debajo del punto correspondiente. Al pie se incluyen inicio y fin de la recorrida."
+        ],
+        [
+          "Cierre e historial",
+          "Al finalizar se completa el estado del recorrido y se conserva para consultar su detalle. El historial muestra rondas terminadas; también se dispone de un texto del recorrido para comunicar sus resultados."
+        ],
+        [
+          "Qué acredita",
+          "Los puntos documentan las marcaciones efectuadas por el usuario. Esta descripción no supone una validación automática de ubicación física ni un sistema de rastreo GPS."
+        ]
+      ]
+    },
+    {
+      "titulo": "Informes de seguridad",
+      "bajada": "Un documento específico para describir y seguir incidentes.",
+      "imagen": "Informes",
+      "bloques": [
+        [
+          "Creación guiada",
+          "Desde Más > Informes de seguridad se crea un informe de 16 puntos. Las plantillas de incidentes sirven como punto de partida. Se revisan firmante, fecha y hora del hecho, tipo y criticidad."
+        ],
+        [
+          "Redacción y continuidad",
+          "El contenido se completa por etapas. Guardar borrador permite continuar después. La ayuda de IA es opcional y su resultado se revisa antes de incorporarlo; generar un informe no requiere obligatoriamente IA."
+        ],
+        [
+          "Generación",
+          "Generar informe guarda el documento y un resumen breve en el libro en una misma operación local. Si falta un dato requerido, se indica y se vuelve a la sección correspondiente. Los reintentos del guardado conservan la identidad del registro."
+        ],
+        [
+          "Lectura y seguimiento",
+          "El informe se consulta por secciones. El guardia puede gestionar los informes que creó. El Administrador puede editar o dar de baja los informes de cualquier guardia."
+        ],
+        [
+          "Entrega",
+          "Se puede copiar el texto y compartir su PDF. Las fotografías requieren indicar el sector de la evidencia. El resumen del libro y el informe completo son dos vistas relacionadas del mismo incidente."
+        ]
+      ]
+    },
+    {
+      "titulo": "Los 16 puntos del informe",
+      "bajada": "Qué información reúne cada campo y para qué sirve.",
+      "imagen": "LecturaInforme",
+      "bloques": [
+        [
+          "1 a 5 · Identificación",
+          "1. Cliente / Site: objetivo donde ocurre el hecho. 2. Región: ubicación organizativa. 3. Fecha del evento: cuándo ocurrió. 4. Tipo de incidente: clasificación. 5. Nivel de criticidad: prioridad declarada para su atención."
+        ],
+        [
+          "6 a 8 · El hecho",
+          "6. Resumen del hecho: relato concreto de lo observado. 7. Impacto inicial: consecuencias detectadas al comienzo. 8. Acciones realizadas: intervención efectivamente ejecutada."
+        ],
+        [
+          "9 a 11 · Recursos y comunicación",
+          "9. Recursos involucrados: personas o medios que intervinieron. 10. Autoridades o servicios convocados: apoyos solicitados. 11. Escalamiento realizado: comunicación del incidente a los responsables correspondientes."
+        ],
+        [
+          "12 a 14 · Seguimiento",
+          "12. Estado actual: situación al redactar. 13. Próximos pasos: acciones pendientes. 14. Responsable de seguimiento: quién debe continuar la gestión."
+        ],
+        [
+          "15 y 16 · Cierre documental",
+          "15. Evidencia disponible: fotografías u otros elementos que respaldan el relato. 16. Observaciones: aclaraciones relevantes que no quedaron expresadas en los puntos anteriores."
+        ],
+        [
+          "Criterio común",
+          "Distinguir hechos comprobados, acciones ya realizadas y tareas pendientes facilita la evaluación del incidente y evita presentar una propuesta como si se hubiera ejecutado."
+        ]
+      ]
+    },
+    {
+      "titulo": "Asistente de Securia",
+      "bajada": "Consultas operativas y ayuda para redactar dentro de la aplicación.",
+      "imagen": "Chat",
+      "bloques": [
+        [
+          "Consultas del servicio",
+          "El botón flotante abre el asistente. Puede consultar directivas, documentos y datos operativos disponibles para la sesión: novedades, movimientos, accesos, actividades, recorridos, informes, catálogos y contactos."
+        ],
+        [
+          "Interpretación de la información",
+          "El asistente distingue servicio actual del personal que trabajó durante el día. Los totales y la presencia se deducen de registros disponibles en el teléfono y sincronizados; no son una detección física en tiempo real."
+        ],
+        [
+          "Redacción revisable",
+          "Los modos de novedad e informe ayudan a preparar borradores y abrir los editores para su revisión. Si se solicita expresamente agregar una novedad al libro, la aplicación valida la propuesta y muestra el resultado del guardado. Una consulta por sí sola no agrega asientos."
+        ],
+        [
+          "Controles",
+          "Los datos faltantes se completan antes de guardar. Las respuestas pueden copiarse; el chat permite cancelar una solicitud y conservar el campo editable durante la espera. La conversación se mantiene en memoria durante la sesión."
+        ],
+        [
+          "Condiciones",
+          "El Administrador configura el proveedor, el modelo y la clave de IA desde Ajustes. Con la conexión disponible, el guardia puede usar el asistente para consultar o redactar."
+        ]
+      ]
+    },
+    {
+      "titulo": "Directivas y biblioteca de documentos",
+      "bajada": "Consignas del puesto y material de consulta para el asistente.",
+      "imagen": "Directivas",
+      "bloques": [
+        [
+          "Consignas del puesto",
+          "Las directivas se organizan por puesto y turno. El Administrador gestiona la sección Directivas. El guardia puede consultar las directivas disponibles mediante el asistente."
+        ],
+        [
+          "Gestión e importación",
+          "Administración puede crear, editar y pausar directivas. La importación acepta PDF, texto o fotografía; la IA interpreta el material y el usuario revisa, corrige, excluye y asigna puesto y turno antes de incorporarlo."
+        ],
+        [
+          "Directivas y PDFs del chat",
+          "El botón del libro permite elegir el puesto de consulta. El Administrador puede añadir PDFs generales o del puesto y revisar el texto extraído antes de guardarlo."
+        ],
+        [
+          "Biblioteca adicional local",
+          "Los PDFs adicionales del chat se conservan cifrados para la cuenta en ese teléfono. No se sincronizan entre dispositivos ni se comparten automáticamente con otras cuentas."
+        ],
+        [
+          "Documentos escaneados",
+          "Los PDFs legibles se extraen localmente. Los escaneados o mixtos requieren lectura compatible con el proveedor; el archivo completo se envía para interpretarlo. Existe un límite de 150.000 caracteres por documento y se solicita dividir los más extensos."
+        ]
+      ]
+    },
+    {
+      "titulo": "Equipo, puestos y contactos",
+      "bajada": "La información de referencia para identificar personas y organizar la cobertura.",
+      "imagen": "Equipo237",
+      "bloques": [
+        [
+          "Equipo del objetivo",
+          "El guardia puede consultar la nómina y los puestos. El Administrador mantiene las fichas y los datos del equipo."
+        ],
+        [
+          "Varios puestos por persona",
+          "Un vigilador puede tener varios puestos asignados, con uno principal. La asignación del perfil no cambia retroactivamente los turnos registrados ni reemplaza el puesto efectivamente cubierto en una actividad."
+        ],
+        [
+          "Puestos y franjas",
+          "Administración gestiona nombres y descripciones de puestos y sus turnos de referencia: nombre, alias y horarios de entrada y salida. Hay catálogos de puestos típicos que incluyen, entre otros, Paseo, Playa, Bicicletero y Franquero."
+        ],
+        [
+          "Contactos del puesto",
+          "Mantiene nombre, rol y teléfono de centrales, responsables o emergencias. Los números se consultan desde una sección específica y pueden utilizarse para llamar mediante el teléfono."
+        ],
+        [
+          "Personas y cuentas",
+          "Una persona del equipo puede existir sólo como dotación o firmante. La cuenta habilita acceso y está sujeta a permisos. Al retirar una cuenta deben conservarse sus firmas y registros históricos."
+        ]
+      ]
+    },
+    {
+      "titulo": "Guía animada e interactiva",
+      "bajada": "Práctica paso a paso desde Aprendé a usar Securia.",
+      "imagen": "GuiaInteractiva237",
+      "bloques": [
+        [
+          "Dónde tocar",
+          "Los puntos animados se colocan sobre los controles de cada captura y una instrucción indica qué hacer."
+        ],
+        [
+          "Práctica por secuencias",
+          "Cada toque avanza a la acción siguiente. También se puede pausar la animación, repetir la demostración o volver a consultar un paso."
+        ],
+        [
+          "Progreso",
+          "El último paso consultado se guarda en el teléfono para continuar más adelante."
+        ],
+        [
+          "Disponible sin conexión",
+          "La guía y sus capturas vienen incluidas en Securia. La práctica usa datos de demostración."
+        ]
+      ]
+    },
+    {
+      "titulo": "Cuenta corporativa y ajustes",
+      "bajada": "Parámetros del objetivo y del asistente reservados a Administrador.",
+      "imagen": "Cuenta237",
+      "bloques": [
+        [
+          "PIN de Guardia de Paseo",
+          "En Más → Cuenta del corporativo, el Administrador puede asignar un nuevo PIN operativo de seis números y confirmar el cambio."
+        ],
+        [
+          "Datos del objetivo",
+          "Ajustes reúne cliente o site, región, título de los informes, prefijo de precintos y hora de corte. También permite guardar un número de referencia del supervisor para compartir el PDF."
+        ],
+        [
+          "Asistente de IA",
+          "Se selecciona proveedor, modelo y clave, y se puede probar la conexión. El proyecto contempla GPT/OpenAI, Gemini, Groq, OpenRouter, Hugging Face, Claude y servidores compatibles. Cada proveedor ofrece capacidades distintas de texto, visión o audio."
+        ],
+        [
+          "Apariencia y avisos de directivas",
+          "Ajustes reúne tema, paleta y avisos de tareas del servicio. La interfaz utiliza colores por categoría para identificar registros."
+        ],
+        [
+          "Datos y respaldo",
+          "Se puede copiar un respaldo. La restauración está reservada a administración y protege cuentas e historial. La sección Sincronización muestra estado, reintento y acceso al historial de recuperación."
+        ],
+        [
+          "Configuración de IA privada",
+          "La clave móvil se guarda en el almacenamiento seguro y no en el estado compartido. Al cambiar de proveedor se limpia el campo para evitar reutilizarla accidentalmente en otro destino."
+        ]
+      ]
+    },
+    {
+      "titulo": "Sincronización y recuperación",
+      "bajada": "Continuidad de la carga y consulta compartida entre teléfonos.",
+      "imagen": "Sincronizacion237",
+      "bloques": [
+        [
+          "Guardado local",
+          "Después de ingresar y contar con el estado local, las cargas operativas pueden guardarse en el teléfono sin esperar la red. El inicio de sesión, la consulta de cambios remotos y las funciones de IA sí requieren conexión."
+        ],
+        [
+          "Cola de pendientes",
+          "Los registros nuevos o modificados se envían por una cola cifrada. La aplicación reintenta fallos transitorios en primer plano y verifica confirmaciones para evitar duplicar una escritura cuya respuesta se perdió."
+        ],
+        [
+          "Evidencia separada",
+          "Las fotografías se transfieren por separado de los registros. La confirmación del envío y el estado de pendientes permiten distinguir un cambio local de información ya disponible para otros dispositivos."
+        ],
+        [
+          "Errores y recuperación",
+          "Los conflictos o diferencias incompatibles conservan respaldos. La recuperación confirma el respaldo remoto y la escritura local antes de liberar la cola. El Historial de recuperación permite revisar versiones, imágenes y exportar la copia."
+        ],
+        [
+          "Seguimiento operativo",
+          "Si aparece Sincronización pendiente, revisar el detalle y reintentar con conexión. Cerrar una actividad no impide enviar sus pendientes. Conservar la aplicación y sus datos hasta confirmar el envío evita perder lo que aún está sólo en el teléfono."
+        ],
+        [
+          "Información compartida",
+          "Los demás teléfonos pueden consultar los cambios una vez que se sincronizan. Si un registro sigue pendiente en el teléfono de origen, todavía no está disponible en los otros dispositivos."
+        ]
+      ]
+    },
+    {
+      "titulo": "Administración y supervisión",
+      "bajada": "La cuenta Administrador tiene permisos de gestión del servicio y del historial.",
+      "imagen": "Admin237",
+      "bloques": [
+        [
+          "Gestión de registros",
+          "Puede crear, editar y dar de baja novedades, accesos e informes de cualquier guardia, incluso de turnos cerrados. La autoría original se conserva al corregir un registro."
+        ],
+        [
+          "Directivas",
+          "Crear, modificar y pausar consignas, organizarlas por puesto y turno, e importar documentos con revisión previa. La configuración se diferencia de registrar el cumplimiento de una tarea."
+        ],
+        [
+          "Equipo, puestos y turnos",
+          "Mantiene los datos de los vigiladores y organiza puestos y franjas horarias de referencia."
+        ],
+        [
+          "Catálogos operativos",
+          "Desde Administración se puede gestionar el catálogo de accesos y las plantillas de recorridos."
+        ],
+        [
+          "Datos del site",
+          "Permite definir los datos que aparecen en informes y los parámetros operativos del objetivo. Los teléfonos comparten la configuración al sincronizarse."
+        ],
+        [
+          "Opciones reservadas",
+          "Administración, la gestión de la cuenta corporativa, Ajustes, la clave de IA y la carga de documentos están disponibles en la cuenta Administrador."
+        ]
+      ]
+    },
+    {
+      "titulo": "Uso de datos y dependencias",
+      "bajada": "Condiciones que ayudan a interpretar correctamente las funciones.",
+      "bloques": [
+        [
+          "Sin conexión",
+          "Tras el ingreso, la copia local permite consultar información disponible y registrar operación. La guía está incluida sin conexión. El intercambio con otros teléfonos requiere sincronización posterior."
+        ],
+        [
+          "Servicios del teléfono",
+          "Cámara, galería, micrófono y avisos requieren permisos del dispositivo. Compartir un PDF usa el selector de aplicaciones del teléfono."
+        ],
+        [
+          "Uso de IA",
+          "Las consultas transmiten al proveedor elegido textos y fragmentos pertinentes de documentos y operación. Las proyecciones estructuradas omiten credenciales, DNI y datos privados de perfiles; los textos libres pueden contener datos personales. Las imágenes o documentos se envían cuando se solicita su lectura."
+        ],
+        [
+          "Límites de interpretación",
+          "La información del asistente depende de los registros disponibles y puede ser parcial. Los cálculos de presencia no equivalen a detección física. La guía no modifica registros reales."
+        ],
+        [
+          "Control humano",
+          "Antes de una entrega, revisar período, nombres, horarios, firmas, texto, evidencia y pendientes. Las ayudas automáticas mejoran la preparación, mientras el personal conserva la responsabilidad de validar los datos."
+        ]
+      ]
+    },
+    {
+      "titulo": "Un servicio, de principio a fin",
+      "bajada": "Ejemplo de uso que conecta las funciones explicadas.",
+      "bloques": [
+        [
+          "Recepción del puesto",
+          "El vigilador ingresa con el PIN de Guardia de Paseo, confirma quién queda a cargo y revisa el Libro y los contactos del servicio."
+        ],
+        [
+          "2 · Operación de la jornada",
+          "Registra movimientos de personal y externos, aperturas o cierres con precintos, descansos con cobertura y recorridos de locales, playa o ronda nocturna."
+        ],
+        [
+          "3 · Hecho relevante",
+          "Crea una novedad con fecha, hora, firma y descripción. Adjunta evidencia cuando corresponde. Si requiere seguimiento detallado, completa un informe de seguridad y su resumen queda asociado al libro."
+        ],
+        [
+          "4 · Revisión y sincronización",
+          "Completa egresos y finales de descanso o ronda. Comprueba el estado de sincronización y resuelve pendientes para que la administración disponga de la información."
+        ],
+        [
+          "5 · Entrega y relevo",
+          "Elige el período del informe general, revisa el PDF y confirma el destinatario al compartirlo. Al relevar, cambia al guardia a cargo."
+        ],
+        [
+          "Resultado esperado",
+          "Un historial ordenado que relaciona lo sucedido, las personas intervinientes, la respuesta del servicio y la evidencia disponible."
+        ]
+      ]
+    },
+    {
+      "titulo": "Alcance y referencias",
+      "bajada": "Cómo se elaboró esta presentación funcional.",
+      "bloques": [
+        [
+          "Versión documentada",
+          "Securia 2.3.7. Revisión del 14 de noviembre de 2026."
+        ],
+        [
+          "Fuentes principales",
+          "Configuración de la aplicación, rutas, pantallas, reglas de dominio y contenido de la guía. El historial del proyecto aporta contexto para distinguir los flujos vigentes de los anteriores."
+        ],
+        [
+          "Capturas",
+          "Las vistas muestran la interfaz de Securia con datos ficticios. Las pantallas actualizadas de ingreso, navegación y permisos se obtuvieron en un entorno local de demostración."
+        ],
+        [
+          "Datos de demostración",
+          "Las capturas y ejemplos utilizan registros ficticios y omiten credenciales y claves de acceso."
+        ],
+        [
+          "Autoría del producto",
+          "Securia fue desarrollada por Franco Daniel Bevacua"
+        ]
+      ]
+    }
+  ],
+  "resumen": [
+    {
+      "titulo": "Ingreso y permisos",
+      "bajada": "Una pantalla de PIN, dos cuentas.",
+      "imagen": "Gate237",
+      "bloques": [
+        [
+          "Guardia de Paseo",
+          "Ingresa con el PIN operativo y confirma quién queda a cargo. Desde esa cuenta se registra la jornada y se consulta el historial."
+        ],
+        [
+          "Administrador",
+          "Usa un PIN propio. Puede crear, corregir y dar de baja novedades, accesos e informes de cualquier guardia, con autoría original conservada."
+        ],
+        [
+          "Configuración del servicio",
+          "Gestiona el equipo, la cuenta corporativa, las directivas y documentos del puesto, y la clave de IA."
+        ]
+      ]
+    },
+    {
+      "titulo": "Libro e informe general",
+      "bajada": "Encontrá una novedad y prepará la entrega al supervisor.",
+      "imagen": "LibroGs237",
+      "bloques": [
+        [
+          "Registro de la jornada",
+          "La novedad documenta qué pasó, cuándo y quién firma. La evidencia fotográfica se puede adjuntar en los formularios que la admiten."
+        ],
+        [
+          "Búsqueda por Gs",
+          "El Libro agrupa por día y marca el cambio de Gs firmante dentro de cada fecha. El filtro por Gs se combina con texto y categoría."
+        ],
+        [
+          "Entrega de 12 o 24 horas",
+          "Se revisa el período, se consulta la vista previa y se comparte el PDF con el destinatario elegido."
+        ]
+      ]
+    },
+    {
+      "titulo": "Accesos y movimientos",
+      "bajada": "Aperturas, cierres, ingresos y egresos del turno.",
+      "imagen": "Egreso237",
+      "bloques": [
+        [
+          "Accesos y CCTV",
+          "Catálogo por Portones, Puertas de Emergencias y Otros accesos. Cada registro empieza con un acceso y un precinto si corresponde. La sección genera el informe para CCTV."
+        ],
+        [
+          "Apertura o cierre de varios accesos",
+          "Se registra en Nueva novedad → Apertura/Cierre, con la firma de la carga y el guardia que realizó la operación cuando corresponda."
+        ],
+        [
+          "Personal y externos",
+          "Se cargan movimientos de vigiladores, adicionales y externos. Para un egreso de Externos basta con la razón social, la opción de elegir del historial y las observaciones."
+        ]
+      ]
+    },
+    {
+      "titulo": "Recorridos e incidentes",
+      "bajada": "Controles del puesto e informes de seguridad.",
+      "imagen": "Rondas237",
+      "bloques": [
+        [
+          "Recorridos",
+          "Desde Inicio o Más se abre el registro de control de locales, Playa o Ronda Nocturna."
+        ],
+        [
+          "Ronda Nocturna",
+          "Cada punto tiene hora de paso y admite una novedad. Al cerrar, el Libro muestra el detalle debajo de cada punto y los horarios de inicio y fin al pie."
+        ],
+        [
+          "Informes de seguridad",
+          "El formulario de 16 puntos permite guardar un borrador, adjuntar evidencia y exportar el informe. Al generarlo, se guarda un resumen en el Libro."
+        ]
+      ]
+    },
+    {
+      "titulo": "Guía animada y asistente",
+      "bajada": "Aprendizaje dentro de la app y ayuda durante el turno.",
+      "imagen": "GuiaInteractiva237",
+      "bloques": [
+        [
+          "Aprendé a usar Securia",
+          "Puntos animados sobre las capturas indican dónde tocar. La práctica avanza por secuencias que se pueden repetir y consultar sin conexión."
+        ],
+        [
+          "Asistente",
+          "Ayuda a consultar consignas y registros disponibles y a preparar borradores. El guardia revisa la respuesta antes de usarla."
+        ],
+        [
+          "Directivas y documentos",
+          "El Administrador configura el proveedor de IA y mantiene las directivas y documentos del puesto."
+        ]
+      ]
+    },
+    {
+      "titulo": "Entrega y relevo",
+      "bajada": "El cierre del turno deja un historial listo para consultar.",
+      "imagen": "Sincronizacion237",
+      "bloques": [
+        [
+          "Completar el registro",
+          "Se cierran los egresos, descansos y rondas pendientes. Se revisan fecha, firma y evidencia de los hechos."
+        ],
+        [
+          "Confirmar la sincronización",
+          "Los registros guardados en el teléfono se comparten con los demás dispositivos al sincronizar. La app permite reintentar y consultar el historial de recuperación."
+        ],
+        [
+          "Preparar la entrega",
+          "Se elige el período del informe, se revisa el PDF y se comparte. El relevo confirma al siguiente responsable del puesto."
+        ]
+      ]
+    }
+  ]
+}
