@@ -1,5 +1,5 @@
-import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {AccessibilityInfo,Animated,AppState,Image,Pressable,Text,useWindowDimensions,View} from 'react-native';
+import React,{useCallback,useEffect,useEffectEvent,useRef,useState} from 'react';
+import {AccessibilityInfo,Animated,AppState,Image,Text,useWindowDimensions,View} from 'react-native';
 import {useFocusEffect} from 'expo-router';
 import {Icon} from '../icons';
 import {FONT} from '../theme';
@@ -28,7 +28,7 @@ export function useMovimientoGuia(pausa=false){
   ]));
   animacion.start();return()=>{animacion.stop();valor.stopAnimation();};
  },[valor,reducido,enFoco,activa,pausa]);
- return {valor,reducido};
+ return {valor,reproduciendo:enFoco&&activa&&!pausa};
 }
 
 export function InsigniaGuia({size=58}:{size?:number}){
@@ -39,14 +39,21 @@ export function InsigniaGuia({size=58}:{size?:number}){
  </View>;
 }
 
-export function EjemploGuia({paso,pausa}:{paso:PasoGuia;pausa:boolean}){
-  const t=useTheme(),{valor}=useMovimientoGuia(pausa);
+export function EjemploGuia({paso,pausa,avanzar,alternarPausa}:{paso:PasoGuia;pausa:boolean;avanzar?:()=>void;alternarPausa:()=>void}){
+  const t=useTheme(),{valor,reproduciendo}=useMovimientoGuia(pausa);
   const ventana=useWindowDimensions();
   const [anchoDisponible,setAnchoDisponible]=useState(0);
   const [error,setError]=useState(false);
   const [indice,setIndice]=useState(0);
   const terminado=indice===paso.toques.length;
   const [accion,x,y]=paso.toques[Math.min(indice,paso.toques.length-1)];
+  const siguiente=useEffectEvent(()=>avanzar?.());
+  useEffect(()=>{
+    if(!reproduciendo||error)return;
+    const espera=terminado?2500:Math.max(2600,Math.ceil(paso.texto.length*40/paso.toques.length));
+    const timer=setTimeout(()=>{if(terminado)siguiente();else setIndice(i=>i+1);},espera);
+    return()=>clearTimeout(timer);
+  },[reproduciendo,terminado,error,indice,paso]);
   const source=CAPTURAS_GUIA[paso.captura];
   const dimensiones=Image.resolveAssetSource?.(source) ?? source;
   const proporcion=dimensiones?.width && dimensiones.height ? dimensiones.width/dimensiones.height : 0.6;
@@ -55,36 +62,34 @@ export function EjemploGuia({paso,pausa}:{paso:PasoGuia;pausa:boolean}){
   // Android aplica las medidas originales del PNG si falta una dimensión explícita.
   const ancho=Math.max(1,Math.min(anchoMaximo,altoMaximo*proporcion));
   const alto=ancho/proporcion;
-  const pulsar=()=>setIndice(i=>Math.min(i+1,paso.toques.length));
   const tam=36;
   return <View style={{borderRadius:18,borderWidth:1,borderColor:t.lineStrong,backgroundColor:t.surface2,padding:8,gap:10}}>
+    {!error?<Row style={{minHeight:42,paddingHorizontal:4}}>
+      <View style={{flex:1,gap:5}}>
+        <View style={{flexDirection:'row',gap:4}}>{paso.toques.map((_,i)=><View key={i} style={{flex:1,height:3,borderRadius:2,backgroundColor:i<=indice?t.accent:t.line}}/>)}</View>
+        <Text accessibilityLiveRegion="polite" style={{color:t.text,fontFamily:FONT.bodySemi,fontSize:15}}>
+          {terminado?'Fin de la demostración':accion}
+        </Text>
+      </View>
+      {terminado?<Btn label="Repetir" size="sm" variant="ghost" onPress={()=>{setIndice(0);if(pausa)alternarPausa();}}/>:null}
+      <Btn icon={pausa?'play':'pausa'} accessibilityLabel={pausa?'Reanudar demostración':'Pausar demostración'} variant="ghost" onPress={alternarPausa}/>
+    </Row>:null}
     <View onLayout={e=>setAnchoDisponible(e.nativeEvent.layout.width)} style={{alignItems:'center',gap:6}}>
       {error?<Text accessibilityLiveRegion="polite" style={{color:t.text2,fontFamily:FONT.body,textAlign:'center'}}>
         No se pudo mostrar esta captura.
       </Text>:<View style={{width:ancho,height:alto,overflow:'hidden',borderRadius:10}}>
         <Image source={source} accessible accessibilityLabel={'Captura de Securia. '+paso.titulo}
           resizeMode="contain" onError={()=>setError(true)} style={{width:ancho,height:alto}}/>
-        {terminado?null:<Pressable key={indice} accessibilityRole="button" accessibilityLabel={accion}
-          onPress={pulsar} hitSlop={8} style={{position:'absolute',left:ancho*x/100-tam/2,top:alto*y/100-tam/2,
+        {terminado?null:<View key={indice} pointerEvents="none" importantForAccessibility="no-hide-descendants"
+          style={{position:'absolute',left:ancho*x/100-tam/2,top:alto*y/100-tam/2,
             width:tam,height:tam,alignItems:'center',justifyContent:'center'}}>
           <Animated.View pointerEvents="none" style={{position:'absolute',width:tam,height:tam,borderRadius:tam/2,
             borderWidth:2,borderColor:'#fff',backgroundColor:'#F43F5E',
             opacity:valor.interpolate({inputRange:[0,1],outputRange:[.85,.32]}),
             transform:[{scale:valor.interpolate({inputRange:[0,1],outputRange:[.62,1.48]})}]}}/>
           <View pointerEvents="none" style={{width:17,height:17,borderRadius:9,borderWidth:2,borderColor:'#fff',backgroundColor:'#BE123C'}}/>
-        </Pressable>}
+        </View>}
       </View>}
     </View>
-    {!error?<Row>
-      <View style={{flex:1,gap:3}}>
-        <Text style={{color:t.muted,fontFamily:FONT.body,fontSize:12}}>{terminado?'Demostración completada':`Toque ${indice+1} de ${paso.toques.length}`}</Text>
-        <Text accessibilityLiveRegion="polite" style={{color:t.text,fontFamily:FONT.bodySemi,fontSize:15}}>
-          {terminado?paso.titulo:accion}
-        </Text>
-      </View>
-      <Btn label={terminado?'Repetir':'Practicar'} size="sm" variant="ghost"
-        accessibilityLabel={terminado?'Repetir demostración':accion}
-        onPress={terminado?()=>setIndice(0):pulsar}/>
-    </Row>:null}
   </View>;
 }

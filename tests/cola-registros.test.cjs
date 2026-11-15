@@ -17,6 +17,18 @@ test('un cambio escribe una sola fila y conserva el historial ausente de una vis
  assert.equal(b.escrituras.length,1);assert.ok(b.escrituras[0][1]<500);assert.equal(q.estado().reports.length,1200);
  await q.guardar({...vista,reports:[vista.reports[8]]},e);assert.equal(q.estado().reports.length,1200);
 });
+test('una consulta al día reutiliza la vista, el cursor y las colecciones sin cambios',async()=>{
+ const b=banco(),q=new ColaRegistros('a',b.io,b.net);
+ const e=estadoVacio();e.reports=[{id:'r',texto:'Histórico'}];
+ let consultas=0;b.net.consultar=async cursor=>{consultas++;return {filas:[],cursor,mas:false};};
+ await q.iniciar();await q.importar(e,e);b.reset();
+ const anterior=q.estado();
+ await q.sincronizar();
+ assert.equal(consultas,1);assert.equal(b.escrituras.length,0);assert.equal(q.estado(),anterior);
+ await q.guardar({...anterior,rounds:[{id:'ronda'}]},anterior,anterior);
+ assert.equal(q.estado().reports,anterior.reports);
+ assert.equal(b.escrituras.length,1);
+});
 test('un recibo perdido se reintenta con el mismo lote después de reiniciar la aplicación',async()=>{
  const b=banco(),q=new ColaRegistros('a',b.io,b.net),e=estadoVacio();await q.iniciar();await q.importar(e,e);
  e.reports.push({id:'r',texto:'Pendiente'});await q.guardar(e);b.perder();await assert.rejects(q.sincronizar(),/perdida/);

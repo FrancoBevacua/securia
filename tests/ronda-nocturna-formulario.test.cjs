@@ -7,9 +7,9 @@ const me={id:'corp',nombre:'Guardia Paseo',apellido:'',rol:'admin',corporativo:t
 const st={get S(){return S;},me,responsable:g,telefonoId:'tel',list:col=>S[col].filter(x=>!x.deleted),byId:(col,id)=>S[col].find(x=>x.id===id),put:(col,obj)=>{S=aplicarCambios(S,[{col,obj}],me,false,'tel');},putVarios:cs=>{guardados.push(...cs);S=aplicarCambios(S,cs,me,false,'tel');},confirmarGuardado:async()=>{}};
 const load=Module._load;
 Module._load=function(n,...a){
- if(n==='react-native')return{View:'View',Text:'Text'};
+ if(n==='react-native')return{View:'View',Text:'Text',AppState:{currentState:'active',addEventListener:()=>({remove(){}})}};
  if(n==='../Imagen')return{Image:'Image'};
- if(n==='expo-router')return{router:{back(){}}};if(n==='expo-clipboard')return{setStringAsync:async()=>{}};
+ if(n==='expo-router')return{router:{back(){}},useFocusEffect:React.useEffect};if(n==='expo-clipboard')return{setStringAsync:async()=>{}};
  if(n==='../store')return{useStore:()=>st};if(n==='../icons')return{Ring:'Ring'};
  if(n==='./FotosRegistro')return()=>null;
  if(n==='./SelectorFirma')return p=>React.createElement('SelectorFirma',p);

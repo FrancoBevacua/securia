@@ -112,3 +112,24 @@ test('un solo ingreso distingue la cuenta Administrador de Guardia de Paseo y el
  assert.equal((await panel('883642')).ok,false);
  assert.equal((await panel(pinAdmin)).ok,true);
 });
+
+test('el lote del corporativo sólo importa filas nuevas y rechaza un administrador a cargo',async()=>{
+ await db.exec(migracion('guardia_a_cargo_y_lotes_incrementales'));
+ const corp=await rpc('guardia_corporativo_rpc',{accion:'ingresar',dispositivo,pin:'883642'});
+ const auth={dispositivo,token:corp.token},telefono=(await db.query('select guardia_private.hash($1) as id',[dispositivo])).rows[0].id;
+ const inicial=await rpc('guardia_sync',{...auth,accion:'consultar',cursor:0});
+ const actividad={id:'turno-corporativo',guardId:'corp',dispositivoId:telefono,fecha:'2026-11-15',in:'08:00',out:''};
+ const enviar=(lote,responsableId)=>rpc('guardia_sync',{...auth,accion:'guardar',lote,filas:[
+  {col:'punches',id:actividad.id,valor:{...actividad,responsableId}},
+ ]});
+ const rechazado=await enviar('bef48a2e3817ea44','administrador-pin');
+ assert.equal(rechazado.acuses[0].estado,'resguardado');
+ const guardado=await enviar('b8df46d6488263bd','guardia');
+ assert.equal(guardado.acuses[0].estado,'confirmado');
+ assert.deepEqual(await enviar('b8df46d6488263bd','guardia'),guardado);
+ const delta=await rpc('guardia_sync',{...auth,accion:'consultar',cursor:inicial.cursor});
+ assert.deepEqual(delta.filas.map(r=>r.id),[actividad.id]);
+ const e=(await db.query('select guardia_private.abrir(cifrado) as e from guardia_private.documentos where id=$1',[objetivo])).rows[0].e;
+ assert.equal(e.punches.find(p=>p.id===actividad.id).responsableId,'guardia');
+ assert.ok(e.punches.some(p=>p.id==='turno-ajeno'));
+});

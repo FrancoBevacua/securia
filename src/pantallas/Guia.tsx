@@ -28,7 +28,7 @@ export default function Guia(){
  },[abierto]);
  const tema=TEMAS_GUIA.find(x=>x.id===lugar.tema)||TEMAS_GUIA[0],indice=TEMAS_GUIA.indexOf(tema),paso=tema.pasos[lugar.paso];
  const ir=(v:LugarGuia)=>{
-  const n=++version.current,propietario=guardia;setLugar(v);setAbierto(true);
+  const n=++version.current,propietario=guardia;setLugar(v);setAbierto(true);if(!abierto)setPausa(false);
   void guardarLugarGuia(propietario,v).then(()=>{if(n===version.current&&vigente.current===propietario)setError('');},()=>{if(n===version.current&&vigente.current===propietario)setError('No se pudo recordar este paso. Podés seguir leyendo y reintentar el guardado.');});
  };
  const siguiente=()=>{
@@ -45,19 +45,18 @@ export default function Guia(){
   <ScrollView ref={scroll} style={{flex:1}} contentContainerStyle={{padding:16,gap:18,paddingBottom:abierto?16:106+ins.bottom}}>
    {error?<><Banner kind="warn">{error}</Banner><Btn label={abierto?'Reintentar guardado':'Reintentar lectura'} onPress={()=>abierto?ir(lugar):setIntento(v=>v+1)}/></>:null}
    {!abierto?<>
-    <View style={{gap:14,paddingVertical:8}}><InsigniaGuia size={76}/><Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.dispBold,fontSize:32,lineHeight:38}}>Conocé cada función,{"\n"}paso a paso.</Text><Text style={{color:t.text2,fontFamily:FONT.body,fontSize:15,lineHeight:23}}>Elegí un tema y tocá los puntos animados de cada captura para practicar. La guía está disponible sin conexión.</Text></View>
+    <View style={{gap:14,paddingVertical:8}}><InsigniaGuia size={76}/><Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.dispBold,fontSize:32,lineHeight:38}}>Conocé cada función,{"\n"}paso a paso.</Text><Text style={{color:t.text2,fontFamily:FONT.body,fontSize:15,lineHeight:23}}>Elegí un tema y mirá las demostraciones con subtítulos. Se reproducen solas y están disponibles sin conexión.</Text></View>
     <Btn label={cargando?'Cargando última consulta…':lugar.tema===TEMAS_GUIA[0].id&&lugar.paso===0?'Comenzar guía':'Continuar donde dejé'} icon="guia" disabled={cargando} variant="primary" onPress={()=>ir(lugar)}/>
     <Text accessibilityRole="header" style={{fontFamily:FONT.bodySemi,fontSize:16,color:t.text}}>¿Qué querés aprender a usar?</Text>
     <Card>{TEMAS_GUIA.map((x,i)=><Item key={x.id} last={i===TEMAS_GUIA.length-1} lead={<Icon name={x.icono} color={t.accentText} size={24}/>} title={x.titulo} subs={[x.descripcion,x.pasos.length+' pasos']} right={<Icon name="siguiente" color={t.muted} size={18}/>} onPress={()=>{if(!cargando)ir({tema:x.id,paso:0});}}/>)}</Card>
-    <Hint>Podés volver a ver cualquier tema desde el principio. Las capturas muestran datos de demostración.</Hint>
    </>:<>
     <Row><Icon name={tema.icono} size={22} color={t.accentText}/><Text accessibilityRole="header" style={{flex:1,fontFamily:FONT.bodySemi,fontSize:17,color:t.text}}>{tema.titulo}</Text><Text accessibilityLiveRegion="polite" style={{fontFamily:FONT.body,fontSize:12,color:t.muted}}>{'Paso '+(lugar.paso+1)+' de '+tema.pasos.length}</Text></Row>
     <View style={{flexDirection:'row',gap:6}}>{tema.pasos.map((_,i)=><View key={i} style={{height:4,borderRadius:4,flex:1,backgroundColor:i<=lugar.paso?t.accent:t.line}}/>)}</View>
     <Text accessibilityRole="header" style={{color:t.text,fontFamily:FONT.dispBold,fontSize:29,lineHeight:34}}>{paso.titulo}</Text>
+    <EjemploGuia key={lugar.tema+'/'+lugar.paso} paso={paso} pausa={pausa} alternarPausa={()=>setPausa(v=>!v)}
+      avanzar={lugar.paso<tema.pasos.length-1?siguiente:undefined}/>
     <Text style={{color:t.text2,fontFamily:FONT.body,fontSize:16,lineHeight:25}}>{paso.texto}</Text>
-    <EjemploGuia key={lugar.tema+'/'+lugar.paso} paso={paso} pausa={pausa}/>
     {paso.consejo?<Card pad><Row style={{alignItems:'flex-start'}}><Icon name="bell" color={t.accentText} size={19}/><Text style={{flex:1,color:t.text2,fontFamily:FONT.body,fontSize:14,lineHeight:22}}>{paso.consejo}</Text></Row></Card>:null}
-    <Btn label={pausa?'Reanudar animación':'Pausar animación'} icon={pausa?'play':'pausa'} variant="ghost" onPress={()=>setPausa(v=>!v)}/>
     {lugar.paso>0?<Btn label="Ver tema desde el principio" variant="ghost" onPress={()=>ir({...lugar,paso:0})}/>:null}
     <Hint>Podés consultar otro tema en cualquier momento con el botón Volver.</Hint>
    </>}

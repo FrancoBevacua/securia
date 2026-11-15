@@ -7,9 +7,9 @@ import {validarPuestosGuardia} from './puestosGuardia';
 /** Una operación compuesta se publica sólo si todas sus filas son válidas. */
 export function aplicarCambios(S: Estado, cambios: { col: Col; obj: any }[], actor: Vigilador | null, servicio = false, telefonoId?:string): Estado {
   const e = { ...S };
-  for (const k of Object.keys(S)) if (Array.isArray((S as any)[k])) (e as any)[k] = (S as any)[k].slice();
   for (const { col, obj } of cambios) {
-    const arr: any[] = e[col] || ((e as any)[col] = []);
+    if(e[col]===S[col])(e as any)[col]=(S[col]||[]).slice();
+    const arr: any[] = e[col];
     const i = arr.findIndex(r => r.id === obj.id);
     let g = { ...(i >= 0 ? arr[i] : {}), ...obj, id: obj.id || uid(), updatedAt: now() };
     const anterior=i>=0?arr[i]:undefined;
@@ -53,7 +53,7 @@ export function aplicarCambios(S: Estado, cambios: { col: Col; obj: any }[], act
     if (!g.deleted && g.acc && (col === 'visits' || col === 'novedades' && g.mov!=='out' && g.datos?.movimiento!=='egreso')) {
       const ficha = fichaExterno(e, g.acc, actor?.id || g.guardId);
       if (ficha) {
-        e.externals = (e.externals || []).slice();
+        if(e.externals===S.externals)e.externals = (S.externals || []).slice();
         const indice = e.externals.findIndex(x => x.id === ficha.id);
         if (indice < 0) e.externals.push(ficha); else e.externals[indice] = ficha;
       }

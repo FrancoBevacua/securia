@@ -10,14 +10,15 @@ import { leerConfigIA, pedirIA, promptDirectivas, parsearDirectivasIA, ErrorIA, 
 import { elegirDocumento, elegirFotoDocumento } from '../lectura';
 import { FONT } from '../theme';
 import {
-  useTheme, Pantalla, SubCabecera, Card, Btn, Tag, Item, Empty, Stack, Row, Tile,
+  useTheme, Pantalla, Cabecera, SubCabecera, Card, Btn, Tag, Item, Empty, Stack, Row, Tile,
   Chip, Chipbar, Input, Field, Selector, Sheet, Banner, Hint, Eyebrow, Confirmar, useToast,
 } from '../ui';
 import EditorDirectiva from './EditorDirectiva';
 
 /* ================= tablero ================= */
-export default function Admin() {
+export default function Admin({inicio=false}:{inicio?:boolean}={}) {
   const st = useStore();
+  const toast = useToast();
   const ir = (r: string) => () => router.push(r as any);
   if (!st.esAdmin) {
     return (
@@ -31,8 +32,9 @@ export default function Admin() {
   }
   const n = (c: any) => st.list(c).length;
   return (
-    <Pantalla top>
-      <SubCabecera titulo="Administración" sub="Configuración del objetivo y del equipo." onBack={() => router.back()} />
+    <Pantalla top={!inicio}>
+      {inicio?<Cabecera titulo="Administración" sub="Configuración del objetivo y del equipo."/>:
+        <SubCabecera titulo="Administración" sub="Configuración del objetivo y del equipo." onBack={() => router.back()} />}
       <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="perfil" titulo="Puestos y turnos" sub={n('posts') + ' puestos · ' + n('franjas') + ' turnos'} onPress={ir('/puestos')} />
         <Tile icon="directivas" titulo="Directivas" sub={n('directives') + ' en total'} onPress={ir('/admdirectivas')} />
@@ -46,6 +48,8 @@ export default function Admin() {
         <Tile icon="ronda" titulo="Recorridos" sub={n('rtemplates') + ' plantillas'} onPress={ir('/rondas')} />
       </Row>
       <Tile icon="ajustes" titulo="Datos del site" sub={st.S.site.cliente || 'Sin configurar'} onPress={ir('/ajustes')} />
+      <Tile icon="bell" titulo="Avisos de directivas" sub="Recordatorios y permisos del teléfono" onPress={ir('/avisos')}/>
+      {inicio?<Btn label="Cerrar sesión" variant="ghost" onPress={()=>{void st.salir().catch(e=>toast(e.message));}}/>:null}
     </Pantalla>
   );
 }

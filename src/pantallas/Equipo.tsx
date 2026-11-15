@@ -1,5 +1,5 @@
 import { guardarPIN, verificarPIN, tienePIN } from '../cuentas';
-import { cambiarPinNube } from '../nube';
+import { cambiarPinNube, verEstadoNube } from '../nube';
 import React, { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { router } from 'expo-router';
@@ -243,7 +243,7 @@ export function Perfil() {
             <Btn label="Cancelar" variant="ghost" style={{ flex: 1 }} onPress={() => setPinAbierto(false)} />
             <Btn label="Guardar" variant="primary" style={{ flex: 1 }} onPress={async () => {
               try{
-                if(st.nube.vinculada)await cambiarPinNube(pinAnterior,pin);
+                if(verEstadoNube().vinculada)await cambiarPinNube(pinAnterior,pin);
                 else{if (await tienePIN(me.id) && !await verificarPIN(me.id, pinAnterior)) { toast('El PIN actual no coincide'); return; }await guardarPIN(me.id, pin);}
                 setPinAbierto(false); toast('PIN actualizado');
               }catch(e:any){toast(e.message);}

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -14,7 +14,7 @@ import { SairaCondensed_600SemiBold, SairaCondensed_700Bold } from '@expo-google
 
 import { AppState } from 'react-native';
 import { StoreProvider, useStore } from '../src/store';
-import { prepararAvisos, permisoAvisos, reprogramarAvisos } from '../src/avisos';
+import { prepararAvisos, estadoPermisosAvisos, reprogramarAvisos } from '../src/avisos';
 import { ThemeProvider, ToastHost, useTheme, Banner, Btn } from '../src/ui';
 import Gate from '../src/pantallas/Gate';
 import Presentacion, { AZUL_PRESENTACION } from '../src/pantallas/Presentacion';
@@ -28,8 +28,38 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 /* La presentación se mantiene un mínimo de tiempo para que no sea un destello. */
 const MINIMO_PRESENTACION = 700;
 
+function ProgramarAvisos(){
+  const {listo,me,responsable,S,avisos,errorInicio}=useStore();
+  const pedido=useRef(false);
+  const puestoId=responsable?.puestoId||me?.puestoId;
+  const franjaId=responsable?.franjaId||me?.franjaId;
+  useEffect(()=>{prepararAvisos();},[]);
+  useEffect(()=>{
+    if(!listo||errorInicio||Platform.OS==='web')return;
+    let version=0;
+    const correr=async()=>{
+      const actual=++version;
+      const vigente=()=>actual===version;
+      const perfil=responsable?{...responsable,puestoId:puestoId||'',franjaId:franjaId||''}:null;
+      try{
+        const pedir=!!perfil&&avisos&&!pedido.current;
+        pedido.current ||= pedir;
+        const permisos=perfil&&avisos?await estadoPermisosAvisos(pedir):null;
+        if(!vigente())return;
+        await reprogramarAvisos(S,perfil,!!(permisos?.permitido&&permisos.canal),permisos?.exactas,vigente);
+      }catch(e){console.warn('No se pudieron programar los avisos de directivas', e);}
+    };
+    void correr();
+    const sub=AppState.addEventListener('change',e=>{if(e==='active')void correr();});
+    const foco=Platform.OS==='android'?AppState.addEventListener('focus',()=>void correr()):undefined;
+    const timer=setInterval(()=>{if(AppState.currentState==='active')void correr();},60*60*1000);
+    return()=>{version++;sub.remove();foco?.remove();clearInterval(timer);};
+  },[listo,errorInicio,responsable?.id,puestoId,franjaId,avisos,S.directives,S.dlogs,S.franjas]);
+  return null;
+}
+
 function Raiz() {
-  const { listo, me, responsable, S, avisos, errorInicio, reintentarInicio, esAdmin } = useStore();
+  const { listo, me, responsable, errorInicio, reintentarInicio, esAdmin } = useStore();
   const t = useTheme();
   const [tiempoCumplido, setTiempoCumplido] = useState(false);
 
@@ -40,35 +70,15 @@ function Raiz() {
 
   useEffect(() => { SplashScreen.hideAsync().catch(() => {}); }, []);
 
-  /* Recordatorios: se reprograman al abrir, al volver del fondo y ante cualquier
-     cambio de directivas, puesto o turno. Todo va envuelto: un fallo acá no
-     puede tumbar la app. */
-  useEffect(() => { prepararAvisos(); }, []);
-  useEffect(() => {
-    if (!listo || !me) return;
-    let vivo = true;
-    const correr = async () => {
-      try {
-        const ok = avisos ? await permisoAvisos() : true;
-        if (!vivo) return;
-        await reprogramarAvisos(S, me, avisos && ok);
-      } catch (e) {
-        console.warn('No se pudieron reprogramar los avisos', e);
-      }
-    };
-    correr();
-    const sub = AppState.addEventListener('change', e => { if (e === 'active') correr(); });
-    return () => { vivo = false; sub.remove(); };
-  }, [listo, me?.id, me?.puestoId, me?.franjaId, avisos, S.directives, S.dlogs]);
-
   if (!listo || !tiempoCumplido) return <Presentacion />;
   if(errorInicio)return <View style={{flex:1,justifyContent:'center',padding:24,gap:16,backgroundColor:t.bg}}><Banner kind="warn">{errorInicio}</Banner><Btn label="Reintentar inicio" onPress={reintentarInicio}/></View>;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
+      <ProgramarAvisos/>
       <EstadoSincronizacion />
-      {me ? responsable?<Stack screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: t.bg } }}>
+      {me ? (esAdmin||responsable)?<Stack key={me.id} screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: t.bg } }}>
         <Stack.Protected guard={esAdmin}>
           <Stack.Screen name="admin"/><Stack.Screen name="ajustes"/><Stack.Screen name="admdirectivas"/>
           <Stack.Screen name="puestos"/><Stack.Screen name="importar"/><Stack.Screen name="cuenta-corporativo"/>

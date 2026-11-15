@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import React, { memo, useCallback, useEffect, useState } from 'react';
+import { AppState, View, Text } from 'react-native';
 import {Image} from '../Imagen';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useStore } from '../store';
 import { rondaActiva } from '../logic';
@@ -19,6 +19,27 @@ import {segundosRonda,formatoCronometro,textoRondaNocturna} from '../rondaNoctur
 import {horaValida} from '../servicio';
 function ContenidoRonda({integrado,children}:{integrado:boolean;children:React.ReactNode}){return integrado?<View style={{gap:14}}>{children}</View>:<Pantalla top>{children}</Pantalla>;}
 
+const CronometroRonda=memo(function CronometroRonda({inicioAt,inicio,fecha}:Pick<Ronda,'inicioAt'|'inicio'|'fecha'>){
+  const t=useTheme();
+  const [segundos,setSegundos]=useState(()=>segundosRonda({inicioAt,inicio,fecha}));
+  useFocusEffect(useCallback(()=>{
+    let timer:ReturnType<typeof setInterval>|undefined;
+    const actualizar=()=>setSegundos(segundosRonda({inicioAt,inicio,fecha}));
+    const cambiarEstado=(estado:string)=>{
+      clearInterval(timer);
+      if(estado!=='active')return;
+      actualizar();
+      timer=setInterval(actualizar,250);
+    };
+    cambiarEstado(AppState.currentState??'active');
+    const sub=AppState.addEventListener('change',cambiarEstado);
+    return()=>{clearInterval(timer);sub.remove();};
+  },[inicioAt,inicio,fecha]));
+  return <Text style={{fontFamily:FONT.monoMed,fontSize:28,letterSpacing:-1,color:t.text}}>
+    {formatoCronometro(segundos)}
+  </Text>;
+});
+
 export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
   const st = useStore();
   const t = useTheme();
@@ -28,16 +49,10 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
   const [cerrar, setCerrar] = useState(false);
   const [cancelar, setCancelar] = useState(false);
   const [ver, setVer] = useState<Ronda | null>(null);
-  const [, tick] = useState(0);
   const [guardando,setGuardando]=useState(false);
   const [cargandoFotos,setCargandoFotos]=useState(false);
 
-  useEffect(() => { const i = setInterval(() => tick(x => x + 1), 1000); return () => clearInterval(i); }, []);
-
   const activa = rondaActiva(st.S, st.me!.id, st.telefonoId,'puntos');
-  const tpls = st.list<RondaTpl>('rtemplates');
-  const hist = st.list<Ronda>('rounds').filter(r => r.fin&&r.tipoRecorrido!=='general')
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 25);
 
   const texto = (r:Ronda)=>textoRondaNocturna(r,gsName(st.byId<Vigilador>('guards',r.guardId),st.S.site));
 
@@ -45,7 +60,6 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
   if (activa) {
     const hechos = activa.puntos.filter(p => p.hora).length;
     const pct = activa.puntos.length?Math.round((hechos / activa.puntos.length) * 100):0;
-    const dur=segundosRonda(activa);
     return (
       <ContenidoRonda integrado={integrado}>
         {!integrado?<SubCabecera titulo={activa.nombre} sub={'Ronda en curso desde las ' + activa.inicio}
@@ -53,7 +67,7 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
         <Card pad>
           <Row style={{ justifyContent: 'space-between' }}>
             <View>
-              <Text style={{ fontFamily: FONT.monoMed, fontSize: 28, letterSpacing: -1, color: t.text }}>{formatoCronometro(dur)}</Text>
+              <CronometroRonda inicioAt={activa.inicioAt} inicio={activa.inicio} fecha={activa.fecha}/>
               <Hint>{hechos + ' de ' + activa.puntos.length + ' puntos'}</Hint>
             </View>
             <Ring pct={pct} color={t.accent} track={t.surface3} bg={t.surface} label={pct + '%'} font={FONT.monoMed} />
@@ -102,6 +116,9 @@ export default function Rondas({integrado=false}:{integrado?:boolean}={}) {
   }
 
   /* ---------- listado ---------- */
+  const tpls = st.list<RondaTpl>('rtemplates');
+  const hist = st.list<Ronda>('rounds').filter(r => r.fin&&r.tipoRecorrido!=='general')
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 25);
   return (
     <ContenidoRonda integrado={integrado}>
       {!integrado?<SubCabecera titulo="Ronda Nocturna" sub="Recorridas con puntos de control y horario de paso."

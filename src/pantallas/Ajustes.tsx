@@ -8,7 +8,6 @@ import {
   ConfigIA, CONFIG_VACIA, PROVEEDORES, ErrorIA, leerConfigIA, guardarConfigIA, modeloPorDefecto,
   pedirIA, fichaProveedor, esWeb,
 } from '../ai';
-import { ANTICIPO_MIN, permisoAvisos, reprogramarAvisos } from '../avisos';
 import { FONT } from '../theme';
 import { SelectorPaleta } from './Paletas';
 import ConfigurarNube from './Nube';
@@ -152,21 +151,7 @@ export default function Ajustes() {
           <Toggle label="Asistente de redacción"
             sub="Corrige ortografía, horarios y abreviaturas al escribir novedades."
             value={st.asistente} onChange={st.setAsistente} />
-          <Toggle label="Recordatorios de directivas"
-            sub={'Un aviso ' + ANTICIPO_MIN + ' minutos antes de cada tarea y otro en el horario, aunque la app esté cerrada.'}
-            value={st.avisos}
-            onChange={async v => {
-              st.setAvisos(v);
-              if (v) {
-                const ok = await permisoAvisos();
-                if (!ok) { toast('El teléfono no dio permiso para avisar'); return; }
-                const n = await reprogramarAvisos(st.S, st.me, true);
-                toast(n ? n + ' recordatorios programados' : 'No hay directivas próximas para avisar');
-              } else {
-                await reprogramarAvisos(st.S, st.me, false);
-                toast('Recordatorios desactivados');
-              }
-            }} />
+          <Btn label="Avisos de directivas" icon="bell" onPress={()=>router.push('/avisos')}/>
         </Stack>
       </Card>
 

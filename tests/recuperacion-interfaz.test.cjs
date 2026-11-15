@@ -12,7 +12,7 @@ const load=Module._load;
 Module._load=function(n,...a){
  if(n==='react-native')return {Text:'Text',View:'View',Image:'Image',ActivityIndicator:'ActivityIndicator',Platform:{OS:'android'}};
  if(n==='react-native-safe-area-context')return{useSafeAreaInsets:()=>({top:0})};
- if(n==='../store')return{useStore:()=>store};
+ if(n==='../store')return{useStore:()=>store,useEstadoNube:()=>store.nube};
  if(n==='../nube')return{revisarDiferenciasNube:async()=>revision,pausarRevision:()=>{pausas++;return()=>{pausas--;cerradas++;}}};
  if(n==='../icons')return{Icon:()=>null};
  if(n==='./HistorialRecuperacion')return()=>null;

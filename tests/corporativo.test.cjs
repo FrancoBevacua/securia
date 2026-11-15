@@ -12,6 +12,17 @@ function base(){const S=estadoVacio();S.guards=[cuenta,{id:'a',nombre:'Ana',apel
 test('el PIN del corporativo admite exactamente seis números',()=>{
  assert.equal(pinCorporativoValido('638201'),true);for(const v of ['','63820','6382011','63820a',' 638201','６３８２０１'])assert.equal(pinCorporativoValido(v),false);
 });
+test('una cuenta administrativa ingresa con su propia identidad y nunca queda a cargo del corporativo',()=>{
+ const S=base(),admin={id:'admin',nombre:'Administración',rol:'admin'};
+ S.guards.push(admin);
+ S.punches.push({id:'viejo',guardId:cuenta.id,dispositivoId:'telefono',responsableId:admin.id,out:''});
+ assert.equal(guardiaResponsable(S,admin,'telefono'),admin);
+ assert.equal(guardiaResponsable(S,cuenta,'telefono'),null);
+ assert.throws(()=>cambiarResponsable(S,cuenta,admin.id,'telefono',ahora),/guardia del equipo/);
+ const e=aplicarCambios(S,cambiarResponsable(S,cuenta,'a','telefono',ahora),cuenta,true,'telefono');
+ assert.ok(e.punches.find(p=>p.id==='viejo').closedAt);
+ assert.equal(guardiaResponsable(e,cuenta,'telefono').id,'a');
+});
 test('el responsable se conserva en la actividad y el relevo cierra sólo la de este teléfono',()=>{
  let S=base();assert.equal(guardiaResponsable(S,cuenta,'telefono'),null);
  S=aplicarCambios(S,cambiarResponsable(S,cuenta,'a','telefono',ahora),cuenta,true,'telefono');

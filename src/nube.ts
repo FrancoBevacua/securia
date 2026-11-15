@@ -31,6 +31,7 @@ type Pendiente = SobreNube;
 export type EstadoNube = { vinculada: boolean; guardando: boolean; pendiente: boolean; error: string; ultima: string; reautenticar?: boolean };
 let estadoNube: EstadoNube = { vinculada:false, guardando:false, pendiente:false, error:'', ultima:'' };
 let dispositivo = '', token = '', actor = '', revision = 0;
+let sesionGuardadaEn=0;
 let telefonoActual='';
 /** Identificador público derivado; nunca exponer la capacidad secreta del dispositivo. */
 export const telefonoId=()=>telefonoActual;
@@ -85,7 +86,10 @@ export const revisionEnCurso=()=>revisionesAbiertas>0;
 export function pausarRevision(){revisionesAbiertas++;let activo=true;return()=>{if(activo){activo=false;revisionesAbiertas--;}};}
 export const verEstadoNube = () => estadoNube;
 export const escucharNube = (f: (e: EstadoNube)=>void) => { oyentes.add(f); return () => { oyentes.delete(f); }; };
-const avisar = (e: Partial<EstadoNube>) => { estadoNube={...estadoNube,...e}; oyentes.forEach(f=>f(estadoNube)); };
+const avisar = (e: Partial<EstadoNube>) => {
+ if(Object.entries(e).every(([k,v])=>estadoNube[k as keyof EstadoNube]===v))return;
+ estadoNube={...estadoNube,...e};oyentes.forEach(f=>f(estadoNube));
+};
 export async function iniciarNube() {
   dispositivo = await leerSeguro(K_DISPOSITIVO) || '';
   await identificarTelefono();
@@ -96,7 +100,9 @@ export async function iniciarNube() {
 }
 /** El token se guarda en el almacén seguro; el historial permanece cifrado. Nunca se guarda el PIN. */
 async function conservarSesion() {
-  await guardarSeguro(K_SESION, JSON.stringify({token, actor,vence:Date.now()+30*24*60*60*1000}));
+  const ahora=Date.now();
+  await guardarSeguro(K_SESION, JSON.stringify({token, actor,vence:ahora+30*24*60*60*1000}));
+  sesionGuardadaEn=ahora;
 }
 async function conservarConfirmada(estado: Estado, rev: number) {
   await almacenLocal.setItem(K_COPIA, await sellarCache({estado, revision:rev, guardia:actor, numero:0}, await claveLocal()));
@@ -107,6 +113,7 @@ export async function restaurarSesionNube() {
   const sesion = JSON.parse(crudo);
   if (!/^[a-f0-9]{64}$/.test(sesion.token || '') || !sesion.actor || sesion.vence<Date.now()) return null;
   token = sesion.token; actor = sesion.actor;
+  sesionGuardadaEn=sesion.vence-30*24*60*60*1000;
   const nueva=await colaActual();
   if(await almacenLocal.getItem('sync.v2/'+encodeURIComponent(actor)+'/importado')){
    avisar({pendiente:nueva.pendiente});return {estado:nueva.estado(),guardia:actor,base:nueva.estado()};
@@ -177,7 +184,7 @@ async function rpc(datos: Record<string, any>,endpoint='guardia_rpc',espera=2000
       const error:any=new Error(j.error || (j.code==='P0001' ? j.message : '') || (j.code ? 'La nube no pudo completar la operación ('+j.code+'). Sus cambios pendientes permanecen cifrados en el teléfono.' : 'No se pudo conectar con la nube. Sus cambios pendientes permanecen cifrados en el teléfono.'));
       error.codigo=j.codigo || j.code; if(error.codigo==='sesion')avisar({reautenticar:true}); throw error;
     }
-    if(datos.accion==='consultar'&&token&&actor)await conservarSesion();
+    if(datos.accion==='consultar'&&token&&actor&&Date.now()-sesionGuardadaEn>=60*60*1000)await conservarSesion();
     return j;
 }
 /** Compatibilidad para el alta inicial de cuentas. La cola operativa usa prepararFila. */
@@ -201,11 +208,11 @@ export async function catalogoNube(): Promise<Estado> {
 async function adoptar(r: Respuesta) {
   if(!r.estado || !r.token || !r.guardia || !r.revision) throw new Error('La nube devolvió una sesión incompleta.');
   token=r.token;actor=r.guardia;revision=r.revision;
-  baseConfirmada=JSON.parse(JSON.stringify(r.estado));
+  baseConfirmada=r.estado;
   avisar({reautenticar:false});
   let pendiente=await leerCola();
   if (pendiente && pendiente.guardia!==actor) throw new Error('El guardia anterior tiene cambios sin sincronizar. Debe ingresar con su cuenta y reintentarlos.');
-  await conservarConfirmada(r.estado, r.revision);
+  if(!await almacenLocal.getItem('sync.v2/'+encodeURIComponent(actor)+'/importado'))await conservarConfirmada(r.estado,r.revision);
   await conservarSesion();
   if (pendiente) {
     if(pendiente.guardia!==actor) {throw new Error('El guardia anterior tiene cambios sin sincronizar. Debe ingresar con su cuenta y reintentarlos.');}
@@ -286,12 +293,10 @@ async function sincronizando(f:()=>Promise<void>,_autorrecuperar=true){
 }
 async function completarSync(){
  const q=await colaActual();await q.sincronizar();baseConfirmada=q.estado();
- if(!q.pendiente){
+ if(!q.pendiente&&await almacenLocal.getItem('sync.v2/limpieza')!==actor){
   // Sólo después de los recibos durables. La nube conserva el original migrado.
   await almacenLocal.removeItem(K_COLA);await almacenLocal.removeItem(K_COPIA);
-  if(await almacenLocal.getItem('sync.v2/limpieza')!==actor){
-   await almacenLocal.setItem('sync.v2/limpieza',actor);await almacenLocal.compactar();
-  }
+  await almacenLocal.setItem('sync.v2/limpieza',actor);
  }
  // Retirar únicamente archivos con recibo; nunca carpetas completas o fotos de un editor abierto.
  if(Platform.OS!=='web')for(const uri of q.archivosConfirmados){
@@ -303,12 +308,15 @@ async function completarSync(){
 export async function guardarEnNube(e:Estado,base=estadoConfirmado()):Promise<void>{
  await guardarLocal(e,undefined,base);await reintentarNube();
 }
-export async function guardarLocal(e:Estado,alSincronizar?:(e:Estado)=>void,base=estadoConfirmado()):Promise<void>{
+export async function guardarLocal(e:Estado,alSincronizar?:(e:Estado)=>void,base=estadoConfirmado(),anterior?:Estado):Promise<void>{
  if(!token||!actor)throw Error('Inicie sesión antes de guardar.');
- const q=await colaActual();await q.guardar(e,base);avisar({pendiente:q.pendiente});
- void sincronizando(completarSync).then(()=>alSincronizar?.(q.estado())).catch(()=>{});
+ const q=await colaActual();await q.guardar(e,base,anterior);avisar({pendiente:q.pendiente});
+ if(q.pendiente)void reintentarNube().then(()=>{if(sync===q)alSincronizar?.(q.estado());}).catch(()=>{});
 }
-export async function reintentarNube():Promise<void>{await sincronizando(completarSync);}
+let sincronizacion:Promise<void>|undefined;
+export function reintentarNube():Promise<void>{
+ return sincronizacion??=sincronizando(completarSync).finally(()=>{sincronizacion=undefined;});
+}
 export type RevisionDiferencias={pendiente:SobreNube;remoto:Estado;revision:number;diferencias:DiferenciaNube[]};
 export type Recuperacion={id:string;creado:string;incorporados:number;resguardados:number};
 export type ResultadoRecuperacion=Recuperacion&{estado:Estado;revision:number};

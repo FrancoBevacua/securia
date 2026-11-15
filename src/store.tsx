@@ -1,5 +1,5 @@
 /* Estado de la aplicación: memoria, persistencia local y acciones. */
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
 import { almacenLocal } from './almacenLocal';
@@ -51,7 +51,6 @@ type Ctx = {
   setAvisos: (v: boolean) => void;
   entrar: (id: string) => void;
   salir: () => Promise<void>;
-  nube: nube.EstadoNube;
   ingresarNube: (dni:string,pin:string,puestoId?:string) => Promise<void>;
   vincularCuentaNube: (dni:string,pin:string,nombre:string,nacimiento:string) => Promise<void>;
   registrarNube: (g:Vigilador,pin:string) => Promise<void>;
@@ -75,6 +74,7 @@ type Ctx = {
 
 const StoreCtx = createContext<Ctx>(null as any);
 export const useStore = () => useContext(StoreCtx);
+export const useEstadoNube = () => useSyncExternalStore(nube.escucharNube,nube.verEstadoNube,nube.verEstadoNube);
 
 /* ---------- semillas y migraciones ---------- */
 function sembrarPuestos(S: Estado) {
@@ -151,6 +151,16 @@ function vocabulario(S: Estado): string[] {
   out.push(S.site.cliente, S.site.nombre);
   return out.filter(Boolean);
 }
+function actualizarVocabulario(S:Estado,prev?:Estado){
+  if(!prev||S.accesses!==prev.accesses||S.posts!==prev.posts||S.franjas!==prev.franjas||S.guards!==prev.guards||S.site!==prev.site)
+    setVocabulario(vocabulario(S));
+}
+
+function perfilTelefono(e:Estado,g:Vigilador){
+  const p=turnoAbierto(e,g.id,nube.telefonoId?.());
+  const puestoId=p?.puestoId||g.puestoId,franjaId=p?.franjaId||g.franjaId;
+  return puestoId===g.puestoId&&franjaId===g.franjaId?g:{...g,puestoId,franjaId};
+}
 
 /* ---------- proveedor ---------- */
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -165,12 +175,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [paleta, setPaletaEstado] = useState<PaletaId>(PALETA_DEFECTO);
   const [asistente, setAsisEstado] = useState(true);
   const [avisos, setAvisosEstado] = useState(true);
-  const [estadoNube,setEstadoNube]=useState(nube.verEstadoNube());
-  useEffect(()=>nube.escucharNube(setEstadoNube),[]);
   const ref = useRef<Estado>(S);
   const baseVista=useRef<Estado|undefined>(undefined);
+  const vistaPersistida=useRef<Estado|undefined>(undefined);
   const guardadoLocal = useRef<Promise<void>>(Promise.resolve());
-  ref.current = S;
+
+  const publicarConfirmado=useCallback((actual:Estado,confirmado:Estado)=>{
+    if(ref.current!==actual)return;
+    baseVista.current=confirmado;
+    vistaPersistida.current=confirmado;
+    if(actual===confirmado)return;
+    ref.current=confirmado;setS(confirmado);
+    if(actual.guards!==confirmado.guards||actual.punches!==confirmado.punches){
+      const guardia=meRef.current;
+      const perfil=guardia&&confirmado.guards.find(x=>x.id===guardia.id&&!x.deleted);
+      if(perfil){const siguiente=perfilTelefono(confirmado,perfil);meRef.current=siguiente;setMe(siguiente);}
+    }
+    actualizarVocabulario(confirmado,actual);
+  },[]);
 
   /* carga inicial */
   useEffect(() => {
@@ -190,9 +212,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if(vinculada){
           const recuperada=await nube.restaurarSesionNube();
           if(recuperada){
-            e=recuperada.estado;baseVista.current=recuperada.base;
+            e=recuperada.estado;baseVista.current=recuperada.base;vistaPersistida.current=e;
             const g=e.guards.find(g=>g.id===recuperada.guardia&&!g.deleted);
-            if(g){const abierta=abrirActividad(e,g);if(abierta!==e)await persistir(abierta);e=abierta;setMe(perfilTelefono(e,g));}
+            if(g){const abierta=abrirActividad(e,g);if(abierta!==e)await persistir(abierta,e);e=abierta;setMe(perfilTelefono(e,g));}
           }
           else {try{e=await nube.catalogoNube();}catch{e=estadoVacio();}}
         }
@@ -227,18 +249,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [intentoInicio]);
 
-  const persistir = useCallback((e: Estado) => {
+  const persistir = useCallback((e: Estado,anterior?:Estado) => {
     const base=baseVista.current;
-    const escritura=guardadoLocal.current.catch(()=>{}).then(()=>nube.verEstadoNube().vinculada
-      ? nube.guardarLocal(e,confirmado=>{
-        if(ref.current===e){baseVista.current=confirmado;ref.current=confirmado;setS(confirmado);setMe(g=>g?perfilTelefono(confirmado,confirmado.guards.find(x=>x.id===g.id)||g):null);setVocabulario(vocabulario(confirmado));}
-      },base) : almacenLocal.setItem(K_ESTADO,JSON.stringify(e)));
+    const escritura=guardadoLocal.current.catch(()=>{}).then(async()=>{
+      if(nube.verEstadoNube().vinculada){
+        await nube.guardarLocal(e,confirmado=>publicarConfirmado(e,confirmado),base,anterior===vistaPersistida.current?anterior:undefined);
+      }else await almacenLocal.setItem(K_ESTADO,JSON.stringify(e));
+      vistaPersistida.current=e;
+    });
     guardadoLocal.current=escritura;
     escritura.then(()=>{if(guardadoLocal.current===escritura)setErrorGuardado('');},()=>{
       if(guardadoLocal.current===escritura)setErrorGuardado('No se pudo guardar el último cambio en el teléfono. Mantenga la aplicación abierta y pulse Reintentar.');
     });
     return escritura;
-  }, []);
+  }, [publicarConfirmado]);
 
   // Reintenta al volver a la app y cada 30 s en primer plano. La copia local
   // nunca espera Internet y la confirmación remota no pisa nuevas ediciones.
@@ -247,42 +271,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let ocupado=false;
     const reintentar=async(alVolver=false)=>{
       if(ocupado||AppState.currentState!=='active'||nube.revisionEnCurso?.()||nube.verEstadoNube().guardando||nube.verEstadoNube().reautenticar)return;
-      if(!alVolver&&!errorGuardado&&!nube.verEstadoNube().pendiente)return;
+      if(!alVolver&&!errorGuardado&&!nube.verEstadoNube().pendiente&&Date.now()-Date.parse(nube.verEstadoNube().ultima)<30000)return;
       ocupado=true;const actual=ref.current;
       try{
-        if(errorGuardado)await persistir(actual);
-        if(nube.verEstadoNube().pendiente)await nube.reintentarNube();
-        else await nube.consultarNube();
+        if(errorGuardado)await persistir(actual);else await guardadoLocal.current;
+        await nube.reintentarNube();
         const confirmado=nube.estadoConfirmado();
-        if(confirmado&&ref.current===actual){baseVista.current=confirmado;ref.current=confirmado;setS(confirmado);}
+        if(confirmado)publicarConfirmado(actual,confirmado);
       }catch{}finally{ocupado=false;}
     };
     const sub=AppState.addEventListener('change',s=>{if(s==='active')void reintentar(true);});
     void reintentar(true);
     const timer=setInterval(()=>void reintentar(),30000);
     return()=>{sub.remove();clearInterval(timer);};
-  },[listo,me?.id,errorGuardado,persistir]);
+  },[listo,me?.id,errorGuardado,persistir,publicarConfirmado]);
 
-  const aplicar = useCallback((mut: (e: Estado) => void) => {
+  const aplicar = useCallback((mut: (e: Estado) => Estado) => {
       const prev = ref.current;
-      const e: Estado = { ...prev };
-      (Object.keys(e) as (keyof Estado)[]).forEach(k => {
-        if (Array.isArray((e as any)[k])) (e as any)[k] = ((prev as any)[k] as any[]).slice();
-      });
-      e.site = { ...prev.site };
-      mut(e);
+      const e=mut(prev);
       e.updatedAt = now();
-      setVocabulario(vocabulario(e));
-      persistir(e);
+      actualizarVocabulario(e,prev);
+      persistir(e,prev);
       ref.current = e;
       setS(e);
   }, [persistir]);
 
   const lote = useCallback((cambios: { col: Col; obj: any }[], servicio = false) => {
-    aplicar(e => Object.assign(e, aplicarCambios(e, cambios, me, servicio, nube.telefonoId?.())));
+    aplicar(e => aplicarCambios(e, cambios, me, servicio, nube.telefonoId?.()));
   }, [aplicar, me]);
 
-  const perfilTelefono=(e:Estado,g:Vigilador)=>{const p=turnoAbierto(e,g.id,nube.telefonoId?.());return p?{...g,puestoId:p.puestoId||g.puestoId,franjaId:p.franjaId||g.franjaId}:g;};
   const abrirActividad = (e: Estado, g: Vigilador) => g.corporativo||turnoAbierto(e,g.id,nube.telefonoId?.()) ? e
     : aplicarCambios(e,iniciarServicio(e,g,new Date(),true,nube.telefonoId?.()),g,true);
   const entrarLocal = (g: Vigilador) => {
@@ -293,6 +310,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const aceptarNube=async(r:{estado:Estado;guardia:string;base?:Estado},puestoId?:string)=>{
     baseVista.current=r.base;
+    vistaPersistida.current=r.estado;
     let g=r.estado.guards.find(g=>g.id===r.guardia&&!g.deleted);
     if(!g)throw Error('Cuenta no disponible.');
     if(puestoId){if(!r.estado.posts.some(p=>p.id===puestoId&&!p.deleted))throw Error('El puesto ya no está disponible.');g={...g,puestoId,franjaId:r.estado.franjas.find(f=>f.puestoId===puestoId&&!f.deleted)?.id||''};}
@@ -301,7 +319,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     e=abrirActividad(e,g);
     g=perfilTelefono(e,g);
     ref.current=e;setS(e);
-    await persistir(e);
+    if(e!==r.estado)await persistir(e,r.estado);
     meRef.current=g;setMe(g);
     setVocabulario(vocabulario(r.estado));
     await almacenLocal.removeItem(K_ESTADO);await AsyncStorage.removeItem(K_SESION);
@@ -325,7 +343,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       entrarLocal(cuenta);await guardadoLocal.current;
     },
     errorInicio,errorGuardado,confirmarGuardado:()=>guardadoLocal.current,reintentarInicio:()=>setIntentoInicio(v=>v+1),
-    nube:estadoNube,
     ingresarNube:async(dni,pin,puestoId)=>{await guardadoLocal.current;await aceptarNube(await nube.ingresarNube(dni,pin),puestoId);},
     vincularCuentaNube:async(dni,pin,nombre,nacimiento)=>aceptarNube(await nube.vincularCuentaNube(dni,pin,nombre,nacimiento)),
     registrarNube:async(g,pin)=>aceptarNube(await nube.registrarNube(g,pin)),
@@ -336,20 +353,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         await almacenLocal.setItem(K_ESTADO,JSON.stringify(ref.current));
         await aceptarNube(await nube.vincularNube(CODIGO_CORPORATIVO,ref.current,g,pin));
       },
-    reintentarNube:async()=>{const actual=ref.current;await persistir(actual);await nube.reintentarNube();const confirmado=nube.estadoConfirmado();if(confirmado&&ref.current===actual){baseVista.current=confirmado;ref.current=confirmado;setS(confirmado);}},
-    resolverDiferencias:async(r,op)=>{await guardadoLocal.current;const actual=ref.current;const e=await nube.resolverDiferenciasNube(r,op);if(ref.current===actual){baseVista.current=e;ref.current=e;setS(e);setVocabulario(vocabulario(e));}},
+    reintentarNube:async()=>{const actual=ref.current;if(errorGuardado)await persistir(actual);else await guardadoLocal.current;await nube.reintentarNube();const confirmado=nube.estadoConfirmado();if(confirmado)publicarConfirmado(actual,confirmado);},
+    resolverDiferencias:async(r,op)=>{await guardadoLocal.current;const actual=ref.current;const e=await nube.resolverDiferenciasNube(r,op);publicarConfirmado(actual,e);},
     recuperarSincronizacion:async()=>{
       const actual=ref.current;
       // Si hubo un fallo de disco, primero debe conservarse lo que aún está en memoria.
       if(errorGuardado)await persistir(actual);else await guardadoLocal.current;
       const r=await nube.recuperarSincronizacion();
       const e=r?.estado||nube.estadoConfirmado();
-      if(e&&ref.current===actual){baseVista.current=e;ref.current=e;setS(e);setMe(g=>g?e.guards.find(x=>x.id===g.id)||g:null);setVocabulario(vocabulario(e));setErrorGuardado('');}
+      if(e&&ref.current===actual){publicarConfirmado(actual,e);setErrorGuardado('');}
       return r;
     },
     reiniciarSesionRecuperada:async()=>{
       await guardadoLocal.current;await nube.reiniciarSesionRecuperada();
-      baseVista.current=undefined;ref.current=estadoVacio();setS(ref.current);meRef.current=null;setMe(null);setErrorGuardado('');
+      baseVista.current=undefined;vistaPersistida.current=undefined;ref.current=estadoVacio();setS(ref.current);meRef.current=null;setMe(null);setErrorGuardado('');
     },
     cargarCatalogoNube:async()=>{const e=await nube.catalogoNube();if(!meRef.current){ref.current=e;setS(e);}},
     esAdmin: esAdministrador(me),
@@ -364,13 +381,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     salir: async () => {
       const g=meRef.current;
       if(g && turnoAbierto(ref.current,g.id,nube.telefonoId?.())) {
-        const e=aplicarCambios(ref.current,cerrarServicio(ref.current,g,'',new Date(),nube.telefonoId?.()),g,true);
-        e.updatedAt=now();ref.current=e;setS(e);persistir(e);
+        const prev=ref.current;
+        const e=aplicarCambios(prev,cerrarServicio(prev,g,'',new Date(),nube.telefonoId?.()),g,true);
+        e.updatedAt=now();ref.current=e;setS(e);persistir(e,prev);
       }
       await guardadoLocal.current;
       if(nube.verEstadoNube().vinculada){
-        await nube.guardarEnNube(ref.current,baseVista.current);
+        if(nube.verEstadoNube().pendiente)await nube.reintentarNube();
         await nube.cerrarSesionNube();
+        baseVista.current=undefined;vistaPersistida.current=undefined;
         ref.current=estadoVacio();setS(ref.current);
       }
       meRef.current=null;setMe(null);await AsyncStorage.removeItem(K_SESION);
@@ -389,7 +408,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     drop: (c, id) => { if ((ref.current[c] as Rec[]).some(r => r.id === id)) lote([{ col: c, obj: { id, deleted: true } }]); },
     setSite: (s) => {
       if(!esAdministrador(meRef.current))throw Error('Esta configuración requiere administración.');
-      aplicar(e => { e.site = { ...e.site, ...s }; });
+      aplicar(e => ({...e,site:{...e.site,...s}}));
     },
     reemplazar: (e) => { if (me) e = restaurarRespaldo(ref.current, e, me); migrar(e); setVocabulario(vocabulario(e)); ref.current = e; setS(e); persistir(e); },
     guardarArchivo: async (uri: string, nombre: string) => {
@@ -424,7 +443,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         throw new Error('No se pudo guardar la foto en este dispositivo.');
       }
     },
-  }), [listo, S, me, tema, paleta, asistente, avisos, estadoNube, aplicar, persistir, lote, errorInicio, errorGuardado]);
+  }), [listo, S, me, tema, paleta, asistente, avisos, aplicar, persistir, lote, errorInicio, errorGuardado,publicarConfirmado]);
 
   return <StoreCtx.Provider value={api}>{children}</StoreCtx.Provider>;
 }

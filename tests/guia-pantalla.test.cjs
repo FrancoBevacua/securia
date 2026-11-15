@@ -27,7 +27,7 @@ test('el acceso de Inicio abre una guía libre y recuerda la consulta al volver 
  assert.equal(boton(r,'Anterior').props.disabled,true);
  await act(async()=>boton(r,'Siguiente').props.onPress());
  assert.equal(r.root.findByType('EjemploGuia').props.paso.titulo,'Identificá el acceso');
- await act(async()=>boton(r,'Pausar animación').props.onPress());assert.equal(r.root.findByType('EjemploGuia').props.pausa,true);
+ await act(async()=>r.root.findByType('EjemploGuia').props.alternarPausa());assert.equal(r.root.findByType('EjemploGuia').props.pausa,true);
  await act(async()=>{assert.equal(volverAndroid(),true);});assert.equal(r.root.findAllByType('Item').length,TEMAS_GUIA.length);
  await act(async()=>r.unmount());await act(async()=>{r=create(React.createElement(Guia));});
  await act(async()=>boton(r,'Continuar donde dejé').props.onPress());assert.equal(r.root.findByType('EjemploGuia').props.paso.titulo,'Identificá el acceso');

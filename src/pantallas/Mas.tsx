@@ -48,6 +48,7 @@ export default function Mas() {
 
       
       <Eyebrow>Puesto</Eyebrow>
+      <Tile icon="bell" titulo="Avisos de directivas" sub="Recordatorios y permisos del teléfono" onPress={ir('/avisos')}/>
       <Row gap={10} style={{ alignItems: 'stretch' }}>
         <Tile icon="equipo" titulo="Equipo" sub={gs + (gs === 1 ? ' vigilador' : ' vigiladores')} onPress={ir('/equipo')} />
         <Tile icon="contactos" titulo="Contactos" sub="Teléfonos de emergencia" onPress={ir('/contactos')} />
