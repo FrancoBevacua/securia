@@ -33,15 +33,17 @@ test('iniciar y cerrar sesión administra la actividad sin botones de turno ni d
  await act(async()=>r.unmount());
 });
 
-test('el corporativo espera la elección del responsable y conserva el relevo al reiniciar la vista',async()=>{
+test('el corporativo espera la elección del responsable y conserva el relevo al reiniciar la vista',async(t)=>{
  const cuenta={...g,id:'corporativo',nombre:'Guardia Paseo',apellido:'',corporativo:true,puestoId:'p1'};
- remoto=estadoVacio();remoto.guards=[cuenta,{...g,rol:'vigilador'}];remoto.posts=[{id:'p1',nombre:'Paseo'}];remoto.franjas=[{id:'f',puestoId:'p1',nombre:'Mañana',entrada:'06:00',salida:'14:00'}];
+ remoto=estadoVacio();remoto.guards=[cuenta,{...g,rol:'vigilador',puestoId:'p2',puestoIds:['p1','p2']}];remoto.posts=[{id:'p1',nombre:'Paseo'},{id:'p2',nombre:'Playa'}];remoto.franjas=[{id:'f',puestoId:'p1',nombre:'Mañana',entrada:'06:00',salida:'14:00'}];
  let r;await act(async()=>{r=create(React.createElement(StoreProvider,null,React.createElement(Captura)));});
+ t.after(async()=>act(async()=>r.unmount()));
  await act(async()=>api.ingresarCorporativo('638201'));
  assert.equal(api.me.id,cuenta.id);assert.equal(api.responsable,null);assert.equal(api.S.punches.length,0);
  await act(async()=>api.seleccionarResponsable(g.id));
  assert.equal(api.responsable.id,g.id);assert.equal(api.S.punches.length,1);assert.equal(api.S.punches[0].guardId,cuenta.id);assert.equal(api.S.punches[0].responsableId,g.id);
+ assert.equal(api.responsable.puestoId,'p1');assert.equal(api.S.guards.find(x=>x.id===g.id).puestoId,'p2');
  await act(async()=>api.seleccionarResponsable(g.id));assert.equal(api.S.punches.length,1);
  await act(async()=>api.ingresarCorporativo('638201'));assert.equal(api.responsable.id,g.id);assert.equal(api.S.punches.length,1);
- await act(async()=>api.salir());assert.ok(remoto.punches[0].closedAt);await act(async()=>r.unmount());
+ await act(async()=>api.salir());assert.ok(remoto.punches[0].closedAt);
 });
