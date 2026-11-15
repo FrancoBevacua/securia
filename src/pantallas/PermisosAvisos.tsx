@@ -1,25 +1,52 @@
-import React,{useEffect,useState} from 'react';
+import React,{useCallback,useState} from 'react';
 import {AppState,Platform} from 'react-native';
-import {router} from 'expo-router';
-import {ANTICIPO_MIN,abrirAjustesAvisos,estadoPermisosAvisos} from '../avisos';
+import {router,useFocusEffect} from 'expo-router';
+import {ANTICIPO_MIN,abrirAjustesAvisos,avisosProgramados,escucharProgramacion,estadoPermisosAvisos,perfilAvisos,programarAvisoDePrueba} from '../avisos';
+import {etiquetaFranja,franjaPorId,nombrePuesto} from '../logic';
 import {useStore} from '../store';
-import {Banner,Btn,Card,Pantalla,SubCabecera,Toggle,useToast} from '../ui';
+import {Banner,Btn,Card,Eyebrow,Hint,Item,Pantalla,SubCabecera,Toggle,useToast} from '../ui';
+
+const fechaAviso=(hora:number)=>new Date(hora).toLocaleString('es-AR',{
+  weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,
+});
 
 export default function PermisosAvisos(){
-  const {avisos,setAvisos}=useStore();
+  const {S,me,responsable,avisos,setAvisos}=useStore();
   const toast=useToast();
   const [permisos,setPermisos]=useState<Awaited<ReturnType<typeof estadoPermisosAvisos>>>();
+  const [programados,setProgramados]=useState<Awaited<ReturnType<typeof avisosProgramados>>>();
+  const [errorAgenda,setErrorAgenda]=useState(false);
+  const [horaPrueba,setHoraPrueba]=useState(0);
+  const [probando,setProbando]=useState(false);
+  const perfil=perfilAvisos(S,responsable,me);
+  const puesto=nombrePuesto(S,perfil?.puestoId)||'Sin puesto asignado';
+  const turno=etiquetaFranja(franjaPorId(S,perfil?.franjaId))||'Todos los turnos';
   const comprobar=async(pedir=false)=>{
     try{const p=await estadoPermisosAvisos(pedir);setPermisos(p);return p;}
     catch{toast('No se pudo consultar el permiso de notificaciones.');}
   };
-  useEffect(()=>{
-    if(Platform.OS==='web')return;
-    void comprobar();
-    const sub=AppState.addEventListener('change',estado=>{if(estado==='active')void comprobar();});
-    return()=>sub.remove();
+  const actualizarAgenda=useCallback(async()=>{
+    try{setProgramados(await avisosProgramados());setErrorAgenda(false);}
+    catch{setProgramados(undefined);setErrorAgenda(true);}
   },[]);
+  useFocusEffect(useCallback(()=>{
+    if(Platform.OS==='web')return;
+    const actualizar=()=>{
+      void estadoPermisosAvisos().then(setPermisos,()=>setPermisos(undefined));
+      void actualizarAgenda();
+    };
+    actualizar();
+    const sub=AppState.addEventListener('change',estado=>{if(estado==='active')actualizar();});
+    const salir=escucharProgramacion(()=>void actualizarAgenda());
+    return()=>{sub.remove();salir();};
+  },[actualizarAgenda]));
   const abrir=(tipo:'app'|'canal'|'exactas')=>abrirAjustesAvisos(tipo).catch(()=>toast('No se pudo abrir la configuración del teléfono.'));
+  const probar=async()=>{
+    setProbando(true);setHoraPrueba(0);
+    try{setHoraPrueba(await programarAvisoDePrueba());}
+    catch{toast('No se pudo programar el aviso de prueba.');}
+    finally{setProbando(false);}
+  };
 
   return <Pantalla top>
     <SubCabecera titulo="Avisos de directivas" onBack={()=>router.back()}/>
@@ -34,6 +61,18 @@ export default function PermisosAvisos(){
         <Btn label="Habilitar alarmas y recordatorios" variant="primary" onPress={()=>abrir('exactas')}/></>:null}
       {avisos&&permisos?.permitido&&permisos.canal&&permisos.exactas?
         <Banner kind="info">Los permisos para los avisos de directivas están habilitados.</Banner>:null}
+      {permisos?.permitido&&permisos.canal?<Btn label={probando?'Programando…':'Probar aviso en 1 minuto'}
+        icon="bell" disabled={probando} onPress={probar}/>:null}
+      {horaPrueba>Date.now()?<Hint>{`Prueba programada para ${fechaAviso(horaPrueba)}. Bloqueá la pantalla para verificar si llega.`}</Hint>:null}
+      {avisos&&perfil?<>
+        <Eyebrow>Próximos avisos</Eyebrow>
+        <Hint>{puesto+' · '+turno}</Hint>
+        {errorAgenda?<Banner kind="warn">No se pudo completar la programación de los avisos.</Banner>:
+          programados?.length?<Card>{programados.slice(0,16).map((a,i)=><Item key={a.id} title={fechaAviso(a.hora)}
+            subs={[a.texto]} last={i===Math.min(programados.length,16)-1}/>)}</Card>:
+          programados?<Hint>Este teléfono no tiene avisos de directivas programados.</Hint>:null}
+        <Btn label="Actualizar lista" variant="ghost" onPress={actualizarAgenda}/>
+      </>:null}
     </>}
   </Pantalla>;
 }

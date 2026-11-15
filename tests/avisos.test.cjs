@@ -17,11 +17,37 @@ Module._load=function(n,...a){
  };
  return load.call(this,n,...a);
 };
-const {estadoPermisosAvisos,reprogramarAvisos}=require('../src/avisos.ts');
+const {estadoPermisosAvisos,reprogramarAvisos,perfilAvisos,avisosProgramados,programarAvisoDePrueba}=require('../src/avisos.ts');
 
 test('Android crea el canal antes de pedir permiso e informa si puede usar alarmas exactas',async()=>{
  assert.deepEqual(await estadoPermisosAvisos(true),{permitido:true,canal:true,exactas:false});
  assert.deepEqual(eventos.splice(0),['canal','permiso']);
+});
+
+test('Rondín nocturno programa 02:50 y 03:00, rearma al abrir y conserva avisos demorados',async(t)=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date(2026,10,14,23,30)});
+ const e=estadoVacio();
+ e.franjas=[{id:'noche',puestoId:'rondin',entrada:'23:00',salida:'07:00'},{id:'referencia',puestoId:'otro'}];
+ e.directives=[{id:'ronda',nombre:'Recorrido',hora:'03:00',puestoId:'rondin',franjaId:'noche',dias:[0]}];
+ const guardia=perfilAvisos(e,{id:'guardia',puestoId:'rondin'},{id:'corp',puestoId:'otro',franjaId:'referencia'});
+ assert.equal(guardia.franjaId,'noche');
+ const anticipo=new Date(2026,10,15,2,50).getTime(),hora=new Date(2026,10,15,3,0).getTime();
+ const id='securia.directivas.'+anticipo;
+ avisos.set(id,{identifier:id,content:{title:'En 10 minutos · 03:00',body:'Recorrido',data:{exactas:true}}});
+ assert.equal(await reprogramarAvisos(e,guardia,true),2);
+ assert.deepEqual(eventos.splice(0),['programar','programar']);
+ assert.deepEqual((await avisosProgramados()).map(a=>a.hora),[anticipo,hora]);
+ const prueba=avisos.get('securia.aviso-prueba');
+ assert.equal(prueba,undefined);
+ assert.equal(await programarAvisoDePrueba(),Date.now()+60_000);
+ assert.equal(avisos.get('securia.aviso-prueba').trigger.channelId,'directivas');
+ assert.equal((await avisosProgramados()).length,2);
+ t.mock.timers.setTime(new Date(2026,10,15,3,1).getTime());
+ assert.equal(await reprogramarAvisos(e,guardia,true),0);
+ assert.ok(avisos.has(id));
+ assert.ok(avisos.has('securia.directivas.'+hora));
+ assert.ok(avisos.has('securia.aviso-prueba'));
+ avisos.clear();eventos.length=0;
 });
 
 test('reconcilia por horario sin cancelar avisos ajenos y reprograma al obtener permiso exacto',async()=>{

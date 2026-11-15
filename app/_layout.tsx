@@ -14,7 +14,7 @@ import { SairaCondensed_600SemiBold, SairaCondensed_700Bold } from '@expo-google
 
 import { AppState } from 'react-native';
 import { StoreProvider, useStore } from '../src/store';
-import { prepararAvisos, estadoPermisosAvisos, reprogramarAvisos } from '../src/avisos';
+import { prepararAvisos, estadoPermisosAvisos, perfilAvisos, reprogramarAvisos } from '../src/avisos';
 import { ThemeProvider, ToastHost, useTheme, Banner, Btn } from '../src/ui';
 import Gate from '../src/pantallas/Gate';
 import Presentacion, { AZUL_PRESENTACION } from '../src/pantallas/Presentacion';
@@ -31,8 +31,7 @@ const MINIMO_PRESENTACION = 700;
 function ProgramarAvisos(){
   const {listo,me,responsable,S,avisos,errorInicio}=useStore();
   const pedido=useRef(false);
-  const puestoId=responsable?.puestoId||me?.puestoId;
-  const franjaId=responsable?.franjaId||me?.franjaId;
+  const perfil=perfilAvisos(S,responsable,me);
   useEffect(()=>{prepararAvisos();},[]);
   useEffect(()=>{
     if(!listo||errorInicio||Platform.OS==='web')return;
@@ -40,7 +39,6 @@ function ProgramarAvisos(){
     const correr=async()=>{
       const actual=++version;
       const vigente=()=>actual===version;
-      const perfil=responsable?{...responsable,puestoId:puestoId||'',franjaId:franjaId||''}:null;
       try{
         const pedir=!!perfil&&avisos&&!pedido.current;
         pedido.current ||= pedir;
@@ -54,7 +52,7 @@ function ProgramarAvisos(){
     const foco=Platform.OS==='android'?AppState.addEventListener('focus',()=>void correr()):undefined;
     const timer=setInterval(()=>{if(AppState.currentState==='active')void correr();},60*60*1000);
     return()=>{version++;sub.remove();foco?.remove();clearInterval(timer);};
-  },[listo,errorInicio,responsable?.id,puestoId,franjaId,avisos,S.directives,S.dlogs,S.franjas]);
+  },[listo,errorInicio,perfil?.id,perfil?.puestoId,perfil?.franjaId,avisos,S.directives,S.dlogs,S.franjas]);
   return null;
 }
 
