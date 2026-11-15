@@ -18,6 +18,7 @@ import { Avatar } from './Gate';
 import Credencial from './Credencial';
 import SelectorPuestosGuardia from './SelectorPuestosGuardia';
 import {idsPuestosGuardia,nombresPuestosGuardia} from '../puestosGuardia';
+import {guardiasDelCorporativo,puestoCorporativo} from '../corporativo';
 
 /* ================= editor de vigilador ================= */
 export function EditorVigilador({ abierto, vigilador, onClose }: {
@@ -145,11 +146,12 @@ export function EditorVigilador({ abierto, vigilador, onClose }: {
 export default function Equipo() {
   const st = useStore(),t=useTheme();
   const [editar, setEditar] = useState<Vigilador | null | undefined>(undefined);
-  const gs = st.list<Vigilador>('guards').filter(g=>!g.corporativo);
+  const puesto = puestoCorporativo(st.S,st.me);
+  const gs = st.me?.corporativo ? guardiasDelCorporativo(st.S,st.me) : st.list<Vigilador>('guards').filter(g=>!g.corporativo);
 
   return (
     <Pantalla top>
-      <SubCabecera titulo="Equipo del objetivo"
+      <SubCabecera titulo={puesto ? 'Equipo · '+puesto.nombre : 'Equipo del objetivo'}
         sub={gs.length + (gs.length === 1 ? ' vigilador registrado' : ' vigiladores registrados')}
         onBack={() => router.back()} />
       <Card>

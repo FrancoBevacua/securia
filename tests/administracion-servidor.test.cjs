@@ -133,3 +133,52 @@ test('el lote del corporativo sólo importa filas nuevas y rechaza un administra
  assert.equal(e.punches.find(p=>p.id===actividad.id).responsableId,'guardia');
  assert.ok(e.punches.some(p=>p.id==='turno-ajeno'));
 });
+
+test('sólo el administrador da de alta PINs únicos por puesto y cada PIN limita el responsable en la sincronización',async()=>{
+ const {e}=(await db.query('select guardia_private.abrir(cifrado) as e from guardia_private.documentos where id=$1',[objetivo])).rows[0];
+ e.posts.push({id:'paseo',nombre:'Paseo'},{id:'playa',nombre:'Playa'},{id:'archivo',nombre:'Archivo',deleted:true});
+ Object.assign(e.guards.find(g=>g.id==='corp'),{puestoId:'paseo'});
+ Object.assign(e.guards.find(g=>g.id==='guardia'),{puestoId:'paseo',puestoIds:['paseo','playa']});
+ e.guards.push({id:'solo-paseo',rol:'vigilador',nombre:'Sólo Paseo',puestoId:'paseo'});
+ await db.query('update guardia_private.documentos set cifrado=guardia_private.cifrar($2::jsonb) where id=$1',[objetivo,JSON.stringify(e)]);
+ await db.exec(migracion('pines_corporativos_por_puesto'));
+
+ const login=(dispositivo,pin)=>rpc('guardia_corporativo_rpc',{accion:'ingresar',dispositivo,pin});
+ const crear=(dispositivo,token,puestoId,nuevo)=>rpc('guardia_corporativo_rpc',{accion:'crear_pin_corporativo',dispositivo,token,puestoId,nuevo});
+ const anterior=await login(dispositivoGuardia,'883642');
+ assert.equal(anterior.guardia,'corp');
+ assert.equal((await crear(dispositivoGuardia,anterior.token,'playa','515047')).codigo,'prohibido');
+ const admin=await login(dispositivo,pinAdmin);
+ assert.equal(admin.guardia,'administrador-pin');
+ assert.match((await crear(dispositivo,admin.token,'paseo','515047')).error,/ya tiene/);
+ assert.match((await crear(dispositivo,admin.token,'archivo','515047')).error,/puesto activo/);
+ assert.match((await crear(dispositivo,admin.token,'playa',pinAdmin)).error,/ya está en uso/);
+ assert.match((await crear(dispositivo,admin.token,'playa','883642')).error,/ya está en uso/);
+ const antes=await rpc('guardia_sync',{accion:'consultar',dispositivo,token:admin.token,cursor:0});
+ assert.equal((await crear(dispositivo,admin.token,'playa','515047')).ok,true);
+ const altas=await rpc('guardia_sync',{accion:'consultar',dispositivo,token:admin.token,cursor:antes.cursor});
+ const alta=altas.filas.find(f=>f.col==='guards'&&f.valor.corporativo&&f.valor.puestoId==='playa');
+ assert.ok(alta);
+ assert.equal(alta.valor.rol,'vigilador');
+ assert.ok(!('pin' in alta.valor));
+ assert.equal((await rpc('guardia_admin_rpc',{accion:'ingresar',dispositivo:dispositivoGuardia,pin:'515047'})).ok,false);
+ const nuevo=await login(dispositivoGuardia,'515047');
+ assert.equal(nuevo.guardia,alta.id);
+ const telefono=(await db.query('select guardia_private.hash($1) as id',[dispositivoGuardia])).rows[0].id;
+ const actividad={guardId:nuevo.guardia,dispositivoId:telefono,fecha:'2026-11-15',in:'08:00',out:''};
+ const turno=(id,puestoId,responsableId)=>rpc('guardia_sync',{accion:'guardar',dispositivo:dispositivoGuardia,token:nuevo.token,
+  lote:id,filas:[{col:'punches',id,valor:{...actividad,id,puestoId,responsableId}}]});
+ const motivo=async(ac)=>ac.respaldo?(await db.query('select motivo from guardia_private.sync_resguardos where id=$1',[ac.respaldo])).rows[0]?.motivo:'';
+ for(const [id,puesto,responsable] of [['eb0e000000000001','playa','solo-paseo'],['eb0e000000000002','paseo','guardia']]){
+  const rechazo=(await turno(id,puesto,responsable)).acuses[0];
+  assert.equal(rechazo.estado,'resguardado');
+  assert.match(await motivo(rechazo),/guardia a cargo del corporativo/);
+ }
+ const permitido=(await turno('eb0e000000000003','playa','guardia')).acuses[0];
+ assert.equal(permitido.estado,'confirmado',await motivo(permitido));
+ assert.equal((await rpc('guardia_corporativo_rpc',{accion:'cambiar_pin_corporativo',dispositivo,
+  token:admin.token,puestoId:'playa',nuevo:'638907'})).ok,true);
+ assert.equal((await login(dispositivoGuardia,'515047')).ok,false);
+ assert.equal((await login(dispositivoGuardia,'638907')).guardia,nuevo.guardia);
+ assert.equal((await login(dispositivoGuardia,'883642')).guardia,'corp');
+});

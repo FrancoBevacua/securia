@@ -365,8 +365,8 @@ export async function cerrarSesionNube(){
 }
 export const listarResguardos=async()=> (await rpc({accion:'resguardos'},'guardia_sync')).resguardos as {id:string;creado:string;motivo:string;col:string;registro:string;dato:any}[];
 export async function cambiarPinNube(actual: string,nuevo: string) {await rpc({accion:'cambiar_pin',actual,nuevo});}
-export async function cambiarPinCorporativoNube(nuevo:string){
-  await rpc({accion:'cambiar_pin_corporativo',nuevo},'guardia_corporativo_rpc');
+export async function guardarPinCorporativoNube(puestoId:string,nuevo:string,crear:boolean){
+  await rpc({accion:crear?'crear_pin_corporativo':'cambiar_pin_corporativo',puestoId,nuevo},'guardia_corporativo_rpc');
 }
 export const consultarEnvioProgramado=()=>rpc({accion:'consultar'},'guardia_whatsapp_config');
 export const guardarEnvioProgramado=(config:import('./envioProgramado').ConfigEnvio)=>rpc({accion:'guardar',config},'guardia_whatsapp_config');

@@ -157,6 +157,7 @@ function actualizarVocabulario(S:Estado,prev?:Estado){
 }
 
 function perfilTelefono(e:Estado,g:Vigilador){
+  if(g.corporativo)return g;
   const p=turnoAbierto(e,g.id,nube.telefonoId?.());
   const puestoId=p?.puestoId||g.puestoId,franjaId=p?.franjaId||g.franjaId;
   return puestoId===g.puestoId&&franjaId===g.franjaId?g:{...g,puestoId,franjaId};

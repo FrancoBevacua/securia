@@ -5,12 +5,13 @@ import { useStore } from '../store';
 import { FONT, R } from '../theme';
 import { useTheme, Pantalla, Cabecera, Btn, Tile, Row, Eyebrow, Card, useToast } from '../ui';
 import { Icon } from '../icons';
+import { guardiasDelCorporativo } from '../corporativo';
 
 export default function Mas() {
   const st = useStore();
   const t = useTheme();
   const toast=useToast();
-  const gs = st.list<any>('guards').filter(g=>!g.corporativo).length;
+  const gs = st.me?.corporativo ? guardiasDelCorporativo(st.S,st.me).length : st.list('guards').filter(g=>!g.corporativo).length;
   const ir = (r: string) => () => router.push(r as any);
 
   return (
@@ -54,7 +55,7 @@ export default function Mas() {
         <Tile icon="contactos" titulo="Contactos" sub="Teléfonos de emergencia" onPress={ir('/contactos')} />
       </Row>
       {st.esAdmin?<Row gap={10} style={{ alignItems: 'stretch' }}>
-        <Tile icon="perfil" titulo="Cuenta del corporativo" sub="Administrar PIN" onPress={ir('/cuenta-corporativo')} />
+        <Tile icon="perfil" titulo="PIN corporativos" sub="Accesos por puesto" onPress={ir('/cuenta-corporativo')} />
         <Tile icon="ajustes" titulo="Ajustes" sub="Site, tema y respaldo" onPress={ir('/ajustes')} />
       </Row>:null}
 
