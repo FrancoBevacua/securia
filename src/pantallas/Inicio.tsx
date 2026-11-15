@@ -13,6 +13,7 @@ import {colorCategoria} from '../categorias';
 import {ACCIONES_RAPIDAS,RAPIDAS_INICIALES,normalizarAccesosRapidos} from '../accionesRapidas';
 import {ElegirResponsable} from './GuardiaACargo';
 import AccesoGuia from './AccesoGuia';
+import ResumenOperativo from './ResumenOperativo';
 
 export default function Inicio(){
  const st=useStore(),t=useTheme();
@@ -31,7 +32,7 @@ export default function Inicio(){
  const guardia=st.responsable||st.me;
  return <Pantalla gap={18}>
   <View style={{gap:5}}><Text accessibilityRole="header" style={{fontFamily:FONT.dispBold,color:t.text,fontSize:27,lineHeight:34}}>Hola, {guardia?.nombre?.split(' ')[0]||'guardia'}</Text><Text style={{fontFamily:FONT.body,fontSize:14,color:t.text2}}>Cada novedad, bajo control.</Text></View>
-  <AccesoGuia/>
+  {st.esAdmin?<ResumenOperativo/>:<AccesoGuia/>}
   <Btn label="Nueva novedad" icon="plus" variant="primary" onPress={()=>nuevo('Novedad')}/>
   {st.me?.corporativo?<Card pad><Row><View style={{flex:1}}><Hint>Guardia a cargo</Hint><Text style={{color:t.text,fontFamily:FONT.bodySemi,fontSize:16}}>{[guardia?.nombre,guardia?.apellido].filter(Boolean).join(' ')}</Text></View><Btn label="Cambiar" size="sm" onPress={()=>setCambiarGuardia(true)}/></Row></Card>:null}
   <Row style={{justifyContent:'space-between'}}><Text style={{fontFamily:FONT.bodySemi,fontSize:15,color:t.text}}>Acciones rápidas</Text><Btn icon="edit" accessibilityLabel="Personalizar accesos rápidos" size="xs" variant="ghost" onPress={abrirAccesos}/></Row>

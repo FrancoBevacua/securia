@@ -2,7 +2,7 @@
   "expo": {
     "name": "Securia",
     "slug": "securia",
-    "version": "2.3.9",
+    "version": "2.3.10",
     "orientation": "portrait",
     "icon": "./assets/securia/icon.png",
     "scheme": "securia",
@@ -27,7 +27,7 @@
       }
     },
     "android": {
-      "versionCode": 37,
+      "versionCode": 38,
       "softwareKeyboardLayoutMode": "resize",
       "package": "ar.com.securia.app",
       "adaptiveIcon": {
@@ -112,7 +112,8 @@
       ],
       "expo-build-properties",
       "expo-sqlite",
-      "./plugins/with-securia-logo"
+      "./plugins/with-securia-logo",
+      "./plugins/with-securia-red"
     ],
     "experiments": {
       "typedRoutes": false

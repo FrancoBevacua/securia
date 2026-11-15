@@ -38,14 +38,23 @@ export const nuevoInforme = (S: any, me: any, responsable=me): Informe => {
   return r as Informe;
 };
 
+export function ContenidoInforme({ informe }: { informe: Informe }) {
+  const t = useTheme();
+  const [grupo, setGrupo] = useState(0);
+  return <>
+    <Card pad><Eyebrow>Resumen del hecho</Eyebrow><Text selectable style={{color:t.text,fontFamily:FONT.body,fontSize:17,lineHeight:26}}>{String(informe.f6||'Sin resumen')}</Text></Card>
+    <Chipbar>{GRUPOS_INFORME.map((g,i)=><Chip key={g.titulo} label={g.titulo} on={grupo===i} onPress={()=>setGrupo(i)}/>)}</Chipbar>
+    {GRUPOS_INFORME[grupo].campos.map(i=><Card pad key={i}><Eyebrow>{i+'. '+LBL[i-1]}</Eyebrow><Text selectable style={{color:t.text,fontFamily:FONT.body,fontSize:15,lineHeight:24}}>{String(informe['f'+i as `f${number}`]||'Sin completar')}</Text></Card>)}
+    {informe.fotos?.map((uri,i)=><Image key={i} source={{uri}} style={{height:240,width:'100%'}} resizeMode="contain"/>)}
+  </>;
+}
+
 export default function Informes() {
   const st = useStore();
-  const t = useTheme();
   const [abierto, setAbierto] = useState(false);
   const [r, setR] = useState<Informe | null>(null);
   const [paso, setPaso] = useState(0);
   const [lectura, setLectura] = useState<Informe|null>(null);
-  const [grupo, setGrupo] = useState(0);
   const [confirmarBaja, setConfirmarBaja] = useState(false);
   const toast = useToast();
 
@@ -61,10 +70,7 @@ export default function Informes() {
     <Cabecera titulo={String(lectura.f4||'Informe de seguridad')} sub={dmy(lectura.fecha)+' · '+lectura.hora+' · '+lectura.estado}/>
     <Btn label="Volver a informes" onPress={()=>setLectura(null)}/>
     {st.esAdmin||lectura.createdBy===st.me?.id?<Row><Btn label="Editar informe" style={{flex:1}} onPress={()=>{abrir(lectura);setLectura(null);}}/><Btn icon="trash" variant="danger" onPress={()=>setConfirmarBaja(true)}/></Row>:null}
-    <Card pad><Eyebrow>Resumen del hecho</Eyebrow><Text selectable style={{color:t.text,fontFamily:FONT.body,fontSize:17,lineHeight:26}}>{String(lectura.f6||'Sin resumen')}</Text></Card>
-    <Chipbar>{GRUPOS_INFORME.map((g,i)=><Chip key={g.titulo} label={g.titulo} on={grupo===i} onPress={()=>setGrupo(i)}/>)}</Chipbar>
-    {GRUPOS_INFORME[grupo].campos.map(i=><Card pad key={i}><Eyebrow>{i+'. '+LBL[i-1]}</Eyebrow><Text selectable style={{color:t.text,fontFamily:FONT.body,fontSize:15,lineHeight:24}}>{String(lectura['f'+i as `f${number}`]||'Sin completar')}</Text></Card>)}
-    {lectura.fotos?.map((uri,i)=><Image key={i} source={{uri}} style={{height:240,width:'100%'}} resizeMode="contain"/>)}
+    <ContenidoInforme informe={lectura} />
     <Row><Btn label="Copiar informe" onPress={async()=>{await Clipboard.setStringAsync(textoReporte(lectura,st.S.site));toast('Informe copiado');}}/><Btn label="Compartir PDF" onPress={async()=>{try{await pdfInforme(lectura,st.S,gsName(st.me,st.S.site));}catch(e:any){toast(e.message);}}}/></Row>
     <Confirmar visible={confirmarBaja} mensaje="¿Eliminar este informe? La baja se conservará en el historial." onCancel={()=>setConfirmarBaja(false)} onOk={async()=>{try{st.putVarios(bajaInformeSeguridad(st.S,lectura.id,st.me?.id,st.telefonoId));await st.confirmarGuardado();setConfirmarBaja(false);setLectura(null);toast('Informe eliminado');}catch(e:any){toast(e.message);}}}/>
   </Pantalla>;
@@ -88,7 +94,7 @@ export default function Informes() {
                   ((x.fotos || []).length ? ' · ' + x.fotos.length + ' foto' + (x.fotos.length > 1 ? 's' : '') : ''),
                 ]}
                 right={<Tag label={(x as any).f5 || '—'} kind={critTag((x as any).f5)} />}
-                onPress={() => {setLectura(x);setGrupo(0);}} />
+                onPress={() => setLectura(x)} />
             );
           })}
         </Card>

@@ -1,7 +1,8 @@
 node_modules/
 dist/
 .expo/
-android/
+/android/
+/modules/*/android/build/
 ios/
 *.log
 tmp/

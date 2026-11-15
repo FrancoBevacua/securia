@@ -22,6 +22,7 @@ import Barrera from '../src/Barrera';
 import { EstadoSincronizacion } from '../src/pantallas/Nube';
 import ChatbotFlotante from '../src/pantallas/ChatbotFlotante';
 import GuardiaACargo from '../src/pantallas/GuardiaACargo';
+import AvisoRed from '../src/pantallas/AvisoRed';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -68,21 +69,27 @@ function Raiz() {
 
   useEffect(() => { SplashScreen.hideAsync().catch(() => {}); }, []);
 
-  if (!listo || !tiempoCumplido) return <Presentacion />;
-  if(errorInicio)return <View style={{flex:1,justifyContent:'center',padding:24,gap:16,backgroundColor:t.bg}}><Banner kind="warn">{errorInicio}</Banner><Btn label="Reintentar inicio" onPress={reintentarInicio}/></View>;
+  if (!tiempoCumplido) return <Presentacion />;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
+      <AvisoRed />
+      {!listo ? <Presentacion /> : errorInicio ?
+        <View style={{flex:1,justifyContent:'center',padding:24,gap:16}}>
+          <Banner kind="warn">{errorInicio}</Banner><Btn label="Reintentar inicio" onPress={reintentarInicio}/>
+        </View> : <>
       <ProgramarAvisos/>
       <EstadoSincronizacion />
       {me ? (esAdmin||responsable)?<Stack key={me.id} screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: t.bg } }}>
         <Stack.Protected guard={esAdmin}>
           <Stack.Screen name="admin"/><Stack.Screen name="ajustes"/><Stack.Screen name="admdirectivas"/>
           <Stack.Screen name="puestos"/><Stack.Screen name="importar"/><Stack.Screen name="cuenta-corporativo"/>
+          <Stack.Screen name="actividad-guardia"/>
         </Stack.Protected>
       </Stack>:<GuardiaACargo/>:<Gate/>}
       {me&&responsable?<ChatbotFlotante key={me.id}/>:null}
+      </>}
     </View>
   );
 }
