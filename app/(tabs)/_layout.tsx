@@ -21,7 +21,7 @@ function BarraInferior({ state, navigation }: any) {
   return (
     <View style={{
       flexDirection: 'row', backgroundColor: t.surface, borderTopWidth: 1, borderTopColor: t.line,
-      paddingBottom: ins.bottom, height: 62 + ins.bottom,
+      paddingBottom: ins.bottom, height: 62 + ins.bottom, flexShrink: 0,
     }}>
       {state.routes.map((route: any, i: number) => {
         const cfg = TABS.find(x => x.name === route.name);
@@ -52,7 +52,7 @@ function BarraInferior({ state, navigation }: any) {
 export default function TabsLayout() {
   const {esAdmin}=useStore();
   return (
-    <>
+    <View style={{flex:1,minHeight:0}}>
       <Topbar />
       <Tabs
         screenOptions={{ headerShown: false, animation: 'none' }}
@@ -61,6 +61,6 @@ export default function TabsLayout() {
         {TABS.map(x => <Tabs.Screen key={x.name} name={x.name} />)}
         <Tabs.Protected guard={esAdmin}><Tabs.Screen name="directivas"/></Tabs.Protected>
       </Tabs>
-    </>
+    </View>
   );
 }

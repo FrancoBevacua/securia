@@ -34,13 +34,14 @@ test('clave incorrecta, corrupción o formato inválido producen un error breve 
 });
 test('acceso, cola por filas cifrada sin red y reingreso conservan pendientes y reintentos idempotentes',async()=>{
  let nube=require('../src/nube.ts');const {estadoVacio}=require('../src/model.ts'),{almacenLocal}=require('../src/almacenLocal.ts');
- const remoto=new Map(),recibos=new Map();let secuencia=1,sinRed=false,perder=false,consultas=0;
+ const remoto=new Map(),recibos=new Map();let secuencia=1,sinRed=false,perder=false,consultas=0,sesionVencida=false;
  const estado=estadoVacio();estado.guards=[{id:'guardia-prueba',dni:'12345678',nombre:'Ana',apellido:'Prueba',cuenta:true,rol:'vigilador'}];
  for(const col of ['site','guards']){const valor=col==='site'?estado.site:estado.guards[0],id=col==='site'?'site':valor.id;remoto.set(col+'/'+id,{col,id,valor,hash:'h'+secuencia,secuencia:secuencia++});}
  const snapshot=()=>{const e=estadoVacio();for(const f of remoto.values()){if(f.col==='site')e.site=f.valor;else e[f.col].push(f.valor);}return e;};
  const originalFetch=global.fetch;
  global.fetch=async(url,opciones)=>{
   const p=JSON.parse(opciones.body).p_request;let r={ok:true};
+  if(p.accion==='salir'&&sesionVencida)return {ok:true,json:async()=>({ok:false,codigo:'sesion',error:'Iniciá sesión con tu DNI y PIN'})};
   if(p.accion==='ingresar')r=p.pin==='654321'?{ok:true,estado:snapshot(),guardia:'guardia-prueba',token:'a'.repeat(64),revision:1}:{ok:false,error:'DNI o PIN incorrectos.'};
   if(p.accion==='consultar'){consultas++;if(sinRed)throw new TypeError('sin red');r={ok:true,filas:[...remoto.values()].filter(f=>f.secuencia>p.cursor),cursor:secuencia-1,mas:false};}
   if(p.accion==='guardar'){
@@ -55,6 +56,7 @@ test('acceso, cola por filas cifrada sin red y reingreso conservan pendientes y 
   await assert.rejects(nube.guardarEnNube(local),/Revise Internet/);
   const claves=await almacenLocal.claves('sync.v2/guardia-prueba/cola/');assert.equal(claves.length,1);
   const cifrado=await almacenLocal.getItem(claves[0]);assert.ok(cifrado&&!cifrado.includes('Novedad pendiente'));assert.equal(await almacenLocal.getItem('guardia.nube.cola.v1'),null);
+  await assert.rejects(nube.cerrarSesionNube());assert.equal(await almacenLocal.getItem(claves[0]),cifrado);
   delete require.cache[require.resolve('../src/nube.ts')];nube=require('../src/nube.ts');await nube.iniciarNube();
   const antes=consultas,offline=await nube.restaurarSesionNube();assert.equal(consultas,antes);assert.equal(offline.estado.novedades[0].texto,'Novedad pendiente');
   await assert.rejects(nube.ingresarNube('12345678','000000'),/PIN incorrectos/);assert.equal(await almacenLocal.getItem(claves[0]),cifrado);
@@ -62,6 +64,9 @@ test('acceso, cola por filas cifrada sin red y reingreso conservan pendientes y 
   assert.equal((await almacenLocal.claves('sync.v2/guardia-prueba/cola/')).length,1);await nube.reintentarNube();assert.equal(recibos.size,1);
   assert.equal(nube.verEstadoNube().pendiente,false);assert.equal((await almacenLocal.claves('sync.v2/guardia-prueba/cola/')).length,0);
   delete require.cache[require.resolve('../src/nube.ts')];nube=require('../src/nube.ts');await nube.iniciarNube();assert.equal((await nube.restaurarSesionNube()).estado.novedades[0].texto,'Novedad pendiente');
-  await nube.cerrarSesionNube();assert.equal(await nube.restaurarSesionNube(),null);
+  sesionVencida=true;
+  await Promise.all([nube.cerrarSesionNube(),nube.cerrarSesionNube(),nube.reintentarNube()]);assert.equal(await nube.restaurarSesionNube(),null);
+  assert.equal(nube.verEstadoNube().error,'');assert.equal(nube.verEstadoNube().reautenticar,false);
+  const cerradas=consultas;await nube.reintentarNube();assert.equal(consultas,cerradas);
  }finally{global.fetch=originalFetch;}
 });

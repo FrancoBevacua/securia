@@ -3,7 +3,8 @@ import {COLS,Col,Estado,estadoVacio} from './model';
 export type FilaSync={col:string;id:string;valor:any;hash?:string};
 export type CambioSync=FilaSync&{version:string;base?:any;baseHash?:string;parcial?:boolean};
 export type AcuseSync=FilaSync&{estado:'confirmado'|'resguardado';respaldo?:string};
-export type DiscoSync={leer:(k:string)=>Promise<any>;escribir:(k:string,v:any)=>Promise<void>;quitar:(k:string)=>Promise<void>;claves:(p:string)=>Promise<string[]>};
+export type DiscoSync={leer:(k:string)=>Promise<any>;escribir:(k:string,v:any)=>Promise<void>;quitar:(k:string)=>Promise<void>;claves:(p:string)=>Promise<string[]>;
+ leerVarios?:(claves:string[])=>Promise<any[]>;escribirVarios?:(filas:[string,any][])=>Promise<void>};
 export type RedSync={
  consultar:(cursor:number)=>Promise<{filas:FilaSync[];cursor:number;mas:boolean}>;
  preparar:(valor:any)=>Promise<any>;
@@ -44,8 +45,22 @@ export class ColaRegistros {
  get pendiente(){return this.pendientes.size>0;}
  async iniciar(){
   this.cursor=(await this.io.leer(this.prefijo+'cursor'))||0;
-  for(const k of await this.io.claves(this.prefijo+'cache/')){const f=await this.io.leer(k);if(f){this.cache.set(idFila(f),f);this.actualizarVista(f);}}
-  for(const k of await this.io.claves(this.prefijo+'cola/')){const f=await this.io.leer(k);if(f){this.pendientes.set(idFila(f),f);this.actualizarVista(f);}}
+  for(const origen of ['cache','cola']){
+   const claves=await this.io.claves(this.prefijo+origen+'/');
+   for(let i=0;i<claves.length;i+=20){
+    const lote=claves.slice(i,i+20);
+    const filas=this.io.leerVarios?await this.io.leerVarios(lote):await Promise.all(lote.map(k=>this.io.leer(k)));
+    for(const f of filas)if(f){(origen==='cache'?this.cache:this.pendientes).set(idFila(f),f);this.actualizarVista(f);}
+    await cederPantalla();
+   }
+  }
+ }
+ private async guardarCache(filas:FilaSync[]){
+  const escrituras:[string,any][]=filas.map(f=>[this.prefijo+'cache/'+idFila(f),f]);
+  if(this.io.escribirVarios)await this.io.escribirVarios(escrituras);
+  else for(const [k,v] of escrituras)await this.io.escribir(k,v);
+  // Publicar únicamente después de la confirmación durable del lote.
+  for(const f of filas){this.cache.set(idFila(f),f);this.actualizarVista(f);}
  }
  private actualizarVista(f:FilaSync){
   const k=idFila(f),actual=(this.pendientes.get(k)||this.cache.get(k))?.valor;
@@ -98,7 +113,8 @@ export class ColaRegistros {
   if(await this.io.leer(this.prefijo+'importado'))return;
   // No fabricar una base para cambios pendientes antiguos sin versión confirmada.
   if(base)await this.serial(async()=>{
-   for(const fila of filasEstado(base)){const k=idFila(fila);if(this.cache.has(k))continue;await this.io.escribir(this.prefijo+'cache/'+k,fila);this.cache.set(k,fila);this.actualizarVista(fila);}
+   const filas=filasEstado(base).filter(f=>!this.cache.has(idFila(f)));
+   for(let i=0;i<filas.length;i+=20){await this.guardarCache(filas.slice(i,i+20));await cederPantalla();}
   });
   await this.guardar(e,base);
   await this.io.escribir(this.prefijo+'importado',true);
@@ -112,12 +128,9 @@ export class ColaRegistros {
    for(let i=0;i<p.filas.length;i+=20){
     const filas=p.filas.slice(i,i+20);
     await this.serial(async()=>{
-     for(const f of filas){
-      const k=idFila(f);
-      if(f.hash&&this.cache.get(k)?.hash===f.hash)continue;
-      await this.io.escribir(this.prefijo+'cache/'+k,f);this.cache.set(k,f);this.actualizarVista(f);
-     }
+     await this.guardarCache(filas.filter(f=>!f.hash||this.cache.get(idFila(f))?.hash!==f.hash));
     });
+    await cederPantalla();
    }
    // El cursor se guarda sólo después de escribir la última fila de la página.
    if(p.cursor!==this.cursor)await this.serial(async()=>{
@@ -131,7 +144,9 @@ export class ColaRegistros {
   this.red=this.ejecutar().finally(()=>{this.red=undefined;});return this.red;
  }
  private async ejecutar(){
-  await this.disco;
+  // Un fallo de recepción anterior no debe impedir volver a consultar el mismo
+  // cursor. El disco y la vista conservan únicamente los lotes confirmados.
+  await this.disco.catch(()=>{});
   await this.recibir();
   await this.disco;
   while(this.pendientes.size){

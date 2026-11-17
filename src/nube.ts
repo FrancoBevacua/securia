@@ -48,6 +48,8 @@ async function colaActual(){
  const io={
   leer:async(k:string)=>{const s=await almacenLocal.getItem(k);return s?abrirJSON<any>(s,await claveLocal()):null;},
   escribir:async(k:string,v:any)=>almacenLocal.setItem(k,await sellarJSON(v,await claveLocal())),
+  leerVarios:async(ks:string[])=>{const clave=await claveLocal();return Promise.all((await almacenLocal.getItems(ks)).map(s=>s?abrirJSON<any>(s,clave):null));},
+  escribirVarios:async(filas:[string,any][])=>{const clave=await claveLocal();await almacenLocal.setItems(await Promise.all(filas.map(async([k,v]):Promise<[string,string]>=>[k,await sellarJSON(v,clave)])));},
   quitar:(k:string)=>almacenLocal.removeItem(k),claves:(p:string)=>almacenLocal.claves(p)
  };
  sync=new ColaRegistros(actor,io,{consultar:cursor=>rpc({accion:'consultar',cursor},'guardia_sync'),preparar:prepararFila,enviar:(lote,filas)=>rpc({accion:'guardar',lote,filas},'guardia_sync')});
@@ -314,7 +316,10 @@ export async function guardarLocal(e:Estado,alSincronizar?:(e:Estado)=>void,base
  if(q.pendiente)void reintentarNube().then(()=>{if(sync===q)alSincronizar?.(q.estado());}).catch(()=>{});
 }
 let sincronizacion:Promise<void>|undefined;
+let cierreSesion:Promise<void>|undefined;
 export function reintentarNube():Promise<void>{
+ if(cierreSesion)return cierreSesion;
+ if(!token||!actor)return Promise.resolve();
  return sincronizacion??=sincronizando(completarSync).finally(()=>{sincronizacion=undefined;});
 }
 export type RevisionDiferencias={pendiente:SobreNube;remoto:Estado;revision:number;diferencias:DiferenciaNube[]};
@@ -358,10 +363,17 @@ export async function resolverDiferenciasNube(revision:RevisionDiferencias,opcio
   return estadoConfirmado()!;
 }
 export async function consultarNube(){await reintentarNube();return {estado:(await colaActual()).estado(),guardia:actor};}
-export async function cerrarSesionNube(){
- await sync?.esperar();if(sync?.pendiente||await leerCola())throw Error('Sincronice los pendientes antes de cerrar sesión.');
- await rpc({accion:'salir'});await guardarSeguro(K_SESION,'');token='';actor='';revision=0;baseConfirmada=undefined;sync=undefined;syncActor='';
- configurarAdjuntos(()=>Promise.reject(Error('Ingrese para consultar la evidencia.')));
+export function cerrarSesionNube():Promise<void>{
+ return cierreSesion??=(async()=>{
+  try{await sincronizacion;await sync?.esperar();}catch(e:any){if(e.codigo!=='sesion')throw e;}
+  if(sync?.pendiente||await leerCola())throw Error('Sincronice los pendientes antes de cerrar sesión.');
+  // Una sesión ya vencida o revocada equivale a estar desconectado.
+  // Cualquier otro error conserva la sesión para reintentar el cierre remoto.
+  try{await rpc({accion:'salir'});}catch(e:any){if(e.codigo!=='sesion')throw e;}
+  await guardarSeguro(K_SESION,'');token='';actor='';revision=0;baseConfirmada=undefined;sync=undefined;syncActor='';
+  avisar({guardando:false,pendiente:false,error:'',ultima:'',reautenticar:false});
+  configurarAdjuntos(()=>Promise.reject(Error('Ingrese para consultar la evidencia.')));
+ })().finally(()=>{cierreSesion=undefined;});
 }
 export const listarResguardos=async()=> (await rpc({accion:'resguardos'},'guardia_sync')).resguardos as {id:string;creado:string;motivo:string;col:string;registro:string;dato:any}[];
 export async function cambiarPinNube(actual: string,nuevo: string) {await rpc({accion:'cambiar_pin',actual,nuevo});}

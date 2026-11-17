@@ -2,7 +2,7 @@
   "expo": {
     "name": "Securia",
     "slug": "securia",
-    "version": "2.3.11",
+    "version": "2.3.12",
     "orientation": "portrait",
     "icon": "./assets/securia/icon.png",
     "scheme": "securia",
@@ -27,7 +27,7 @@
       }
     },
     "android": {
-      "versionCode": 39,
+      "versionCode": 40,
       "softwareKeyboardLayoutMode": "resize",
       "package": "ar.com.securia.app",
       "adaptiveIcon": {

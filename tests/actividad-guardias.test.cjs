@@ -44,7 +44,7 @@ test('mantiene registros previos sin firma y usa un nombre guardado aunque falte
   assert.equal(guardias.get('ana').registros.informes[0].id, 'informe-viejo');
 });
 
-test('el contador de un guardia abre los registros de esa categoría, fecha y firma', async () => {
+test('el contador de un guardia abre los registros de esa categoría, fecha y firma', async (t) => {
   const Module = require('node:module');
   const React = require('react');
   const { create, act } = require('react-test-renderer');
@@ -53,7 +53,7 @@ test('el contador de un guardia abre los registros de esa categoría, fecha y fi
   const S = estadoVacio();
   S.guards = [guarda('ana', 'Ana'), guarda('luis', 'Luis')];
   S.novedades = [
-    asiento('ana-1', { fecha: hoy, categoria: 'Novedad', texto: 'Registro de Ana' }),
+    asiento('ana-1', { fecha: hoy, hora:'00:00', categoria: 'Ingreso', datos:{apellido:'Prueba',nombre:'Ana'}, texto: 'Registro de Ana' }),
     asiento('luis-1', { fecha: hoy, guardId: 'luis', categoria: 'Novedad', texto: 'Registro de Luis' }),
   ];
   S.punches = [{ id: 'turno', fecha: hoy, guardId: 'ana', in: '00:00', out: '' }];
@@ -83,6 +83,7 @@ test('el contador de un guardia abre los registros de esa categoría, fecha y fi
   }
   let r;
   await act(() => { r = create(React.createElement(Resumen)); });
+  t.after(async()=>{await act(()=>r.unmount());});
   assert.ok(r.root.findAllByType('Item').some(x => x.props.title === 'Prueba, Ana'));
   await act(() => r.root.findAllByType('Pressable').find(x => x.props.accessibilityLabel === 'Novedades, 1, Ana Prueba').props.onPress());
   assert.deepEqual(ruta, { pathname: '/actividad-guardia', params: { fecha: hoy, tipo: 'novedades', guardia: 'ana' } });

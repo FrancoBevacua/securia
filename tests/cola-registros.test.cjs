@@ -10,6 +10,20 @@ function banco(){
  const r={acuses:filas.map(f=>{const a={col:f.col,id:f.id,valor:f.valor,hash:'h'+envios,estado:'confirmado'};remoto.set(f.col+'/'+f.id,a);return a;})};recibos.set(lote,r);if(perder){perder=false;throw Error('Respuesta perdida');}return copy(r);}};
  return {disco,io,net,remoto,get escrituras(){return escrituras;},reset(){escrituras=[];},get envios(){return envios;},perder(){perder=true;},bloquear(p){barrera=p;}};
 }
+
+test('la carga y recepción usan lotes acotados y no adelantan el cursor si falla el disco',async()=>{
+ const b=banco();let lecturas=0,escrituras=0,fallar=false;
+ b.io.leerVarios=async ks=>{assert.ok(ks.length<=20);lecturas++;return Promise.all(ks.map(k=>b.io.leer(k)));};
+ b.io.escribirVarios=async filas=>{assert.ok(filas.length<=20);escrituras++;if(fallar)throw Error('Disco lleno');for(const [k,v] of filas)await b.io.escribir(k,v);};
+ const e=estadoVacio();e.novedades=Array.from({length:250},(_,i)=>({id:'n'+i,texto:'Historial'}));
+ const q=new ColaRegistros('a',b.io,b.net);await q.iniciar();await q.importar(e,e);
+ assert.equal(escrituras,13);
+ const otra=new ColaRegistros('a',b.io,b.net);await otra.iniciar();assert.equal(lecturas,13);assert.equal(otra.estado().novedades.length,250);
+ b.remoto.set('novedades/n0',{col:'novedades',id:'n0',valor:{id:'n0',texto:'Remoto'},hash:'nuevo'});
+ fallar=true;await assert.rejects(otra.sincronizar(),/Disco lleno/);
+ assert.equal(otra.estado().novedades[0].texto,'Historial');assert.equal(b.disco.has('sync.v2/a/cursor'),false);
+ fallar=false;await otra.sincronizar();assert.equal(otra.estado().novedades[0].texto,'Remoto');
+});
 test('un cambio escribe una sola fila y conserva el historial ausente de una vista local',async()=>{
  const b=banco(),q=new ColaRegistros('a',b.io,b.net),e=estadoVacio();e.reports=Array.from({length:1200},(_,i)=>({id:String(i),texto:'Histórico '+i}));
  await q.iniciar();await q.importar(e,e);b.reset();

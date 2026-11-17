@@ -28,7 +28,6 @@ export default function Ajustes() {
   const [prefijo, setPrefijo] = useState(st.S.site.prefijo || 'Gs');
   const [precPref, setPrecPref] = useState((st.S.site.precintoPrefijo || '').slice(0, 4));
   const [corte, setCorte] = useState(horaCorte(st.S));
-  const [supervisor,setSupervisor]=useState(st.S.site.supervisorTel||'');
 
   const [ia, setIa] = useState<ConfigIA>(CONFIG_VACIA);
   const [probando, setProbando] = useState(false);
@@ -59,7 +58,6 @@ export default function Ajustes() {
     <Pantalla top>
       <SubCabecera titulo="Ajustes" onBack={() => router.back()} />
       <ConfigurarNube />
-      <Card pad><Stack gap={12}><Eyebrow>Supervisor</Eyebrow><Hint>El guardia comparte el informe general desde el libro de novedades.</Hint><Input label="Número de WhatsApp" value={supervisor} onChangeText={setSupervisor} keyboardType="phone-pad" placeholder="Código de país y número" hint="Referencia del destinatario al compartir el PDF. Elija su chat en el selector de WhatsApp."/><Btn label="Guardar número" onPress={()=>{const n=supervisor.replace(/[^0-9]/g,'');if(n&&!/^[1-9][0-9]{7,14}$/.test(n)){toast('Ingrese el número completo con código de país.');return;}st.setSite({supervisorTel:n});toast('Número del supervisor guardado');}}/></Stack></Card>
 
       <Card pad>
         <Stack gap={12}>

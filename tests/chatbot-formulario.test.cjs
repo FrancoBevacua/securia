@@ -6,6 +6,7 @@ const S=estadoVacio();S.posts=[{id:'p',nombre:'Playa'}];S.directives=[{id:'d',no
 const st={S,esAdmin:true,me:{id:'guardia',puestoId:'p',nombre:'Ana',apellido:'Prueba'},put:()=>{throw Error('El chat no debe guardar asientos automáticamente');}};
 let resolver,rechazar,pedidos=[],guardados=[],documentos=[],altura=800;const eventosTeclado={};const load=Module._load;
 Module._load=function(n,...a){
+ if(n==='./DictadoChat')return{default:p=>React.createElement('DictadoChat',p),__esModule:true};
  if(n==='react-native')return{View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',Modal:'Modal',ScrollView:'ScrollView',KeyboardAvoidingView:'KeyboardAvoidingView',ActivityIndicator:'ActivityIndicator',Platform:{OS:'android'},useWindowDimensions:()=>({width:360,height:altura}),Keyboard:{dismiss:()=>{},addListener:(nombre,fn)=>{eventosTeclado[nombre]=fn;return{remove:()=>{delete eventosTeclado[nombre];}};}}};
  if(n==='react-native-keyboard-controller')return{KeyboardAvoidingView:'KeyboardAvoidingView',KeyboardEvents:{addListener:(nombre,fn)=>{eventosTeclado[nombre]=fn;return{remove:()=>delete eventosTeclado[nombre]};}}};
  if(n==='react-native-safe-area-context')return{SafeAreaProvider:p=>React.createElement('SafeAreaProvider',p,p.children),SafeAreaView:p=>React.createElement('SafeAreaView',p,p.children),useSafeAreaInsets:()=>({top:24,bottom:48})};if(n==='expo-router')return{router:{push:()=>{}}};if(n==='expo-clipboard')return{setStringAsync:async()=>{}};
@@ -21,6 +22,15 @@ Module._load=function(n,...a){
 const Chat=require('../src/pantallas/ChatbotFlotante.tsx').default;
 const btn=(r,label)=>r.root.findAllByType('Btn').find(b=>b.props.label===label||b.props.accessibilityLabel===label),input=(r,label)=>label==='Mensaje'?r.root.findByType('TextInput'):r.root.findAllByType('Input').find(b=>b.props.label===label);
 const abrir=r=>r.root.findAllByType('Pressable').find(x=>x.props.accessibilityLabel==='Abrir asistente Securia').props.onPress();
+
+test('el micrófono completa el borrador y no envía la consulta sin pulsar Enviar',async()=>{
+ let r;const antes=pedidos.length;await act(()=>{r=create(React.createElement(Chat));});await act(()=>abrir(r));
+ await act(()=>input(r,'Mensaje').props.onChangeText('Consulta:'));
+ await act(()=>r.root.findByType('DictadoChat').props.onEstado(true,'Escuchando…'));assert.equal(btn(r,'Enviar').props.disabled,true);
+ await act(()=>{r.root.findByType('DictadoChat').props.onTexto('¿Quién ingresó?');r.root.findByType('DictadoChat').props.onEstado(false,'Revisá el texto.');});
+ assert.equal(input(r,'Mensaje').props.value,'Consulta: ¿Quién ingresó?');assert.equal(pedidos.length,antes);assert.equal(btn(r,'Enviar').props.disabled,false);
+ await act(()=>btn(r,'Cerrar asistente').props.onPress());assert.equal(r.root.findByType('DictadoChat').props.enabled,false);await act(()=>r.unmount());
+});
 test('botón flotante abre el chat, conserva errores y sólo prepara una novedad después de revisarla',async()=>{
  let r;await act(async()=>{r=create(React.createElement(Chat));});assert.equal(pedidos.length,0);
  await act(async()=>abrir(r));assert.equal(r.root.findByType('Modal').props.visible,true);

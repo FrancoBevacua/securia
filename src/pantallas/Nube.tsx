@@ -36,7 +36,7 @@ export function EstadoSincronizacion(){
  const problema=st.errorGuardado||estadoNube.error||error;
  const reintentar=async()=>{setError('');try{await st.reintentarNube();}catch(e:any){setError(e.message);}};
  return <>
-  {mostrarAviso?<View accessibilityLiveRegion="polite" style={{paddingHorizontal:16,paddingTop:ins.top+8,paddingBottom:10,backgroundColor:problema?t.warnSoft:t.surface,borderBottomWidth:1,borderBottomColor:t.line}}>
+  {mostrarAviso?<View accessibilityLiveRegion="polite" style={{position:'absolute',top:ins.top+60,left:12,right:12,zIndex:100,elevation:10,borderRadius:12,paddingHorizontal:12,paddingVertical:8,backgroundColor:problema?t.warnSoft:t.surface,borderWidth:1,borderColor:t.line}}>
    <Row>{estadoNube.guardando?<ActivityIndicator color={t.accent}/>:<Icon name={problema?'alerta':'clock'} color={problema?t.warn:t.accent} size={20}/>}
     <Text numberOfLines={2} style={{flex:1,fontFamily:FONT.bodySemi,fontSize:13,color:problema?t.warn:t.text}}>{st.errorGuardado?'No se pudo guardar':estadoNube.guardando?'Sincronizando…':estadoNube.reautenticar?'Renová tu sesión':problema?'Sincronización pendiente':'Guardado en el teléfono'}</Text>
     <Btn label="Ver" accessibilityLabel="Ver estado de sincronización" size="xs" onPress={()=>setDetalle(true)}/>

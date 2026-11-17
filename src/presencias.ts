@@ -1,6 +1,6 @@
 import {Estado,Acceso,Persona,accNormal,addDays,hhmm,isoDate,personasReales} from './model';
 import {categoriaAsiento} from './reporte';
-import {guardiaEnServicio} from './controlesServicio';
+import {esAdministrador,fechaValida,horaValida} from './servicio';
 import {normalIdentidad} from './identidad';
 
 export const normalPresencia=normalIdentidad;
@@ -77,13 +77,24 @@ export function externosEnPredio(S:Estado,ahora=new Date()):GrupoPresente[]{
 }
 
 export function guardiasEnServicio(S:Estado,ahora=new Date()){
- const fecha=isoDate(ahora),hora=hhmm(ahora),instante=fecha+'T'+hora;
- return S.guards.filter(g=>!g.deleted&&!g.corporativo&&!!(g.apellido||g.nombre)&&guardiaEnServicio(S,g.id,fecha,hora)).map(g=>{
-  const movimiento=S.novedades.filter(n=>!n.deleted&&categoriaAsiento(n)==='INGRESO'&&n.datos?.tipoPersona!=='adicional'&&normalPresencia((n.datos?.apellido||'')+' '+(n.datos?.nombre||''))===normalPresencia(g.apellido+' '+g.nombre)&&n.fecha+'T'+n.hora<=instante).sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora))[0];
-  const sesion=S.punches.filter(p=>!p.deleted&&(p.responsableId||p.guardId)===g.id&&p.fecha+'T'+p.in<=instante).sort((a,b)=>(b.fecha+b.in).localeCompare(a.fecha+a.in))[0];
-  const libroVigente=movimiento&&(!sesion||movimiento.fecha+'T'+movimiento.hora>=sesion.fecha+'T'+sesion.in)?movimiento:undefined;
-  const puestoId=libroVigente?.datos?.puestoId||sesion?.puestoId||g.puestoId;
-  return {id:g.id,nombre:[g.apellido,g.nombre].filter(Boolean).join(', '),puesto:S.posts.find(p=>!p.deleted&&p.id===puestoId)?.nombre||sesion?.puesto||'Puesto no informado',fecha:libroVigente?.fecha||sesion?.fecha||'',ingreso:libroVigente?.hora||sesion?.in||'',turno:libroVigente?.datos?.turno||sesion?.turno||''};
+ const instante=isoDate(ahora)+'T'+hhmm(ahora);
+ const ultimos=new Map<string,Estado['novedades'][number]>();
+ // Una sola pasada por el libro. La firma identifica al autor, no al ingresante.
+ for(const n of S.novedades){
+  const categoria=categoriaAsiento(n);
+  if(n.deleted||!['INGRESO','EGRESO'].includes(categoria)||
+    (n.datos?.tipoPersona&&n.datos.tipoPersona!=='vigilador')||!fechaValida(n.fecha)||!horaValida(n.hora)||n.fecha+'T'+n.hora>instante)continue;
+  const nombre=normalPresencia((n.datos?.apellido||'')+' '+(n.datos?.nombre||''));
+  if(!nombre)continue;
+  const anterior=ultimos.get(nombre),momento=n.fecha+'T'+n.hora,previo=anterior?anterior.fecha+'T'+anterior.hora:'';
+  // A igual minuto el egreso prevalece: nunca afirmar presencia ambigua.
+  if(!anterior||momento>previo||(momento===previo&&categoria==='EGRESO'))ultimos.set(nombre,n);
+ }
+ const puestos=new Map(S.posts.filter(p=>!p.deleted).map(p=>[p.id,p.nombre]));
+ return S.guards.filter(g=>!g.deleted&&!g.corporativo&&!esAdministrador(g)).flatMap(g=>{
+  const n=ultimos.get(normalPresencia((g.apellido||'')+' '+(g.nombre||'')));
+  if(!n||categoriaAsiento(n)!=='INGRESO'||ahora.getTime()-new Date(n.fecha+'T'+n.hora).getTime()>24*60*60*1000)return [];
+  return [{id:g.id,nombre:[g.apellido,g.nombre].filter(Boolean).join(', '),puesto:puestos.get(n.datos?.puestoId||'')||'Puesto no informado',fecha:n.fecha,ingreso:n.hora,turno:n.datos?.turno||''}];
  });
 }
 

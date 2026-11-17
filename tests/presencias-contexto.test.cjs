@@ -11,6 +11,27 @@ const ahora=new Date(2026,9,27,10,0);
 const acc=(empresa='Limpieza SA',personas=[{nombre:'Persona Uno',dni:'30123456'}])=>({...accVacio(),empresa,personas,tarea:'Limpieza',lugar:'Escalera al techo'});
 const nov=(id,movimiento,a=acc(),extra={})=>({id,categoria:'Externo',fecha:'2026-10-27',hora:'08:00',texto:movimiento==='egreso'?'Se retira personal.':'Ingresa personal.',acc:a,datos:{movimiento},...extra});
 
+test('el servicio y su hora provienen sólo del libro, excluyendo admin, corporativo y egresos',()=>{
+ const S=estadoVacio();S.guards=[{id:'g',apellido:'Prueba',nombre:'Ana',puestoId:'otro'},
+  {id:'admin',apellido:'Usuario',nombre:'Administrador',rol:'admin'},
+  {id:'corp',apellido:'Cuenta',nombre:'Corporativa',corporativo:true}];
+ S.posts=[{id:'p',nombre:'Paseo'},{id:'otro',nombre:'Playa'}];
+ S.punches=[{id:'relevo-tardio',guardId:'corp',responsableId:'g',fecha:'2026-10-27',in:'09:00',out:''}];
+ const ingreso=(g,hora='06:00')=>({id:g.id,categoria:'Ingreso',fecha:'2026-10-27',hora,guardId:'admin',datos:{apellido:g.apellido,nombre:g.nombre,puestoId:'p',turno:'Mañana'}});
+ S.novedades=S.guards.map(g=>ingreso(g));
+ assert.deepEqual(guardiasEnServicio(S,ahora),[{id:'g',nombre:'Prueba, Ana',puesto:'Paseo',fecha:'2026-10-27',ingreso:'06:00',turno:'Mañana'}]);
+ S.novedades.push({...ingreso(S.guards[0],'08:00'),id:'egreso',categoria:'Egreso'});
+ assert.equal(guardiasEnServicio(S,ahora).length,0);
+ S.novedades.push({...ingreso(S.guards[0],'09:30'),id:'reingreso'});
+ assert.equal(guardiasEnServicio(S,ahora)[0].ingreso,'09:30');
+ S.novedades.push({...ingreso(S.guards[0],'09:30'),id:'empate',categoria:'Egreso'});
+ assert.equal(guardiasEnServicio(S,ahora).length,0);
+ S.novedades.at(-1).deleted=true;
+ S.novedades.push({...ingreso(S.guards[0],'11:00'),id:'futuro',categoria:'Egreso'});
+ assert.equal(guardiasEnServicio(S,ahora)[0].ingreso,'09:30');
+ assert.equal(guardiasEnServicio(S,new Date(2026,9,29,10,0)).length,0);
+});
+
 test('el mapa deduplica visita/libro, excluye retirados y futuros y separa espera de confirmados',()=>{
  const S=estadoVacio();S.visits=[{id:'v',fecha:'2026-10-27',horaIn:'08:00',horaOut:'',acc:acc(),tipo:'Contratista',novIn:'v-in'}];
  S.novedades=[nov('v-in','ingreso',acc(),{visitId:'v',mov:'in'}),nov('futuro','ingreso',acc('Futuro'),{hora:'11:00'}),nov('espera','ingreso',{...acc('Pendiente'),autoriz:'espera'}),nov('retirado','ingreso',{...acc('Retirado'),autoriz:'retiro'})];
@@ -34,7 +55,7 @@ test('una salida de madrugada usa la fecha real del libro y un catálogo no acre
 test('el asistente reúne servicio, registros, accesos e informes y excluye credenciales y datos de cuenta',()=>{
  const S=estadoVacio();S.guards=[{id:'g',nombre:'Ana',apellido:'Prueba',puestoId:'p',pin:'SECRETO-PIN',email:'SECRETO-EMAIL',dni:'SECRETO-DNI',tel:'SECRETO-TEL',foto:'SECRETO-FOTO'}];
  S.posts=[{id:'p',nombre:'Playa'}];S.punches=[{id:'punch',guardId:'g',fecha:'2026-10-26',in:'23:00',out:'',puestoId:'p'}];
- S.novedades=[nov('externo','ingreso'),{id:'nota',categoria:'Novedad',fecha:'2026-10-27',hora:'09:00',texto:'Luminaria fundida en Playa',guardId:'g'}];
+ S.novedades=[{id:'entrada',categoria:'Ingreso',fecha:'2026-10-26',hora:'23:00',datos:{apellido:'Prueba',nombre:'Ana',puestoId:'p'}},nov('externo','ingreso'),{id:'nota',categoria:'Novedad',fecha:'2026-10-27',hora:'09:00',texto:'Luminaria fundida en Playa',guardId:'g'}];
  S.alogs=[{id:'a',fecha:'2026-10-27',hora:'09:00',tipo:'apertura',acceso:'Portón Ombú',guardId:'g',p1:'1234567',p2:'',nota:''}];
  S.reports=[{id:'r',fecha:'2026-10-27',hora:'09:10',f6:'Se informó luminaria apagada',f16:'Final de informe completo'}];
  S.shifts=[{id:'programado',guardId:'g',fecha:'2026-10-27',tipo:'turno',entrada:'23:00',salida:'07:00'}];
@@ -69,10 +90,11 @@ test('autocompletado aprende sólo del historial válido, ordena por frecuencia 
 test('los portones nuevos usan un precinto sin distinguir hojas',()=>{
  for(const cf of ['ingreso','egreso']){const ps=nuevasPuertas('porton',cf,'0123');assert.equal(ps.length,1);assert.equal(ps[0].nombre,'Portón');ps[0].precintos=['0123456'];assert.deepEqual(completarPuertas(ps,'0123')[0].precintos,['0123456']);}
 });
-test('el egreso de un servicio anterior no oculta la nueva actividad del guardia',()=>{
+test('un relevo del corporativo no acredita un ingreso ausente del libro',()=>{
  const S=estadoVacio();S.guards=[{id:'g',nombre:'Ana',apellido:'Prueba'}];
  S.novedades=[{id:'salida-anterior',categoria:'Egreso',fecha:'2026-10-26',hora:'19:00',datos:{nombre:'Ana',apellido:'Prueba'}}];
- S.punches=[{id:'actual',guardId:'g',fecha:'2026-10-27',in:'07:00',out:''}];assert.equal(guardiasEnServicio(S,ahora).length,1);
+ S.punches=[{id:'actual',guardId:'g',fecha:'2026-10-27',in:'07:00',out:''}];assert.equal(guardiasEnServicio(S,ahora).length,0);
+ S.novedades.push({id:'ingreso-actual',categoria:'Ingreso',fecha:'2026-10-27',hora:'06:00',datos:{nombre:'Ana',apellido:'Prueba'}});assert.equal(guardiasEnServicio(S,ahora)[0].ingreso,'06:00');
  S.novedades.push({id:'salida-actual',categoria:'Egreso',fecha:'2026-10-27',hora:'09:00',datos:{nombre:'Ana',apellido:'Prueba'}});assert.equal(guardiasEnServicio(S,ahora).length,0);
 });
 test('los totales consideran las 500 novedades aunque el contexto sólo adjunte una selección',()=>{

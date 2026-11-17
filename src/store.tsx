@@ -217,7 +217,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             const g=e.guards.find(g=>g.id===recuperada.guardia&&!g.deleted);
             if(g){const abierta=abrirActividad(e,g);if(abierta!==e)await persistir(abierta,e);e=abierta;setMe(perfilTelefono(e,g));}
           }
-          else {try{e=await nube.catalogoNube();}catch{e=estadoVacio();}}
+          // La pantalla de PIN no usa el catálogo. El acceso autenticado lo trae
+          // junto con la sesión; no bloquear el inicio con una consulta duplicada.
+          else e=estadoVacio();
         }
         else migrar(e);
         for (const g of e.guards) {

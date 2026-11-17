@@ -4,6 +4,17 @@ const anterior=new Map();let fallaBorrado=false;const load=Module._load;
 Module._load=function(n,...a){if(n==='@react-native-async-storage/async-storage')return {getItem:async k=>anterior.get(k)??null,removeItem:async k=>{if(fallaBorrado)throw Error('sin espacio');anterior.delete(k);}};return load.call(this,n,...a);};
 const {almacenLocal}=require('../src/almacenLocal.ts');
 const sqlite=require('./sqlite-native.cjs');
+test('un lote se confirma completo, mantiene el orden de lectura y revierte entero ante un error',async()=>{
+ await almacenLocal.setItems([['lote/a','A'],['lote/b','B']]);
+ assert.deepEqual(await almacenLocal.getItems(['lote/b','ausente','lote/a']),['B',null,'A']);
+ const d=sqlite.conexiones.get('vigelium-datos.db').native;
+ d.exec("CREATE TRIGGER fallo_lote BEFORE INSERT ON documentos WHEN new.clave='lote/error' BEGIN SELECT RAISE(ABORT, 'fallo de prueba'); END");
+ await assert.rejects(almacenLocal.setItems([['lote/a','modificado'],['lote/error','X']]),/fallo de prueba/);
+ assert.equal(await almacenLocal.getItem('lote/a'),'A');
+ d.exec('DROP TRIGGER fallo_lote');
+ await almacenLocal.removeItem('lote/b');
+ assert.deepEqual(await almacenLocal.getItems(['lote/b','lote/a']),[null,'A']);
+});
 test('migra una cola de más de 10 MB y la recupera desde otra conexión al archivo',async()=>{
  const valor='cifrado:á'.repeat(1400000);anterior.set('cola-grande',valor);
  assert.equal(await almacenLocal.getItem('cola-grande'),valor);assert.equal(anterior.has('cola-grande'),false);

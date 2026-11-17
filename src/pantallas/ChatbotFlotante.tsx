@@ -16,6 +16,7 @@ import {leerDocumentosChat,guardarDocumentosChat} from '../documentosChat';
 import {EditorNovedad} from './EditorAsiento';
 import {Asistente as AsistenteInforme,nuevoInforme} from './Informes';
 import RespuestaChat from './RespuestaChat';
+import DictadoChat from './DictadoChat';
 import {leerAccionNovedad,prepararNovedadChat,RegistroChat} from '../accionNovedadChat';
 import {limpiarRespuestaChat} from '../respuestaChat';
 import {Novedad,dmy} from '../model';
@@ -24,6 +25,7 @@ export default function ChatbotFlotante(){
  const st=useStore(),t=useTheme(),ins=useSafeAreaInsets();
  const actual=useRef(st);actual.current=st;
  const [abierto,setAbierto]=useState(false),[biblioteca,setBiblioteca]=useState(false),[teclado,setTeclado]=useState(false);
+ const [dictando,setDictando]=useState(false),[estadoDictado,setEstadoDictado]=useState('');
  const [puesto,setPuesto]=useState(st.me?.puestoId||'');
  const [mensajes,setMensajes]=useState<MensajeChat[]>([]),[texto,setTexto]=useState(''),[enProceso,setEnProceso]=useState(''),[error,setError]=useState('');
  const [proveedor,setProveedor]=useState('el proveedor configurado en Ajustes');
@@ -58,7 +60,7 @@ export default function ChatbotFlotante(){
   try{const registro=await guardarDesdeChat(m.registro.novedad);setMensajes(ms=>ms.map(x=>x.id===m.id?{...x,registro}:x));}finally{terminar(id);}
  };
  const enviar=async()=>{
-  if(!texto.trim()||cargandoBiblioteca)return;const id=comenzar();if(!id)return;const consulta=texto.trim();setEnProceso('Generando respuesta…');desplazar.current=true;const escrito=texto;const idRespuesta=uid(),idRegistro='chat:'+idRespuesta;const responsableInicial=st.responsable||st.me;
+  if(!texto.trim()||cargandoBiblioteca||dictando)return;const id=comenzar();if(!id)return;const consulta=texto.trim();setEnProceso('Generando respuesta…');desplazar.current=true;const escrito=texto;const idRespuesta=uid(),idRegistro='chat:'+idRespuesta;const responsableInicial=st.responsable||st.me;
   try{
    const cfg=await leerConfigIA();if(id!==peticion.current)return;
    const pedido=pedidoChat(st.S,documentos,puesto,mensajes,consulta,'auto',new Date(),st.responsable||st.me);
@@ -151,8 +153,9 @@ export default function ChatbotFlotante(){
       {!compacto?<Hint>Consulta y fuentes pertinentes se envían a {proveedor}.</Hint>:null}
       <View style={{flexDirection:compacto?'row':'column',alignItems:compacto?'flex-end':'stretch',gap:8,minWidth:0}}>
        <View style={{...(compacto?{flex:1}:{}),minWidth:0}}><TextInput testID="securia-chat-mensaje" accessibilityLabel="Mensaje" value={texto} editable onChangeText={setTexto} multiline scrollEnabled disableFullscreenUI maxLength={6000} placeholder="Escribí tu consulta…" placeholderTextColor={t.muted} style={{height:64,minHeight:64,maxHeight:64,paddingHorizontal:12,paddingVertical:10,textAlignVertical:'center',includeFontPadding:false,fontFamily:FONT.body,fontSize:16,lineHeight:22,color:t.text,backgroundColor:t.surface,borderWidth:1,borderColor:t.lineStrong,borderRadius:10}}/></View>
-       <Row><Btn label={registrando?'Guardando…':ocupado?'Cancelar':'Enviar'} variant="primary" size={compacto?'sm':'md'} style={{width:104,minWidth:104,flexShrink:0}} disabled={registrando||(!ocupado&&(!texto.trim()||cargandoBiblioteca))} onPress={ocupado?cancelar:enviar}/>{!compacto?<Btn label="Puesto" size="sm" disabled={ocupado} onPress={()=>setBiblioteca(true)}/>:null}</Row>
+       <Row><DictadoChat enabled={abierto&&!biblioteca&&!ocupado} onTexto={v=>setTexto(actual=>(actual.trimEnd()+(actual.trim()?' ':'')+v).slice(0,6000))} onEstado={(activo,mensaje)=>{setDictando(activo);setEstadoDictado(mensaje);}}/><Btn label={registrando?'Guardando…':ocupado?'Cancelar':'Enviar'} variant="primary" size={compacto?'sm':'md'} style={{width:104,minWidth:104,flexShrink:0}} disabled={registrando||dictando||(!ocupado&&(!texto.trim()||cargandoBiblioteca))} onPress={ocupado?cancelar:enviar}/>{!compacto?<Btn label="Puesto" size="sm" disabled={ocupado} onPress={()=>setBiblioteca(true)}/>:null}</Row>
       </View>
+      {estadoDictado?<Hint>{estadoDictado}</Hint>:null}
      </View>
     </>}
     {biblioteca&&ocupado?<Row style={{padding:12}}><ActivityIndicator color={t.accentText}/><Hint>{enProceso}</Hint><Btn label="Cancelar" onPress={cancelar}/></Row>:null}

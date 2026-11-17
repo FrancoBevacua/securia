@@ -34,6 +34,22 @@ async function leerAnterior(clave: string): Promise<string | null> {
 }
 
 export const almacenLocal = {
+  async getItems(claves: string[]): Promise<(string | null)[]> {
+    if (!claves.length) return [];
+    const filas = await (await db()).getAllAsync<{clave:string;valor:string|null}>(
+      'SELECT clave, valor FROM documentos WHERE clave IN (' + claves.map(() => '?').join(',') + ')', ...claves,
+    );
+    const valores = new Map(filas.map(f => [f.clave, f.valor]));
+    return Promise.all(claves.map(k => valores.has(k) ? valores.get(k)! : almacenLocal.getItem(k)));
+  },
+  async setItems(filas: [string, string][]): Promise<void> {
+    // Una sentencia es atómica y hace un solo fsync, conservando synchronous=FULL.
+    if (!filas.length) return;
+    await (await db()).runAsync(
+      'INSERT INTO documentos (clave, valor) VALUES ' + filas.map(() => '(?, ?)').join(',') +
+      ' ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor', ...filas.flat(),
+    );
+  },
   async claves(prefijo:string):Promise<string[]> {
     return (await (await db()).getAllAsync<{clave:string}>(
       'SELECT clave FROM documentos WHERE clave >= ? AND clave < ? AND valor IS NOT NULL ORDER BY clave',

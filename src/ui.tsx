@@ -1,7 +1,7 @@
 /* Kit de componentes: mismo lenguaje visual que la versión web. */
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, Modal, Animated,
+  View, Text, TextInput, Pressable, ScrollView, FlatList, StyleSheet, Modal, Animated,
   useColorScheme, useWindowDimensions, ViewStyle, TextStyle, StyleProp, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -383,14 +383,15 @@ export function Tile({ icon, titulo, sub, onPress }: { icon: string; titulo: str
 }
 
 /* ---------------- hoja modal ---------------- */
-export function Sheet({ visible, title, onClose, onBack, children, footer }: {
+export function Sheet({ visible, title, onClose, onBack, children, footer, scroll = true }: {
   visible: boolean; title: string; onClose: () => void; onBack?: () => void;
-  children: React.ReactNode; footer?: React.ReactNode;
+  children: React.ReactNode; footer?: React.ReactNode; scroll?: boolean;
 }) {
   const t = useTheme();
   const ins = useSafeAreaInsets();
   const {height} = useWindowDimensions();
   const espacioInferior = Math.max(ins.bottom, Platform.OS === 'android' ? 32 : 12);
+  if (!visible) return null;
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <View style={{ flex: 1, backgroundColor: 'rgba(8,12,16,0.55)', justifyContent: 'flex-end' }}>
@@ -410,7 +411,7 @@ export function Sheet({ visible, title, onClose, onBack, children, footer }: {
             <Text style={{ flex: 1, fontFamily: FONT.dispBold, fontSize: 21, color: t.text }}>{title}</Text>
             <Btn icon="x" variant="ghost" size="sm" onPress={onClose} />
           </View>
-          <KeyboardAwareScrollView bottomOffset={24} style={{flexShrink:1}} contentContainerStyle={{ padding: 16, paddingBottom: 16 + espacioInferior, gap: 14 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          {scroll ? <KeyboardAwareScrollView bottomOffset={24} style={{flexShrink:1}} contentContainerStyle={{ padding: 16, paddingBottom: 16 + espacioInferior, gap: 14 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
             {children}
           {footer ? (
             <View style={{
@@ -418,7 +419,7 @@ export function Sheet({ visible, title, onClose, onBack, children, footer }: {
               borderTopWidth: 1, borderTopColor: t.line,
             }}>{footer}</View>
           ) : null}
-          </KeyboardAwareScrollView>
+          </KeyboardAwareScrollView> : <View style={{flexShrink:1,paddingBottom:espacioInferior}}>{children}{footer}</View>}
         </View>
         <AvisoToast modal />
       </View>
@@ -536,15 +537,14 @@ export function Selector({ label, hint, valor, opciones, onChange, placeholder }
           <Icon name="down" size={15} color={t.muted} />
         </Pressable>
       </Field>
-      <Sheet visible={abierto} title={label || 'Elegir'} onClose={() => setAbierto(false)}>
-        <Card>
-          {opciones.map((o, i) => (
-            <Item key={o.v + i} last={i === opciones.length - 1}
-              title={o.t} subs={[o.sub]} stripe={o.v === valor ? 'acc' : null}
-              right={o.v === valor ? <Icon name="check" size={17} color={t.accent} /> : undefined}
-              onPress={() => { onChange(o.v); setAbierto(false); }} />
-          ))}
-        </Card>
+      <Sheet visible={abierto} title={label || 'Elegir'} scroll={false} onClose={() => setAbierto(false)}>
+        {abierto ? <FlatList data={opciones} extraData={valor} keyExtractor={(o,i)=>o.v+':'+i}
+          style={{flexGrow:0,flexShrink:1}} contentContainerStyle={{padding:16}} initialNumToRender={12}
+          maxToRenderPerBatch={12} windowSize={5} keyboardShouldPersistTaps="handled"
+          renderItem={({item:o,index:i})=><Item last={i===opciones.length-1}
+            title={o.t} subs={[o.sub]} stripe={o.v===valor?'acc':null}
+            right={o.v===valor?<Icon name="check" size={17} color={t.accent}/>:undefined}
+            onPress={()=>{setAbierto(false);onChange(o.v);}}/>}/> : null}
       </Sheet>
     </>
   );
