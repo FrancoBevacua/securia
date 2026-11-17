@@ -23,4 +23,6 @@ Consulta de estadísticas agregadas del servidor, sin modificar datos: 13.849 ll
 
 Versión 2.3.12, código 40; referencia anterior 2.3.11, código 39. Compilación con `compilar.ps1` y verificación de paquete/firma mediante `verificar-apk.ps1`.
 
+Compilación finalizada el 17 de noviembre de 2026. Verificados el paquete `ar.com.securia.app`, la firma de distribución coincidente con 2.3.11, el aumento de código 39 → 40 y la alineación de 16 KB. APK local en `output/apk/Securia-2.3.12.apk`, con copia en `Securia.apk`; informe de verificación en `output/apk/verificacion-2.3.12.json`. Estos artefactos no se versionan.
+
 Pendiente la instalación sobre la versión anterior y la prueba visual con navegación de tres botones, teclado abierto, envío y respuesta del chat, así como el reconocimiento con micrófono real. ADB no detecta un teléfono y el AVD `Medium_Phone` carece de la imagen de sistema configurada. Las pruebas automatizadas de componentes no sustituyen esa validación.
